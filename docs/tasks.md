@@ -51,7 +51,7 @@ small and need the real behaviour below.
 | M1-14 | Turn manager phases (intro, action, fire, resolve, retreat, settle) with timer | core | M1-02 | ✅ |
 | M1-15 | Team rotation, round-robin snail selection, skip dead teams | core | M1-14 | ✅ |
 | M1-16 | Seeded wind that changes per turn | core | M1-03, M1-14 | ✅ |
-| M1-17 | Typed `EventBus` events (turn, damage, terrain carve, death, win) | core | M0-08 | 🚧 |
+| M1-17 | Typed `EventBus` events (turn, damage, terrain carve, death, win) | core | M0-08 | ✅ |
 | M1-18 | `ContentRegistry` skeleton and definition types for weapons | core | M0-08 | ✅ |
 | M1-19 | Pebble Toss weapon wired through registry, commands and projectile | core | M1-12, M1-13, M1-18 | ✅ |
 | M1-20 | Win condition (last team standing) and draw handling | core | M1-13, M1-15 | ✅ |
