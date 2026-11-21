@@ -1,3 +1,4 @@
+import { createSnail } from '../entities/snail.js';
 import type {
   GameSnapshot,
   GameState,
@@ -33,19 +34,15 @@ export interface InitialStateOptions {
 }
 
 function makeSnail(teamId: string, c: SnailConfig, colour: string): Snail {
-  const maxHealth = c.maxHealth ?? 100;
-  return {
+  return createSnail({
     id: c.id,
     teamId,
     name: c.name,
-    position: { ...(c.position ?? { x: 0, y: 0, z: 0 }) },
-    velocity: { x: 0, y: 0, z: 0 },
-    facing: 0,
-    health: maxHealth,
-    maxHealth,
-    alive: true,
-    shell: c.shell ? { ...c.shell } : { upgradeId: null, colour },
-  };
+    position: c.position,
+    maxHealth: c.maxHealth,
+    shell: c.shell,
+    colour,
+  });
 }
 
 /** Creates a fresh game state at tick 0 with the first team/snail active. */
