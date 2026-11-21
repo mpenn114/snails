@@ -68,7 +68,7 @@ is a stub client.
 
 | ID | Task | Area | Depends on | Status |
 |---|---|---|---|---|
-| M2-01 | Render scene graph, renderer init, resize, render loop with injectable state source | render | M0-08 | 🚧 |
+| M2-01 | Render scene graph, renderer init, resize, render loop with injectable state source | render | M0-08 | ✅ |
 | M2-02 | Snapshot interpolation buffer for smooth rendering between sim snapshots | render | M2-01, M1-01 | ⬜ |
 | M2-03 | Marching cubes mesher (pure function over chunk data) | render | M1-04 | ⬜ |
 | M2-04 | Web Worker chunk meshing with transferable buffers and dirty-chunk queue | render | M2-03 | ⬜ |
