@@ -26,6 +26,7 @@ export {
   type EndTurnCommand,
 } from './sim/types.js';
 export * from './sim/simulation.js';
+export * from './sim/validation.js';
 export * from './state/game-state.js';
 export * from './math/vec3.js';
 export * from './terrain/collision.js';
