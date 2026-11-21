@@ -79,7 +79,7 @@ is a stub client.
 | M2-09 | Projectile and explosion rendering (basic particles, flash) | render | M2-01, M1-13 | ✅ |
 | M2-10 | Camera rig: follow, free, cinematic modes | render | M2-01 | ✅ |
 | M2-11 | Water plane and basic lighting with shadows | render | M2-01 | ✅ |
-| M2-12 | Wind particles driven by wind state | render | M2-01 | ⬜ |
+| M2-12 | Wind particles driven by wind state | render | M2-01 | ✅ |
 | M2-13 | Quality tier implementation (high, medium, low, mobile) applied to renderer | render | M2-01 | ✅ |
 | M2-14 | Display app: Vite config, mount `@snails/render`, connect as `display` role | display | M2-01, M3-04 | 🚧 |
 | M2-15 | Scripted-match render harness with 16 snails and FPS/chunk-stall overlay | display | M2-06, M2-08, M2-14 | ⬜ |
