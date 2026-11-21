@@ -1,5 +1,7 @@
 import type { GameState, Snail, Team, TurnPhase } from '../state/types.js';
 import type { SimContext, SimEvent } from '../sim/types.js';
+import { rollWind, type WindConfig, DEFAULT_WIND_CONFIG } from '../sim/wind.js';
+import type { Rng } from '../rng.js';
 
 /** Durations (seconds) and thresholds for the turn state machine. */
 export interface TurnConfig {
@@ -70,8 +72,21 @@ export function setPhase(state: GameState, to: TurnPhase, emit: Emit): void {
   emit({ type: 'phaseChanged', from, to });
 }
 
-/** Begins the current turn in the intro phase (call once for the first turn). */
-export function startTurn(state: GameState, config: TurnConfig, emit: Emit): void {
+/** Seeded wind source for turns: the wind RNG stream and the wind rules. */
+export interface TurnWind {
+  rng: Rng;
+  config: WindConfig;
+}
+
+/**
+ * Begins the current turn in the intro phase (call once for the first turn). When `wind` is
+ * given, the wind is rolled for this turn first and `windChanged` is emitted.
+ */
+export function startTurn(state: GameState, config: TurnConfig, emit: Emit, wind?: TurnWind): void {
+  if (wind) {
+    state.wind = rollWind(state.wind, wind.rng, wind.config);
+    emit({ type: 'windChanged', strength: state.wind.strength, direction: state.wind.direction });
+  }
   const t = state.turn;
   t.phase = 'intro';
   t.phaseTime = 0;
@@ -110,7 +125,7 @@ function allAtRest(state: GameState, eps: number): boolean {
   );
 }
 
-function endTurn(state: GameState, config: TurnConfig, emit: Emit): void {
+function endTurn(state: GameState, config: TurnConfig, emit: Emit, wind?: TurnWind): void {
   emit({ type: 'turnEnded', teamId: state.turn.activeTeamId, turnNumber: state.turn.turnNumber });
   const next = selectNextActive(state);
   if (!next) return;
@@ -118,11 +133,19 @@ function endTurn(state: GameState, config: TurnConfig, emit: Emit): void {
   state.turn.activeSnailId = next.snailId;
   state.turn.turnNumber += 1;
   emit({ type: 'phaseChanged', from: state.turn.phase, to: 'intro' });
-  startTurn(state, config, emit);
+  startTurn(state, config, emit, wind);
 }
 
-/** Advances the turn state machine by `dt` seconds. */
-export function advanceTurn(state: GameState, config: TurnConfig, dt: number, emit: Emit): void {
+/**
+ * Advances the turn state machine by `dt` seconds. `wind`, if given, is rolled at each new turn.
+ */
+export function advanceTurn(
+  state: GameState,
+  config: TurnConfig,
+  dt: number,
+  emit: Emit,
+  wind?: TurnWind,
+): void {
   const t = state.turn;
   t.phaseTime += dt;
   switch (t.phase) {
@@ -144,13 +167,20 @@ export function advanceTurn(state: GameState, config: TurnConfig, dt: number, em
       break;
     case 'settle':
       if (allAtRest(state, config.restEpsilon) || t.phaseTime >= config.settleTimeout) {
-        endTurn(state, config, emit);
+        endTurn(state, config, emit, wind);
       }
       break;
   }
 }
 
-/** Creates a system for `Simulation.addSystem` driving the turn phases. */
-export function turnSystem(config: TurnConfig = DEFAULT_TURN_CONFIG): (ctx: SimContext) => void {
-  return (ctx) => advanceTurn(ctx.state, config, ctx.dt, ctx.emit);
+/**
+ * Creates a system for `Simulation.addSystem` driving the turn phases. Wind is rolled from the
+ * simulation's wind stream at each new turn using `windConfig`.
+ */
+export function turnSystem(
+  config: TurnConfig = DEFAULT_TURN_CONFIG,
+  windConfig: WindConfig = DEFAULT_WIND_CONFIG,
+): (ctx: SimContext) => void {
+  return (ctx) =>
+    advanceTurn(ctx.state, config, ctx.dt, ctx.emit, { rng: ctx.rng.wind, config: windConfig });
 }
