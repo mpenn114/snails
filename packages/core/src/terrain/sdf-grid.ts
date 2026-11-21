@@ -1,4 +1,5 @@
 import type { Vec3 } from '../state/types.js';
+import { carveSphere, type CarveResult } from './carve.js';
 
 /** 3D signed-distance-field grid. Negative = solid, positive = air. */
 export class SdfGrid {
@@ -29,25 +30,8 @@ export class SdfGrid {
     return this.data[this.index(x, y, z)] ?? 1;
   }
 
-  /** Subtracts a sphere from the terrain (CSG difference). */
-  carveSphere(center: Vec3, radius: number): void {
-    const r = Math.ceil(radius / this.cellSize) + 1;
-    const cx = Math.round(center.x / this.cellSize);
-    const cy = Math.round(center.y / this.cellSize);
-    const cz = Math.round(center.z / this.cellSize);
-    for (let z = Math.max(0, cz - r); z <= Math.min(this.nz - 1, cz + r); z++) {
-      for (let y = Math.max(0, cy - r); y <= Math.min(this.ny - 1, cy + r); y++) {
-        for (let x = Math.max(0, cx - r); x <= Math.min(this.nx - 1, cx + r); x++) {
-          const d = Math.hypot(
-            x * this.cellSize - center.x,
-            y * this.cellSize - center.y,
-            z * this.cellSize - center.z,
-          );
-          const sphere = d - radius;
-          const i = this.index(x, y, z);
-          this.data[i] = Math.max(this.data[i] ?? 1, -sphere);
-        }
-      }
-    }
+  /** Subtracts a sphere from the terrain (CSG difference) and reports changed chunks. */
+  carveSphere(center: Vec3, radius: number): CarveResult {
+    return carveSphere(this, center, radius);
   }
 }
