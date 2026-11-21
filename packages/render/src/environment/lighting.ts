@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import type { QualityTier } from '../quality.js';
+import { tierProfile, type QualityTier } from '../quality.js';
 
 /** Axis-aligned world bounds (m). */
 export interface Bounds3 {
@@ -67,7 +67,8 @@ export interface Lighting {
 
 /** Shadow map edge length by tier (0 = shadows off). */
 export function shadowMapSize(tier: QualityTier): number {
-  return tier === 'mobile' ? 0 : 2048;
+  const p = tierProfile(tier);
+  return p.shadows ? p.shadowMapSize : 0;
 }
 
 /** Creates hemisphere light and a shadow-casting sun fitted to the terrain bounds. */

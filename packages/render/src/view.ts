@@ -1,5 +1,10 @@
 import * as THREE from 'three';
-import { qualitySettings, type QualityTier } from './quality.js';
+import {
+  applyQuality,
+  qualitySettings,
+  type QualitySettings,
+  type QualityTier,
+} from './quality.js';
 import {
   createRenderLoop,
   type FrameScheduler,
@@ -11,6 +16,12 @@ import {
 import { createEnvironment } from './environment/environment.js';
 import type { Bounds3 } from './environment/lighting.js';
 import { createSceneGraph, type SceneRoots } from './scene-graph.js';
+
+const SHADOW_TYPES = {
+  pcfsoft: THREE.PCFSoftShadowMap,
+  pcf: THREE.PCFShadowMap,
+  basic: THREE.BasicShadowMap,
+} as const;
 
 /** Options for createGameView. */
 export interface GameViewOptions {
@@ -32,6 +43,12 @@ export interface GameView {
   addUpdater(fn: FrameUpdater): () => void;
   setSource(source: RenderStateSource | null): void;
   resize(width: number, height: number): void;
+  /** Current quality tier. */
+  readonly tier: QualityTier;
+  /** Current resolved quality settings (e.g. chunkBudgetMs, particleScale). */
+  readonly quality: QualitySettings;
+  /** Switches tier at runtime (pixel ratio, shadow flag, draw distance); see applyQuality. */
+  setTier(tier: QualityTier): void;
   dispose(): void;
 }
 
@@ -51,7 +68,7 @@ export interface GameViewDeps {
 export function createGameViewWith(deps: GameViewDeps): GameView {
   const q = qualitySettings(deps.tier, deps.devicePixelRatio);
   const { scene, roots } = createSceneGraph();
-  const camera = new THREE.PerspectiveCamera(60, 1, 0.1, 500);
+  const camera = new THREE.PerspectiveCamera(60, 1, 0.1, 500 * q.drawDistanceScale);
   camera.position.set(0, 4, 10);
   camera.lookAt(0, 0, 0);
 
@@ -73,7 +90,20 @@ export function createGameViewWith(deps: GameViewDeps): GameView {
   });
   const removeEnvUpdater = loop.addUpdater(env.update);
   loop.start();
+  const state = { tier: deps.tier, quality: q };
   return {
+    get tier() {
+      return state.tier;
+    },
+    get quality() {
+      return state.quality;
+    },
+    setTier: (tier) => {
+      state.tier = tier;
+      state.quality = applyQuality(deps.renderer, tier, deps.devicePixelRatio);
+      camera.far = 500 * state.quality.drawDistanceScale;
+      camera.updateProjectionMatrix();
+    },
     scene,
     camera,
     roots,
@@ -94,6 +124,7 @@ export function createGameView(canvas: HTMLCanvasElement, opts: GameViewOptions)
   const q = qualitySettings(opts.tier, window.devicePixelRatio);
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: q.antialias });
   renderer.shadowMap.enabled = q.shadows;
+  renderer.shadowMap.type = SHADOW_TYPES[q.shadowType];
   const view = createGameViewWith({
     tier: opts.tier,
     devicePixelRatio: window.devicePixelRatio,
