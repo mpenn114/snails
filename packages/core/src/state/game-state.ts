@@ -67,9 +67,11 @@ export function createInitialState(options: InitialStateOptions): GameState {
     turn: {
       activeTeamId: firstTeam?.id ?? null,
       activeSnailId: firstTeam?.snails[0]?.id ?? null,
-      phase: 'aiming',
+      phase: 'intro',
       timeRemaining: 0,
       turnNumber: 1,
+      phaseTime: 0,
+      fired: false,
     },
     projectiles: [],
     match: { status: 'playing', winnerTeamId: null },
