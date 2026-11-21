@@ -1,62 +1,44 @@
 import { describe, expect, it } from 'vitest';
-import { CHUNK_SIZE, carveSphere, toCarveEvent } from './carve.js';
+import { carveSphere, toCarveEvent } from './carve.js';
 import { SdfGrid } from './sdf-grid.js';
 
-/** Chunk id of a cell, mirroring the grid's chunk layout. */
-function chunkOf(g: SdfGrid, x: number, y: number, z: number): number {
-  const nx = Math.ceil(g.nx / CHUNK_SIZE);
-  const ny = Math.ceil(g.ny / CHUNK_SIZE);
-  return (
-    Math.floor(x / CHUNK_SIZE) +
-    nx * (Math.floor(y / CHUNK_SIZE) + ny * Math.floor(z / CHUNK_SIZE))
-  );
-}
-
-/** Brute-force expected chunks: chunks of changed cells plus face/edge/corner neighbours. */
+/**
+ * Brute-force expected chunks: the chunk of every in-bounds 3x3x3 neighbour of each changed
+ * cell. Interior neighbours fall in the cell's own chunk, so this is changed chunks plus borders.
+ */
 function expectedChunks(g: SdfGrid, before: Float32Array): number[] {
   const set = new Set<number>();
   for (let z = 0; z < g.nz; z++) {
     for (let y = 0; y < g.ny; y++) {
       for (let x = 0; x < g.nx; x++) {
-        const i = g.index(x, y, z);
-        if (before[i] === g.data[i]) continue;
-        for (const dz of [-1, 0, 1])
-          for (const dy of [-1, 0, 1])
-            for (const dx of [-1, 0, 1]) {
-              const nx = x + dx;
-              const ny = y + dy;
-              const nz = z + dz;
-              if (nx < 0 || ny < 0 || nz < 0 || nx >= g.nx || ny >= g.ny || nz >= g.nz) continue;
-              const onBorder =
-                (dx === 0 || Math.floor(nx / CHUNK_SIZE) === Math.floor(x / CHUNK_SIZE)) &&
-                (dy === 0 || Math.floor(ny / CHUNK_SIZE) === Math.floor(y / CHUNK_SIZE)) &&
-                (dz === 0 || Math.floor(nz / CHUNK_SIZE) === Math.floor(z / CHUNK_SIZE));
-              if (onBorder) set.add(chunkOf(g, nx, ny, nz));
-            }
+        if (before[g.index(x, y, z)] === g.data[g.index(x, y, z)]) continue;
+        for (let dz = -1; dz <= 1; dz++)
+          for (let dy = -1; dy <= 1; dy++)
+            for (let dx = -1; dx <= 1; dx++)
+              if (g.inBounds(x + dx, y + dy, z + dz)) set.add(g.chunkOf(x + dx, y + dy, z + dz));
       }
     }
   }
-  return [...set].sort((a, b) => a - b);
+  return [...set].sort((p, q) => p - q);
 }
 
 describe('carveSphere', () => {
   it('turns the centre into air and leaves far cells untouched', () => {
     const g = new SdfGrid(64, 64, 64, 1, -1);
-    const far = { x: 60, y: 60, z: 60 };
     carveSphere(g, { x: 10, y: 10, z: 10 }, 3);
     expect(g.sample({ x: 10, y: 10, z: 10 })).toBeGreaterThan(0);
-    expect(g.sample(far)).toBeLessThan(0);
-    expect(g.data[g.index(60, 60, 60)]).toBe(-1);
+    expect(g.get(60, 60, 60)).toBe(-1);
   });
 
   it('reports chunks exactly matching changed cells plus border neighbours', () => {
     const g = new SdfGrid(70, 70, 70, 1, -1);
     const before = g.data.slice();
-    // Centre on a chunk boundary (x=32) so neighbours must be included.
-    const result = carveSphere(g, { x: 32, y: 32, z: 32 }, 4);
+    // Centre on a chunk boundary (x=16 with default chunk size 16) so neighbours are included.
+    const result = carveSphere(g, { x: 16, y: 16, z: 16 }, 4);
     expect(result.chunks).toEqual(expectedChunks(g, before));
     expect(result.chunks.length).toBeGreaterThan(1);
     expect(result.chunks).toEqual([...result.chunks].sort((a, b) => a - b));
+    expect(g.takeDirtyChunks()).toEqual(result.chunks);
   });
 
   it('counts changed cells and removed volume', () => {

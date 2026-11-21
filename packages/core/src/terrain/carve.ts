@@ -1,11 +1,5 @@
 import type { Vec3 } from '../state/types.js';
-import type { SdfGrid } from './sdf-grid.js';
-
-/** Edge length of a terrain chunk, in cells (see docs/graphics.md). */
-export const CHUNK_SIZE = 32;
-
-/** Linear id of a chunk: `cx + chunksX * (cy + chunksY * cz)`. */
-export type ChunkId = number;
+import type { ChunkId, SdfGrid } from './sdf-grid.js';
 
 /** Outcome of a sphere carve. */
 export interface CarveResult {
@@ -29,39 +23,42 @@ function emptyResult(): CarveResult {
   return { chunks: [], cellsChanged: 0, removedVolume: 0 };
 }
 
-/** Number of chunks along one axis for a grid dimension. */
-function chunksAlong(cells: number): number {
-  return Math.ceil(cells / CHUNK_SIZE);
-}
-
-/** Chunk id for chunk coordinates on a grid. */
-function chunkIdAt(grid: SdfGrid, cx: number, cy: number, cz: number): ChunkId {
-  return cx + chunksAlong(grid.nx) * (cy + chunksAlong(grid.ny) * cz);
-}
-
 /** Chunk coordinates an index along one axis touches: its own chunk plus any border neighbour. */
-function axisChunks(cell: number, cellCount: number): number[] {
-  const c = Math.floor(cell / CHUNK_SIZE);
-  const local = cell - c * CHUNK_SIZE;
+function axisChunks(cell: number, cellCount: number, cs: number): number[] {
+  const c = Math.floor(cell / cs);
+  const local = cell - c * cs;
   const out = [c];
   if (local === 0 && c > 0) out.push(c - 1);
-  if (local === CHUNK_SIZE - 1 && (c + 1) * CHUNK_SIZE < cellCount) out.push(c + 1);
+  if (local === cs - 1 && (c + 1) * cs < cellCount) out.push(c + 1);
   return out;
 }
 
 /** Adds the chunk of a changed cell and its border neighbours to the set. */
-function markCellChunks(grid: SdfGrid, x: number, y: number, z: number, into: Set<ChunkId>): void {
-  for (const cz of axisChunks(z, grid.nz)) {
-    for (const cy of axisChunks(y, grid.ny)) {
-      for (const cx of axisChunks(x, grid.nx)) {
-        into.add(chunkIdAt(grid, cx, cy, cz));
+function collectCellChunks(grid: SdfGrid, x: number, y: number, z: number, into: Set<ChunkId>): void {
+  const cs = grid.chunkSize;
+  for (const cz of axisChunks(z, grid.nz, cs)) {
+    for (const cy of axisChunks(y, grid.ny, cs)) {
+      for (const cx of axisChunks(x, grid.nx, cs)) {
+        const id = grid.chunkIdAt(cx, cy, cz);
+        if (id >= 0) into.add(id);
       }
     }
   }
 }
 
+/** Writes one cell's carved value; returns true if it changed (and marks it dirty). */
+function carveCell(grid: SdfGrid, x: number, y: number, z: number, radius: number, c: Vec3): number {
+  const cs = grid.cellSize;
+  const d = Math.hypot(x * cs - c.x, y * cs - c.y, z * cs - c.z);
+  const old = grid.get(x, y, z);
+  const next = Math.fround(Math.max(old, radius - d));
+  if (next === old) return 0;
+  grid.set(x, y, z, next);
+  return old < 0 && next >= 0 ? 2 : 1;
+}
+
 /**
- * Subtracts a sphere from the SDF grid (CSG difference), writing cell values directly.
+ * Subtracts a sphere from the SDF grid (CSG difference), marking changed cells dirty.
  * Negative cell values are solid, non-negative are air. Returns an empty result for a
  * non-positive radius or a sphere that does not overlap the grid.
  */
@@ -82,15 +79,11 @@ export function carveSphere(grid: SdfGrid, centre: Vec3, radius: number): CarveR
   for (let z = z0; z <= z1; z++) {
     for (let y = y0; y <= y1; y++) {
       for (let x = x0; x <= x1; x++) {
-        const d = Math.hypot(x * cs - centre.x, y * cs - centre.y, z * cs - centre.z);
-        const i = grid.index(x, y, z);
-        const old = grid.data[i] ?? 1;
-        const next = Math.fround(Math.max(old, radius - d));
-        if (next === old) continue;
-        grid.data[i] = next;
+        const status = carveCell(grid, x, y, z, radius, centre);
+        if (status === 0) continue;
         cellsChanged++;
-        if (old < 0 && next >= 0) removed++;
-        markCellChunks(grid, x, y, z, touched);
+        if (status === 2) removed++;
+        collectCellChunks(grid, x, y, z, touched);
       }
     }
   }
