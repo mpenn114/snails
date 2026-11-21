@@ -1,4 +1,5 @@
 export * from './rng.js';
+export * from './rng-streams.js';
 export * from './events.js';
 export * from './content/registry.js';
 export * from './content/types.js';

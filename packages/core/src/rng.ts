@@ -7,6 +7,16 @@ export class Rng {
     this.state = seed >>> 0;
   }
 
+  /** Returns the current internal state as a uint32 (for save/restore). */
+  getState(): number {
+    return this.state;
+  }
+
+  /** Restores the internal state previously returned by {@link Rng.getState}. */
+  setState(s: number): void {
+    this.state = s >>> 0;
+  }
+
   /** Returns a float in [0, 1). */
   next(): number {
     this.state = (this.state + 0x6d2b79f5) >>> 0;
