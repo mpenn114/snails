@@ -6,7 +6,12 @@ import type { SimEvent } from '../sim/types.js';
 import { createInitialState } from '../state/game-state.js';
 import type { Snail } from '../state/types.js';
 import { SdfGrid } from '../terrain/sdf-grid.js';
-import { computeFallDamage, DEFAULT_HAZARD_CONFIG, type HazardConfig, registerHazards } from './hazards.js';
+import {
+  computeFallDamage,
+  DEFAULT_HAZARD_CONFIG,
+  type HazardConfig,
+  registerHazards,
+} from './hazards.js';
 
 const cfg = DEFAULT_HAZARD_CONFIG;
 

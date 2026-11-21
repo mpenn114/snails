@@ -62,7 +62,10 @@ export function hazardSystem(config: HazardConfig = DEFAULT_HAZARD_CONFIG): Syst
  * Registers the hazard system on a simulation. Add it after the movement system so that
  * landings are resolved in the same step they happen.
  */
-export function registerHazards(sim: Simulation, config: HazardConfig = DEFAULT_HAZARD_CONFIG): void {
+export function registerHazards(
+  sim: Simulation,
+  config: HazardConfig = DEFAULT_HAZARD_CONFIG,
+): void {
   sim.addSystem('hazards', hazardSystem(config));
 }
 
