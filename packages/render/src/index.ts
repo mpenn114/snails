@@ -12,3 +12,8 @@ export * from './terrain/mesh-protocol.js';
 export * from './terrain/mesh-transport.js';
 export * from './terrain/dirty-chunk-queue.js';
 export * from './terrain/terrain-mesh-manager.js';
+export * from './camera/damping.js';
+export * from './camera/camera-pose.js';
+export * from './camera/follow-tracker.js';
+export * from './camera/camera-rig.js';
+export * from './camera/camera-input-binding.js';
