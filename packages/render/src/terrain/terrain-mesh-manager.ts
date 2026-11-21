@@ -5,6 +5,7 @@ import { DirtyChunkQueue, type ChunkJob } from './dirty-chunk-queue.js';
 import { extractChunkInput } from './marching-cubes.js';
 import { requestTransferables, type MeshResponse } from './mesh-protocol.js';
 import type { MeshTransport } from './mesh-transport.js';
+import { RebuildScheduler, type NowFn, type RebuildStats } from './rebuild-scheduler.js';
 
 /** Options for {@link TerrainMeshManager}. */
 export interface TerrainMeshManagerOptions {
@@ -14,6 +15,10 @@ export interface TerrainMeshManagerOptions {
   readonly material?: THREE.Material;
   /** Max concurrent mesh requests (default 4). */
   readonly maxInFlight?: number;
+  /** Main-thread rebuild budget per frame in ms (default 8; lower on mobile). */
+  readonly budgetMs?: number;
+  /** Clock in ms (default `performance.now`); injectable for tests. */
+  readonly now?: NowFn;
 }
 
 /** Manages chunk meshes: dirty tracking, dispatch, geometry lifecycle. */
@@ -26,6 +31,8 @@ export class TerrainMeshManager {
   private readonly material: THREE.Material;
   private readonly ownsMaterial: boolean;
   private readonly maxInFlight: number;
+  private readonly scheduler: RebuildScheduler;
+  private readonly results: { job: ChunkJob; res: MeshResponse }[] = [];
   private focus: THREE.Vector3 | null = null;
   private nextId = 1;
   private disposed = false;
@@ -36,6 +43,7 @@ export class TerrainMeshManager {
     this.ownsMaterial = !opts.material;
     this.material = opts.material ?? new THREE.MeshStandardMaterial({ color: 0x8a7a5a });
     this.maxInFlight = opts.maxInFlight ?? 4;
+    this.scheduler = new RebuildScheduler(opts.budgetMs, opts.now);
     opts.transport.onMessage((res) => this.onResult(res));
   }
 
@@ -64,11 +72,31 @@ export class TerrainMeshManager {
     return this.meshes.get(key);
   }
 
-  /** Pulls grid dirty flags and dispatches work up to `maxInFlight`. */
-  update(): void {
+  /** Rebuild statistics (frame time, backlog, stalls). */
+  get stats(): RebuildStats {
+    return this.scheduler.stats;
+  }
+
+  /** Pulls dirty flags, applies finished meshes then dispatches work, within the frame budget. */
+  update(dt?: number): void {
+    void dt; // reserved: frame delta (budget is wall-clock based)
     if (this.disposed) return;
+    this.scheduler.beginFrame();
     this.queue.markDirtyFrom(this.opts.grid);
+    this.applyResults();
     this.pump();
+    this.scheduler.endFrame(this.queue.pendingCount + this.results.length);
+  }
+
+  private applyResults(): void {
+    if (this.results.length === 0) return;
+    const pri = new Map(this.results.map((r) => [r, this.priority(r.res.chunkKey)]));
+    this.results.sort((a, b) => (pri.get(a) as number) - (pri.get(b) as number));
+    while (this.results.length > 0 && this.scheduler.canStart()) {
+      const { job, res } = this.results.shift() as { job: ChunkJob; res: MeshResponse };
+      if (this.queue.complete(job)) this.apply(res);
+      this.scheduler.record('apply');
+    }
   }
 
   private priority(key: number): number {
@@ -85,10 +113,10 @@ export class TerrainMeshManager {
   }
 
   private pump(): void {
-    const room = this.maxInFlight - this.queue.inFlightCount;
-    if (room <= 0) return;
     const { grid, transport } = this.opts;
-    for (const job of this.queue.take(room, (k) => this.priority(k))) {
+    while (this.maxInFlight - this.queue.inFlightCount > 0 && this.scheduler.canStart()) {
+      const [job] = this.queue.take(1, (k) => this.priority(k));
+      if (!job) return;
       const cx = job.key % grid.chunksX;
       const cy = Math.floor(job.key / grid.chunksX) % grid.chunksY;
       const cz = Math.floor(job.key / (grid.chunksX * grid.chunksY));
@@ -97,6 +125,7 @@ export class TerrainMeshManager {
       this.jobs.set(id, job);
       const req = { id, chunkKey: job.key, input };
       transport.post(req, requestTransferables(req));
+      this.scheduler.record('dispatch');
     }
   }
 
@@ -104,8 +133,7 @@ export class TerrainMeshManager {
     const job = this.jobs.get(res.id);
     if (!job || this.disposed) return;
     this.jobs.delete(res.id);
-    if (this.queue.complete(job)) this.apply(res);
-    this.pump();
+    this.results.push({ job, res });
   }
 
   private apply(res: MeshResponse): void {
@@ -143,6 +171,7 @@ export class TerrainMeshManager {
     for (const [key, mesh] of [...this.meshes]) this.remove(key, mesh);
     this.queue.clear();
     this.jobs.clear();
+    this.results.length = 0;
     this.opts.transport.terminate();
     if (this.ownsMaterial) this.material.dispose();
   }

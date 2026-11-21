@@ -76,10 +76,17 @@ describe('DirtyChunkQueue', () => {
 describe('TerrainMeshManager', () => {
   it('creates, updates and removes chunk meshes', async () => {
     const g = makeGrid();
-    const m = new TerrainMeshManager({ grid: g, transport: createInProcessTransport() });
+    const m = new TerrainMeshManager({
+      grid: g,
+      transport: createInProcessTransport(),
+      budgetMs: Infinity,
+    });
     m.markAllDirty();
     m.update();
     await flush();
+    m.update();
+    await flush();
+    m.update();
     expect(m.idle).toBe(true);
     expect(m.meshCount).toBe(1);
     const first = m.getMesh(0)!;
@@ -89,6 +96,7 @@ describe('TerrainMeshManager', () => {
     g.set(3, 3, 3, 1);
     m.update();
     await flush();
+    m.update();
     expect(m.getMesh(0)).toBe(first);
     expect(first.geometry).not.toBe(oldGeo);
 
@@ -96,6 +104,7 @@ describe('TerrainMeshManager', () => {
       for (let j = 0; j < 6; j++) for (let k = 0; k < 6; k++) g.set(i, j, k, 1);
     m.update();
     await flush();
+    m.update();
     expect(m.meshCount).toBe(0);
     expect(m.group.children).toHaveLength(0);
     m.dispose();
@@ -135,9 +144,11 @@ describe('TerrainMeshManager', () => {
     m.update();
     expect(sent).toHaveLength(1);
     reply(0);
+    m.update();
     expect(m.meshCount).toBe(0);
     expect(sent).toHaveLength(2);
     reply(1);
+    m.update();
     expect(m.meshCount).toBe(1);
     m.dispose();
   });
@@ -149,6 +160,7 @@ describe('TerrainMeshManager', () => {
     g.markDirty(0);
     m.update();
     reply(0);
+    m.update();
     const geo = m.getMesh(0)!.geometry;
     let disposed = 0;
     geo.addEventListener('dispose', () => disposed++);

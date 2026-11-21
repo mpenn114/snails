@@ -12,3 +12,4 @@ export * from './terrain/mesh-protocol.js';
 export * from './terrain/mesh-transport.js';
 export * from './terrain/dirty-chunk-queue.js';
 export * from './terrain/terrain-mesh-manager.js';
+export * from './terrain/rebuild-scheduler.js';
