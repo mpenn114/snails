@@ -3,6 +3,7 @@ export * from './rng-streams.js';
 export * from './events.js';
 export * from './content/registry.js';
 export * from './content/types.js';
+export * from './content/registries.js';
 export * from './state/types.js';
 export * from './turn/turn-manager.js';
 export * from './terrain/sdf-grid.js';
