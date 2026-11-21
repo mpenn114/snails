@@ -72,6 +72,7 @@ export function createInitialState(options: InitialStateOptions): GameState {
       turnNumber: 1,
     },
     projectiles: [],
+    nextProjectileId: 1,
     match: { status: 'playing', winnerTeamId: null },
   };
 }

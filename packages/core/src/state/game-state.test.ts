@@ -34,6 +34,11 @@ describe('game state', () => {
       velocity: { x: 0, y: 0, z: 0 },
       ownerSnailId: 'a1',
       weaponId: 'w',
+      radius: 0.1,
+      age: 0,
+      maxAge: 10,
+      gravityScale: 1,
+      windScale: 1,
     });
     expect(s.teams[0]?.snails[0]?.position.x).toBe(0);
     expect(s.projectiles).toHaveLength(0);

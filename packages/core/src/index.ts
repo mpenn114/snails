@@ -8,6 +8,7 @@ export * from './turn/turn-manager.js';
 export * from './terrain/sdf-grid.js';
 export * from './terrain/carve.js';
 export * from './physics/ballistics.js';
+export * from './physics/projectile-system.js';
 export {
   FIXED_DT,
   type Command,
