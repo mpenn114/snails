@@ -158,6 +158,7 @@ export class MatchRenderer {
       transport,
       material,
       budgetMs: q.chunkBudgetMs,
+      shadows: q.shadows,
     });
     const replica = new TerrainReplica({ grid });
     terrain.markAllDirty();
@@ -165,10 +166,11 @@ export class MatchRenderer {
 
     const snails = new SnailLayer({
       camera: view.camera,
+      shadows: q.shadows,
       selectViews: (s: RenderState) => snailViewsFromSnapshot(s.snapshot),
       ...(this.deps.labelFactory ? { labelFactory: this.deps.labelFactory } : {}),
     });
-    const projectiles = new ProjectileLayer();
+    const projectiles = new ProjectileLayer({ shadows: q.shadows });
     const explosions = new ExplosionEffects({
       quality: q.particleScale,
       maxLights: q.maxDynamicLights,

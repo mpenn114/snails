@@ -19,6 +19,8 @@ export interface TerrainMeshManagerOptions {
   readonly budgetMs?: number;
   /** Clock in ms (default `performance.now`); injectable for tests. */
   readonly now?: NowFn;
+  /** Chunks cast and receive shadows (default false). */
+  readonly shadows?: boolean;
 }
 
 /** Manages chunk meshes: dirty tracking, dispatch, geometry lifecycle. */
@@ -155,6 +157,7 @@ export class TerrainMeshManager {
     }
     const mesh = new THREE.Mesh(geo, this.material);
     mesh.name = `chunk-${res.chunkKey}`;
+    mesh.castShadow = mesh.receiveShadow = this.opts.shadows ?? false;
     this.meshes.set(res.chunkKey, mesh);
     this.group.add(mesh);
   }

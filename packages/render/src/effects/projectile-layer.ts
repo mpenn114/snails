@@ -10,6 +10,8 @@ export interface ProjectileLayerOptions {
   radiusScale?: number;
   /** Maps render state to projectiles (default: snapshot projectiles). */
   selectProjectiles?: (state: RenderState) => readonly Projectile[];
+  /** Pebbles cast shadows (default false). */
+  shadows?: boolean;
 }
 
 const FORWARD = new THREE.Vector3(0, 0, 1);
@@ -101,11 +103,13 @@ export class ProjectileLayer {
   });
   private readonly trailLength: number;
   private readonly radiusScale: number;
+  private readonly shadows: boolean;
 
   /** Creates an empty layer. */
   constructor(opts: ProjectileLayerOptions = {}) {
     this.trailLength = Math.max(2, Math.floor(opts.trailLength ?? 24));
     this.radiusScale = opts.radiusScale ?? 1;
+    this.shadows = opts.shadows ?? false;
     this.group.name = 'projectiles';
     const select =
       opts.selectProjectiles ?? ((s: RenderState): readonly Projectile[] => s.snapshot.projectiles);
@@ -132,6 +136,7 @@ export class ProjectileLayer {
       let mesh = this.meshes.get(p.id);
       if (!mesh) {
         mesh = new ProjectileMesh(this.trailLength, this.pebbleGeo, this.pebbleMat, this.trailMat);
+        mesh.pebble.castShadow = this.shadows;
         this.meshes.set(p.id, mesh);
         this.group.add(mesh.group);
       }

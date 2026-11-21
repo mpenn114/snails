@@ -24,6 +24,8 @@ export interface SnailLayerOptions {
   camera?: THREE.Camera;
   /** Maps render state to snail views (default: raw snapshot, no interpolation). */
   selectViews?: (state: RenderState) => SnailView[];
+  /** Snail bodies cast shadows (default false). */
+  shadows?: boolean;
 }
 
 /** Owns all snail meshes; keeps them in sync with a list of snail views by id. */
@@ -38,9 +40,12 @@ export class SnailLayer {
   private camera: THREE.Camera | null;
 
   /** Creates an empty layer. */
+  private readonly shadows: boolean;
+
   constructor(opts: SnailLayerOptions = {}) {
     this.labelFactory = opts.labelFactory ?? canvasLabelFactory;
     this.camera = opts.camera ?? null;
+    this.shadows = opts.shadows ?? false;
     this.group.name = 'snails';
     const select = opts.selectViews ?? ((s: RenderState) => snailViewsFromSnapshot(s.snapshot));
     this.updater = (_dt, state) => {
@@ -71,6 +76,7 @@ export class SnailLayer {
       let mesh = this.meshes.get(v.id);
       if (!mesh) {
         mesh = new SnailMesh(v.colour, this.assets, this.labelFactory);
+        mesh.setCastShadow(this.shadows);
         this.meshes.set(v.id, mesh);
         this.group.add(mesh.group);
       }

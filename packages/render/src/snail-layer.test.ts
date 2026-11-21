@@ -145,4 +145,18 @@ describe('label scaling', () => {
     layer.sync([view('a')]);
     expect(layer.get('a')?.barGroup.scale.x).toBeCloseTo(7);
   });
+
+  it.each([true, false])('sets snail body castShadow to %s, never on labels or bars', (on) => {
+    const layer = new SnailLayer({
+      labelFactory: () => new THREE.Texture(),
+      shadows: on,
+    });
+    layer.sync([view('a')]);
+    const mesh = layer.group.children[0]!;
+    const cast: boolean[] = [];
+    mesh.traverse((o) => {
+      if (o instanceof THREE.Mesh || o instanceof THREE.Sprite) cast.push(o.castShadow);
+    });
+    expect(cast.filter(Boolean)).toHaveLength(on ? 2 : 0);
+  });
 });

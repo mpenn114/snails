@@ -74,6 +74,24 @@ describe('DirtyChunkQueue', () => {
 });
 
 describe('TerrainMeshManager', () => {
+  it.each([true, false])('sets shadow flags to %s on chunk meshes', async (shadows) => {
+    const m = new TerrainMeshManager({
+      grid: makeGrid(),
+      transport: createInProcessTransport(),
+      budgetMs: Infinity,
+      shadows,
+    });
+    m.markAllDirty();
+    for (let i = 0; i < 3; i++) {
+      m.update();
+      await flush();
+    }
+    const mesh = m.getMesh(0)!;
+    expect(mesh.castShadow).toBe(shadows);
+    expect(mesh.receiveShadow).toBe(shadows);
+    m.dispose();
+  });
+
   it('creates, updates and removes chunk meshes', async () => {
     const g = makeGrid();
     const m = new TerrainMeshManager({

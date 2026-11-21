@@ -58,6 +58,11 @@ export class SnailMesh {
     this.setColour(shellColour);
   }
 
+  /** Enables or disables shadow casting on the body and shell (not labels or bars). */
+  setCastShadow(on: boolean): void {
+    for (const child of this.bodyGroup.children) child.castShadow = on;
+  }
+
   /**
    * Scales the health bar and name tag by `factor` (1 = base size) and re-stacks them above
    * the snail, so they keep a readable on-screen size at distance.
