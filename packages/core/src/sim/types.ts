@@ -1,12 +1,12 @@
-import type { Rng } from '../rng.js';
+import type { RngStreams } from '../rng-streams.js';
 import type { SdfGrid } from '../terrain/sdf-grid.js';
 import type { GameState } from '../state/types.js';
 import { FIXED_DT } from '../physics/ballistics.js';
 
 export { FIXED_DT };
 
-/** Named deterministic RNG streams (placeholder until the shared RngStreams type lands). */
-export type SimRng = Readonly<Record<string, Rng>>;
+/** Deterministic RNG streams available to the simulation. */
+export type SimRng = RngStreams;
 
 /** Move/jump intent for a snail. */
 export interface MoveCommand {

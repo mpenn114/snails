@@ -1,4 +1,5 @@
-import type { GameState } from '../state/types.js';
+import type { GameSnapshot, GameState } from '../state/types.js';
+import { createSnapshot } from '../state/game-state.js';
 import type { SdfGrid } from '../terrain/sdf-grid.js';
 import {
   type Command,
@@ -95,7 +96,7 @@ export class Simulation {
   }
 
   /** Deep, plain-data copy of the current state. */
-  snapshot(): GameState {
-    return JSON.parse(JSON.stringify(this.state)) as GameState;
+  snapshot(): GameSnapshot {
+    return createSnapshot(this.state);
   }
 }

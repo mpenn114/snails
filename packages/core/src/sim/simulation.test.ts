@@ -1,16 +1,17 @@
 import { describe, expect, it } from 'vitest';
-import { Rng } from '../rng.js';
+import { RngStreams } from '../rng-streams.js';
+import { createInitialState } from '../state/game-state.js';
 import { SdfGrid } from '../terrain/sdf-grid.js';
 import type { GameState } from '../state/types.js';
 import { Simulation } from './simulation.js';
 import { FIXED_DT } from '../physics/ballistics.js';
 
 function make(seed = 1): Simulation {
-  const state: GameState = { tick: 0, seed, wind: 0, teams: [] };
+  const state = createInitialState({ seed, teams: [], terrain: { nx: 2, ny: 2, nz: 2 } });
   return new Simulation({
     state,
     terrain: new SdfGrid(2, 2, 2, 1),
-    rng: { main: new Rng(seed) },
+    rng: new RngStreams(seed),
   });
 }
 
@@ -60,10 +61,10 @@ describe('Simulation', () => {
     const run = (): GameState => {
       const sim = make(42);
       sim.addSystem('wind', (ctx) => {
-        ctx.state.wind += ctx.rng['main']?.next() ?? 0;
+        ctx.state.wind.strength += ctx.rng.wind.next();
       });
       sim.registerCommandHandler('aim', (ctx, c) => {
-        ctx.state.wind += c.angle;
+        ctx.state.wind.direction += c.angle;
       });
       for (let i = 0; i < 30; i++) {
         if (i % 7 === 0) sim.enqueue({ type: 'aim', snailId: 's', angle: i, power: 0.5 });

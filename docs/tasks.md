@@ -35,10 +35,10 @@ small and need the real behaviour below.
 
 | ID | Task | Area | Depends on | Status |
 |---|---|---|---|---|
-| M1-01 | Define authoritative `GameState` (teams, snails, terrain, wind, turn, tick) and serialisable snapshot type | core | M0-08 | 🚧 |
+| M1-01 | Define authoritative `GameState` (teams, snails, terrain, wind, turn, tick) and serialisable snapshot type | core | M0-08 | ✅ |
 | M1-02 | Fixed-timestep `Simulation.step(dt)` driver with command queue, no wall-clock use | core | M1-01 | ⬜ |
-| M1-03 | Seeded RNG streams per subsystem (terrain, wind, crates, AI) with state save/restore | core | M0-08 | 🚧 |
-| M1-04 | SDF voxel grid: dimensions, chunking, dirty flags, sampling and gradient | core | M0-08 | 🚧 |
+| M1-03 | Seeded RNG streams per subsystem (terrain, wind, crates, AI) with state save/restore | core | M0-08 | ✅ |
+| M1-04 | SDF voxel grid: dimensions, chunking, dirty flags, sampling and gradient | core | M0-08 | ✅ |
 | M1-05 | Sphere carving into the SDF grid with dirty-chunk reporting | core | M1-04 | 🚧 |
 | M1-06 | Seeded procedural terrain generator (hills, caves, water level) | core | M1-04, M1-03 | ⬜ |
 | M1-07 | Terrain collapse stub (unsupported voxel clusters fall or are removed) | core | M1-05 | ⬜ |
