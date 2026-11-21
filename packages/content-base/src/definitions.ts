@@ -1,8 +1,4 @@
-import type {
-  ShellUpgradeDefinition,
-  TechnologyDefinition,
-  WeaponDefinition,
-} from '@snails/core';
+import type { ShellUpgradeDefinition, TechnologyDefinition, WeaponDefinition } from '@snails/core';
 
 /** Base-game weapons. */
 export const weapons: WeaponDefinition[] = [

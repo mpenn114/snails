@@ -14,8 +14,11 @@ async function boot(): Promise<void> {
   app.on('before-quit', () => void server.close());
 }
 
-app.whenReady().then(boot).catch((err) => {
-  console.error(err);
-  app.quit();
-});
+app
+  .whenReady()
+  .then(boot)
+  .catch((err) => {
+    console.error(err);
+    app.quit();
+  });
 app.on('window-all-closed', () => app.quit());

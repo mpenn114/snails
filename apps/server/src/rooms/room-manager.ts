@@ -22,7 +22,9 @@ export class RoomManager {
   createRoom(random: () => number = Math.random): Room {
     let code: string;
     do {
-      code = Array.from({ length: 4 }, () => ALPHABET[Math.floor(random() * ALPHABET.length)]).join('');
+      code = Array.from({ length: 4 }, () => ALPHABET[Math.floor(random() * ALPHABET.length)]).join(
+        '',
+      );
     } while (this.rooms.has(code));
     const room: Room = { code, players: new Map() };
     this.rooms.set(code, room);

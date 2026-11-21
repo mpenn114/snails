@@ -3,7 +3,10 @@ import * as THREE from 'three';
 /** Placeholder snail: capsule body plus a spiral-ish shell built from spheres. */
 export class SnailMesh {
   readonly group = new THREE.Group();
-  private readonly shellMaterial = new THREE.MeshStandardMaterial({ color: 0xc98b4a });
+  private readonly shellMaterial = new THREE.MeshStandardMaterial({
+    color: 0xc98b4a,
+    roughness: 0.5,
+  });
 
   /** @param shellColour - Team shell colour as a hex number. */
   constructor(shellColour = 0xc98b4a) {

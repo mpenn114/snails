@@ -11,7 +11,10 @@ export const ClientHello = z.object({
 });
 
 /** Controller intents. */
-export const Move = z.object({ type: z.literal('move'), direction: z.enum(['left', 'right', 'stop']) });
+export const Move = z.object({
+  type: z.literal('move'),
+  direction: z.enum(['left', 'right', 'stop']),
+});
 export const Jump = z.object({ type: z.literal('jump') });
 export const Aim = z.object({
   type: z.literal('aim'),
@@ -21,7 +24,10 @@ export const Aim = z.object({
 export const SelectWeapon = z.object({ type: z.literal('selectWeapon'), weaponId: z.string() });
 export const Fire = z.object({ type: z.literal('fire') });
 export const EndTurn = z.object({ type: z.literal('endTurn') });
-export const QueueResearch = z.object({ type: z.literal('queueResearch'), technologyId: z.string() });
+export const QueueResearch = z.object({
+  type: z.literal('queueResearch'),
+  technologyId: z.string(),
+});
 
 /** Any message a client may send. */
 export const ClientMessage = z.discriminatedUnion('type', [

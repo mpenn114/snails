@@ -12,7 +12,9 @@ export const Welcome = z.object({
 export const LobbyState = z.object({
   type: z.literal('lobbyState'),
   roomCode: z.string(),
-  players: z.array(z.object({ id: z.string(), name: z.string(), role: z.enum(['controller', 'display']) })),
+  players: z.array(
+    z.object({ id: z.string(), name: z.string(), role: z.enum(['controller', 'display']) }),
+  ),
 });
 /** Notifies that a turn started. */
 export const TurnStart = z.object({

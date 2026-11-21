@@ -25,6 +25,8 @@ export class DisplayClient {
         }),
       ),
     );
-    ws.addEventListener('message', (e) => this.onMessage(parseServerMessage(JSON.parse(String(e.data)))));
+    ws.addEventListener('message', (e) =>
+      this.onMessage(parseServerMessage(JSON.parse(String(e.data)))),
+    );
   }
 }

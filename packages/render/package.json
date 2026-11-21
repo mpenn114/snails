@@ -5,7 +5,12 @@
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
-  "exports": { ".": { "types": "./dist/index.d.ts", "default": "./dist/index.js" } },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
     "typecheck": "tsc -p tsconfig.json --noEmit"
@@ -15,5 +20,7 @@
     "@snails/protocol": "workspace:*",
     "three": "^0.170.0"
   },
-  "devDependencies": { "@types/three": "^0.170.0" }
+  "devDependencies": {
+    "@types/three": "^0.170.0"
+  }
 }

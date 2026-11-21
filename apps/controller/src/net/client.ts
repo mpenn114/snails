@@ -26,7 +26,9 @@ export class ControllerClient {
         protocolVersion: PROTOCOL_VERSION,
       }),
     );
-    ws.addEventListener('message', (e) => this.onMessage(parseServerMessage(JSON.parse(String(e.data)))));
+    ws.addEventListener('message', (e) =>
+      this.onMessage(parseServerMessage(JSON.parse(String(e.data)))),
+    );
   }
 
   /** Sends a client message if the socket is open. */

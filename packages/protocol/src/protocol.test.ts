@@ -14,7 +14,13 @@ describe('protocol', () => {
   });
   it('rejects bad version and unknown types', () => {
     expect(() =>
-      parseClientMessage({ type: 'hello', role: 'display', name: 'x', roomCode: 'A', protocolVersion: 99 }),
+      parseClientMessage({
+        type: 'hello',
+        role: 'display',
+        name: 'x',
+        roomCode: 'A',
+        protocolVersion: 99,
+      }),
     ).toThrow();
     expect(() => parseClientMessage({ type: 'nope' })).toThrow();
   });
