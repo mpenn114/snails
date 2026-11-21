@@ -17,12 +17,16 @@ export interface MoveCommand {
   jump?: boolean;
 }
 
-/** Aim intent: angle in radians, power in 0..1. */
+/**
+ * Aim intent: angle in radians, power in 0..1. Optional `facing` is a world yaw in radians
+ * (same convention as `Snail.facing`) applied to the snail before the shot is computed.
+ */
 export interface AimCommand {
   type: 'aim';
   snailId: string;
   angle: number;
   power: number;
+  facing?: number;
 }
 
 /** Fire a weapon. */

@@ -79,6 +79,28 @@ describe('combat', () => {
     expect(types).toContain('explosion');
   });
 
+  it('turns the snail to the aim facing and fires the projectile that way', () => {
+    const sim = setup();
+    sim.enqueue({ type: 'aim', snailId: 'sa', angle: 0, power: 0.5, facing: Math.PI });
+    sim.step();
+    const snail = sim.state.teams[0]!.snails[0]!;
+    // setFacing normalises to [-PI, PI), so PI is stored as -PI.
+    expect(Math.abs(snail.facing)).toBeCloseTo(Math.PI, 9);
+    sim.enqueue({ type: 'fire', snailId: 'sa', weaponId: PEBBLE.id });
+    sim.step();
+    const [shot] = sim.state.projectiles;
+    expect(shot).toBeDefined();
+    expect(shot!.velocity.x).toBeLessThan(0);
+    expect(Math.abs(shot!.velocity.z)).toBeLessThan(1e-9);
+  });
+
+  it('keeps the current facing when aim has no facing', () => {
+    const sim = setup();
+    sim.enqueue({ type: 'aim', snailId: 'sa', angle: 0.2, power: 0.5 });
+    sim.step();
+    expect(sim.state.teams[0]!.snails[0]!.facing).toBe(0);
+  });
+
   it('clamps aim and ignores unknown weapons', () => {
     const sim = setup();
     aimCommandHandler(

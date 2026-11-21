@@ -1,4 +1,4 @@
-import { facingVector, livingSnails } from '../entities/snail.js';
+import { facingToward, facingVector, livingSnails } from '../entities/snail.js';
 import type { WeaponDefinition } from '../content/types.js';
 import { distance } from '../math/vec3.js';
 import { stepProjectile, FIXED_DT, type ProjectileState } from '../physics/ballistics.js';
@@ -65,18 +65,15 @@ export function chooseAim(from: Snail, target: Vec3, weapon: WeaponDefinition, w
   return best;
 }
 
-/** Nearest living enemy, preferring ones in front of the snail (move never turns snails). */
+/** Nearest living enemy, regardless of facing (the bot turns to it with its aim command). */
 export function pickTarget(sim: Simulation, snail: Snail): Snail | undefined {
-  const f = facingVector(snail);
   const enemies = livingSnails(sim.state).filter((s) => s.teamId !== snail.teamId);
-  const score = (e: Snail): number => {
-    const dx = e.position.x - snail.position.x;
-    const dz = e.position.z - snail.position.z;
-    const behind = dx * f.x + dz * f.z < 0 ? 1e6 : 0;
-    return behind + distance(e.position, snail.position);
-  };
   return enemies.reduce<Snail | undefined>(
-    (best, e) => (best === undefined || score(e) < score(best) ? e : best),
+    (best, e) =>
+      best === undefined ||
+      distance(e.position, snail.position) < distance(best.position, snail.position)
+        ? e
+        : best,
     undefined,
   );
 }
@@ -100,9 +97,10 @@ export function createScriptedBot(
     if (turn.phase !== 'action' || !snail || turn.fired) return;
     const target = pickTarget(sim, snail);
     if (!target) return;
-    const aim = chooseAim(snail, target.position, weapon, sim.state.wind);
+    const facing = facingToward(snail.position, target.position);
+    const aim = chooseAim({ ...snail, facing }, target.position, weapon, sim.state.wind);
     const snailId = snail.id;
-    if (sim.submit({ type: 'aim', snailId, ...aim }, teamId).ok) {
+    if (sim.submit({ type: 'aim', snailId, facing, ...aim }, teamId).ok) {
       sim.submit({ type: 'fire', snailId, weaponId: weapon.id }, teamId);
     }
   };
