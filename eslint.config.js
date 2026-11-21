@@ -22,13 +22,15 @@ const RENDER_TEST_FILES = ['packages/render/src/**/*.test.ts', 'apps/display/src
 function renderImportRestrictions(withBuiltins) {
   const packageMessage =
     'render/display must not depend on this package (see docs/development/coding-standards.md).';
+  // Tests (withBuiltins false) may import core's mutating functions to compare against them.
+  const corePath = {
+    name: '@snails/core',
+    importNames: boundary.forbiddenCoreNames,
+    message:
+      'Render/display may only read @snails/core. This name mutates or drives the simulation.',
+  };
   const paths = [
-    {
-      name: '@snails/core',
-      importNames: boundary.forbiddenCoreNames,
-      message:
-        'Render/display may only read @snails/core. This name mutates or drives the simulation.',
-    },
+    ...(withBuiltins ? [corePath] : []),
     ...boundary.forbiddenPackages.map((name) => ({ name, message: packageMessage })),
   ];
   if (withBuiltins) {
