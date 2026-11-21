@@ -13,6 +13,7 @@ Snails is a turn-based 3D artillery game (Worms-like) with snails, a technology/
 | [controller-ux.md](controller-ux.md) | Phone UI flows: join, lobby, team setup, turn controls, spectating. |
 | [ai.md](ai.md) | CPU player design: aiming solver, target selection, research strategy, difficulty. |
 | [roadmap.md](roadmap.md) | Phased milestones with exit criteria. |
+| [tasks.md](tasks.md) | Task tracker: PR-sized tasks per milestone with dependencies and status. |
 
 ## Technical
 

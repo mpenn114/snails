@@ -2,6 +2,7 @@
 
 Milestones are vertical slices, each ending with something you can run and demo. Exit criteria
 are the gate; dates are intentionally absent.
+The task-level breakdown with dependencies and status lives in [tasks.md](tasks.md).
 
 ## M0: Repo scaffold and planning (done)
 
