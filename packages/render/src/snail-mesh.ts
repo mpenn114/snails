@@ -36,18 +36,10 @@ export class SnailMesh {
     private readonly labelFactory: LabelTextureFactory = canvasLabelFactory,
   ) {
     const body = new THREE.Mesh(assets.body, assets.bodyMat);
-    body.rotation.z = Math.PI / 2;
     const shell = new THREE.Mesh(assets.shell, this.shellMaterial);
     shell.scale.set(1.1, 1, 0.9);
     shell.position.set(-0.1, 0.5, 0);
     this.bodyGroup.add(body, shell);
-    for (const z of [-0.1, 0.1]) {
-      const stalk = new THREE.Mesh(assets.stalk, assets.bodyMat);
-      stalk.position.set(0.5, 0.3, z);
-      const eye = new THREE.Mesh(assets.eye, assets.eyeMat);
-      eye.position.set(0.5, 0.47, z);
-      this.bodyGroup.add(stalk, eye);
-    }
     this.highlight = new THREE.Mesh(assets.ring, assets.ringMat);
     this.highlight.rotation.x = -Math.PI / 2;
     this.highlight.position.y = 0.02;
@@ -56,13 +48,25 @@ export class SnailMesh {
     this.grave.position.y = 0.3;
     this.grave.visible = false;
     this.barFill = new THREE.Mesh(assets.barFill, assets.barFillMat);
-    this.barGroup.add(new THREE.Mesh(assets.barBack, assets.barBackMat), this.barFill);
-    this.barGroup.position.set(-BAR_WIDTH / 2, 1.5, 0);
+    const barBack = new THREE.Mesh(assets.barBack, assets.barBackMat);
+    // Quads are left-anchored; shift them so the billboard pivot is the bar centre.
+    barBack.position.x = this.barFill.position.x = -BAR_WIDTH / 2;
+    this.barGroup.add(barBack, this.barFill);
     this.nameTag = new THREE.Sprite(this.nameMaterial);
-    this.nameTag.scale.set(1.6, 0.4, 1);
-    this.nameTag.position.y = 1.85;
+    this.setLabelScale(1);
     this.group.add(this.bodyGroup, this.highlight, this.grave, this.barGroup, this.nameTag);
     this.setColour(shellColour);
+  }
+
+  /**
+   * Scales the health bar and name tag by `factor` (1 = base size) and re-stacks them above
+   * the snail, so they keep a readable on-screen size at distance.
+   */
+  setLabelScale(factor: number): void {
+    this.barGroup.scale.setScalar(factor);
+    this.barGroup.position.y = 1.4 + 0.1 * factor;
+    this.nameTag.scale.set(1.6 * factor, 0.4 * factor, 1);
+    this.nameTag.position.y = this.barGroup.position.y + 0.4 * factor;
   }
 
   /** Sets the shell tint as a hex number. */

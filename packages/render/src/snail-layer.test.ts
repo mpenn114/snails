@@ -1,6 +1,11 @@
 import * as THREE from 'three';
 import { describe, expect, it, vi } from 'vitest';
-import { SnailLayer } from './snail-layer.js';
+import {
+  LABEL_MAX_SCALE,
+  LABEL_MIN_SCALE,
+  SnailLayer,
+  labelScaleForDistance,
+} from './snail-layer.js';
 import { paletteColour, resolveTeamColour, type SnailView } from './snail-view.js';
 
 const view = (id: string, over: Partial<SnailView> = {}): SnailView => ({
@@ -122,5 +127,22 @@ describe('team colours', () => {
     expect(resolveTeamColour(undefined, 1)).toBe(paletteColour(1));
     expect(paletteColour(8)).toBe(paletteColour(0));
     expect(paletteColour(0)).not.toBe(paletteColour(1));
+  });
+});
+
+describe('label scaling', () => {
+  it('keeps base size up close, grows with distance and caps', () => {
+    expect(labelScaleForDistance(0.1)).toBe(LABEL_MIN_SCALE);
+    expect(labelScaleForDistance(12)).toBeCloseTo(1);
+    expect(labelScaleForDistance(24)).toBeCloseTo(2);
+    expect(labelScaleForDistance(1e6)).toBe(LABEL_MAX_SCALE);
+  });
+  it('scales tag and bar of far snails', () => {
+    const { layer } = makeLayer();
+    const cam = new THREE.PerspectiveCamera();
+    cam.position.set(1, 2, 87);
+    layer.setCamera(cam);
+    layer.sync([view('a')]);
+    expect(layer.get('a')?.barGroup.scale.x).toBeCloseTo(7);
   });
 });

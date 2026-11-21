@@ -10,6 +10,10 @@ export interface OverlayData {
   snails: number;
   tier: string;
   ticks: number;
+  geometries: number;
+  textures: number;
+  /** Per-frame CPU timings (`?profile=1`); null hides the line. */
+  timings: { avgUpdateMs: number; avgRenderMs: number } | null;
 }
 
 /** Formats the overlay text (pure, testable). */
@@ -20,8 +24,14 @@ export function formatOverlay(d: OverlayData): string {
     `chunks: backlog ${r?.backlog ?? 0}  stalls ${r?.stalls ?? 0}  last ${(r?.lastFrameMs ?? 0).toFixed(1)} ms  worst ${(r?.worstFrameMs ?? 0).toFixed(1)} ms`,
     `applied ${r?.totalApplied ?? 0}  dispatched ${r?.totalDispatched ?? 0}`,
     `draw calls ${d.calls}  triangles ${d.triangles}`,
+    `geometries ${d.geometries}  textures ${d.textures}`,
     `snails ${d.snails}  tier ${d.tier}  tick ${d.ticks}`,
   ];
+  if (d.timings) {
+    lines.push(
+      `cpu/frame: update ${d.timings.avgUpdateMs.toFixed(2)} ms  render ${d.timings.avgRenderMs.toFixed(2)} ms`,
+    );
+  }
   return lines.join('\n');
 }
 

@@ -4,6 +4,18 @@ import { SnailAssets, canvasLabelFactory, type LabelTextureFactory } from './sna
 import { SnailMesh } from './snail-mesh.js';
 import { snailViewsFromSnapshot, type SnailView } from './snail-view.js';
 
+/** Camera distance (m) at which labels have their base size. */
+export const LABEL_REF_DISTANCE = 12;
+/** Largest label scale factor (caps size for very distant snails). */
+export const LABEL_MAX_SCALE = 8;
+/** Smallest label scale factor (keeps close-up labels from vanishing). */
+export const LABEL_MIN_SCALE = 0.4;
+
+/** Label scale giving a roughly constant on-screen size: proportional to distance (clamped). */
+export function labelScaleForDistance(distance: number): number {
+  return Math.min(LABEL_MAX_SCALE, Math.max(LABEL_MIN_SCALE, distance / LABEL_REF_DISTANCE));
+}
+
 /** Options for SnailLayer. */
 export interface SnailLayerOptions {
   /** Name-tag texture factory (inject a fake in Node tests). */
@@ -63,7 +75,11 @@ export class SnailLayer {
         this.group.add(mesh.group);
       }
       mesh.apply(v);
-      if (this.camera) mesh.barGroup.quaternion.copy(this.camera.quaternion);
+      if (this.camera) {
+        mesh.barGroup.quaternion.copy(this.camera.quaternion);
+        const d = this.camera.position.distanceTo(mesh.group.position);
+        mesh.setLabelScale(labelScaleForDistance(d));
+      }
     }
     for (const [id, mesh] of this.meshes) {
       if (seen.has(id)) continue;

@@ -84,4 +84,9 @@ describe('render loop', () => {
       expect(view.roots[k].name).toBe(k);
     }
   });
+  it('records update and render timings', () => {
+    const { view } = setup();
+    expect(view.loop.timings.avgRenderMs).toBeGreaterThanOrEqual(0);
+    expect(view.loop.timings.updateMs).toBeGreaterThanOrEqual(0);
+  });
 });

@@ -24,11 +24,14 @@ export interface Water {
 }
 
 const VERT = /* glsl */ `
+#include <fog_pars_vertex>
 varying vec3 vWorld;
 void main() {
   vec4 w = modelMatrix * vec4(position, 1.0);
   vWorld = w.xyz;
-  gl_Position = projectionMatrix * viewMatrix * w;
+  vec4 mvPosition = viewMatrix * w;
+  gl_Position = projectionMatrix * mvPosition;
+  #include <fog_vertex>
 }`;
 
 const FRAG = /* glsl */ `
@@ -36,6 +39,7 @@ uniform float uTime;
 uniform vec3 uShallow;
 uniform vec3 uDeep;
 uniform float uOpacity;
+#include <fog_pars_fragment>
 varying vec3 vWorld;
 void main() {
   vec2 p = vWorld.xz;
@@ -53,11 +57,12 @@ void main() {
   vec3 col = mix(uShallow, uDeep, dist);
   col = mix(col, vec3(0.75, 0.88, 1.0), fres * 0.6);
   gl_FragColor = vec4(col, mix(uOpacity, 1.0, fres));
+  #include <fog_fragment>
 }`;
 
 /** Creates a large animated water plane at `level` extending beyond the bounds. */
 export function createWater(opts: WaterOptions): Water {
-  const margin = opts.margin ?? 200;
+  const margin = opts.margin ?? 2000;
   const profile = tierProfile(opts.tier);
   const size = opts.bounds.max.clone().sub(opts.bounds.min);
   const centre = opts.bounds.min.clone().add(opts.bounds.max).multiplyScalar(0.5);
@@ -68,8 +73,10 @@ export function createWater(opts: WaterOptions): Water {
     fragmentShader: FRAG,
     transparent: true,
     depthWrite: false,
+    fog: true,
     defines: profile.waterQuality === 'ripples' ? { RIPPLES: '' } : {},
     uniforms: {
+      ...THREE.UniformsUtils.clone(THREE.UniformsLib['fog']),
       uTime: { value: 0 },
       uShallow: { value: new THREE.Color(0x3fa7c4) },
       uDeep: { value: new THREE.Color(0x0b3a5c) },

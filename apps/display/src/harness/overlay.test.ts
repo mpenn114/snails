@@ -14,10 +14,15 @@ describe('formatOverlay', () => {
       snails: 16,
       tier: 'low',
       ticks: 99,
+      geometries: 40,
+      textures: 5,
+      timings: { avgUpdateMs: 1.25, avgRenderMs: 3.5 },
     });
     expect(text).toContain('FPS 50.0');
     expect(text).toContain('backlog 0');
     expect(text).toContain('draw calls 12  triangles 3456');
+    expect(text).toContain('geometries 40  textures 5');
+    expect(text).toContain('update 1.25 ms  render 3.50 ms');
     expect(text).toContain('snails 16  tier low');
   });
 });

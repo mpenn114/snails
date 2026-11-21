@@ -80,6 +80,14 @@ export function createGameViewWith(deps: GameViewDeps): GameView {
     ...(deps.waterLevel !== undefined ? { waterLevel: deps.waterLevel } : {}),
   });
   env.applyTo(scene);
+  const fitFog = (): void => {
+    // Fade distant terrain/water into the sky before the far plane so no edge shows.
+    if (scene.fog instanceof THREE.Fog) {
+      scene.fog.near = camera.far * 0.35;
+      scene.fog.far = camera.far * 0.95;
+    }
+  };
+  fitFog();
 
   const loop = createRenderLoop({
     renderer: deps.renderer,
@@ -105,6 +113,7 @@ export function createGameViewWith(deps: GameViewDeps): GameView {
       state.quality = applyQuality(deps.renderer, tier, deps.devicePixelRatio);
       camera.far = 500 * state.quality.drawDistanceScale;
       camera.updateProjectionMatrix();
+      fitFog();
     },
     scene,
     camera,

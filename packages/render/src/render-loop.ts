@@ -43,8 +43,22 @@ export interface RenderLoopDeps {
   source?: RenderStateSource;
 }
 
+/** Main-thread time split of the last frames (ms); render = JS cost of `renderer.render`. */
+export interface LoopTimings {
+  /** Last frame's updater time. */
+  updateMs: number;
+  /** Last frame's render-call time (CPU side only; GPU work is asynchronous). */
+  renderMs: number;
+  /** Exponential moving average of `updateMs`. */
+  avgUpdateMs: number;
+  /** Exponential moving average of `renderMs`. */
+  avgRenderMs: number;
+}
+
 /** Controllable frame loop. */
 export interface RenderLoop {
+  /** Per-frame CPU timings, for profiling overlays. */
+  readonly timings: Readonly<LoopTimings>;
   /** Registers a per-frame updater; returns an unregister function. */
   addUpdater(fn: FrameUpdater): () => void;
   /** Replaces the state source. */
@@ -63,6 +77,13 @@ export interface RenderLoop {
 /** Largest dt passed to updaters, to survive tab stalls. */
 export const MAX_FRAME_DT = 0.25;
 
+function recordTimings(t: LoopTimings, updateMs: number, renderMs: number): void {
+  t.updateMs = updateMs;
+  t.renderMs = renderMs;
+  t.avgUpdateMs += (updateMs - t.avgUpdateMs) * 0.1;
+  t.avgRenderMs += (renderMs - t.avgRenderMs) * 0.1;
+}
+
 /** Creates a render loop; call start() to begin pulling frames. */
 export function createRenderLoop(deps: RenderLoopDeps): RenderLoop {
   const { renderer, scene, camera, scheduler, now } = deps;
@@ -71,6 +92,7 @@ export function createRenderLoop(deps: RenderLoopDeps): RenderLoop {
   let handle: number | null = null;
   let last = 0;
   let disposed = false;
+  const timings: LoopTimings = { updateMs: 0, renderMs: 0, avgUpdateMs: 0, avgRenderMs: 0 };
   renderer.setPixelRatio(deps.pixelRatio);
 
   const frame = (): void => {
@@ -79,8 +101,11 @@ export function createRenderLoop(deps: RenderLoopDeps): RenderLoop {
     const dt = Math.min(MAX_FRAME_DT, Math.max(0, (t - last) / 1000));
     last = t;
     const state = source?.getState() ?? null;
-    for (const u of [...updaters]) u(dt, state);
+    for (const u of updaters) u(dt, state);
+    const t1 = now();
     renderer.render(scene, camera);
+    const t2 = now();
+    recordTimings(timings, t1 - t, t2 - t1);
   };
 
   const stop = (): void => {
@@ -89,6 +114,7 @@ export function createRenderLoop(deps: RenderLoopDeps): RenderLoop {
   };
 
   return {
+    timings,
     addUpdater(fn) {
       updaters.add(fn);
       return () => void updaters.delete(fn);

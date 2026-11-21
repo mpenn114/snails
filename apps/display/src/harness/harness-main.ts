@@ -6,7 +6,7 @@ import { createOverlay } from './overlay';
 
 /**
  * Harness entry: a local fake server runs a 16-snail bot match in the browser and feeds the
- * MatchRenderer like the network would. URL params: `seed`, `speed`, `tier`, `snapshotEvery`.
+ * MatchRenderer like the network would. URL params: `profile=1` (CPU timings), `seed`, `speed`, `tier`, `snapshotEvery`.
  */
 const canvas = document.getElementById('view') as HTMLCanvasElement;
 const params = new URLSearchParams(location.search);
@@ -22,7 +22,15 @@ const tier: QualityTier =
     hardwareConcurrency: navigator.hardwareConcurrency || 4,
   });
 
-let glRenderer: { info: { render: { calls: number; triangles: number } } } | null = null;
+interface GlInfo {
+  info: {
+    render: { calls: number; triangles: number };
+    memory: { geometries: number; textures: number };
+    programs?: unknown[] | null;
+  };
+}
+let glRenderer: GlInfo | null = null;
+const profile = params.get('profile') === '1';
 const renderer = new MatchRenderer({
   now: () => performance.now(),
   makeView: ({ bounds, waterLevel }) =>
@@ -68,7 +76,19 @@ function frame(nowMs: number): void {
       snails: server.sim.state.teams.flatMap((t) => t.snails).filter((s) => s.alive).length,
       tier,
       ticks: server.ticks,
+      geometries: glRenderer?.info.memory.geometries ?? 0,
+      textures: glRenderer?.info.memory.textures ?? 0,
+      timings: profile ? (renderer.view?.loop.timings ?? null) : null,
     });
+    (window as unknown as { __perf?: unknown }).__perf = {
+      calls: glRenderer?.info.render.calls ?? 0,
+      triangles: glRenderer?.info.render.triangles ?? 0,
+      geometries: glRenderer?.info.memory.geometries ?? 0,
+      textures: glRenderer?.info.memory.textures ?? 0,
+      programs: glRenderer?.info.programs?.length ?? 0,
+      timings: renderer.view?.loop.timings ?? null,
+      chunks: renderer.terrainMeshes?.stats ?? null,
+    };
   }
   requestAnimationFrame(frame);
 }
