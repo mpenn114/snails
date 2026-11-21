@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { WeaponDefinition } from '../content/types.js';
 import { createMatch } from './match.js';
 import { createScriptedBot } from './scripted-bot.js';
-import type { SimEvent } from './types.js';
+import type { SimEvent } from './events.js';
 
 const PEBBLE: WeaponDefinition = {
   id: 'test:pebble-toss',
@@ -63,7 +63,13 @@ describe('full headless match', () => {
     expect(sim.state.turn.turnNumber).toBeLessThan(60); // ended by kills, not the turn limit
     expect(events.filter((e) => e.type === 'commandRejected')).toEqual([]);
     const types = new Set(events.map((e) => e.type));
-    for (const t of ['turnStarted', 'projectileFired', 'explosion', 'snailDamaged', 'matchEnded']) {
+    for (const t of [
+      'turnStarted',
+      'projectileFired',
+      'explosion',
+      'snailDamaged',
+      'matchEnded',
+    ] as const) {
       expect(types.has(t)).toBe(true);
     }
   });
