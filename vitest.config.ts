@@ -14,5 +14,19 @@ export default defineConfig({
       '@snails/render': src('render'),
     },
   },
-  test: { include: ['{apps,packages}/*/src/**/*.test.ts'] },
+  test: {
+    include: ['{apps,packages}/*/src/**/*.test.ts'],
+    coverage: {
+      provider: 'v8',
+      include: ['packages/core/src/**/*.ts'],
+      exclude: [
+        '**/*.test.ts',
+        'packages/core/src/properties/**',
+        'packages/core/src/index.ts',
+        '**/types.ts',
+      ],
+      reporter: ['text-summary', 'json-summary'],
+      thresholds: { lines: 90 },
+    },
+  },
 });
