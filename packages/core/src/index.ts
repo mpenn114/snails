@@ -32,3 +32,5 @@ export * from './entities/snail.js';
 export * from './turn/turn-phases.js';
 export * from './movement/index.js';
 export * from './physics/explosion.js';
+export * from './terrain/noise.js';
+export * from './terrain/generator.js';
