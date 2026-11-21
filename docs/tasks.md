@@ -43,7 +43,7 @@ small and need the real behaviour below.
 | M1-06 | Seeded procedural terrain generator (hills, caves, water level) | core | M1-04, M1-03 | ⬜ |
 | M1-07 | Terrain collapse stub (unsupported voxel clusters fall or are removed) | core | M1-05 | ⬜ |
 | M1-08 | Terrain collision queries (ray cast, sphere sweep, ground normal) | core | M1-04 | ✅ |
-| M1-09 | Snail entity: health, team, position, facing, alive flag | core | M1-01 | ⬜ |
+| M1-09 | Snail entity: health, team, position, facing, alive flag | core | M1-01 | ✅ |
 | M1-10 | Snail movement: crawl on terrain surface, slope limit, jump | core | M1-08, M1-09 | ⬜ |
 | M1-11 | Fall damage and drowning rules | core | M1-10 | ⬜ |
 | M1-12 | Ballistic projectile stepping with gravity, wind and terrain hit | core | M1-02, M1-08 | 🚧 |
