@@ -50,6 +50,8 @@ export function createSnail(opts: SnailOptions): Snail {
     maxHealth,
     alive: health > 0,
     shell,
+    moveIntent: { direction: 0, jumpRequested: false },
+    grounded: true,
   };
 }
 

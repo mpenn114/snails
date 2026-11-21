@@ -24,6 +24,20 @@ export interface Snail {
   maxHealth: number;
   alive: boolean;
   shell: Shell;
+  /** Standing move/jump intent set by move commands; absent means no intent. */
+  moveIntent?: MoveIntent;
+  /** True while resting on terrain; absent is treated as grounded. */
+  grounded?: boolean;
+  /** Height at which the current airborne phase began; unset while grounded. */
+  airborneFromY?: number;
+}
+
+/** Persistent movement intent of a snail (serialisable). */
+export interface MoveIntent {
+  /** Walk along (+1) or against (-1) the facing direction; 0 stands still. */
+  direction: -1 | 0 | 1;
+  /** A jump is pending and will be consumed by the movement system. */
+  jumpRequested: boolean;
 }
 
 /** A team of snails. */
