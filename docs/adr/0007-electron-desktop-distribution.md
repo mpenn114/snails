@@ -1,6 +1,6 @@
 # 0007. Electron desktop distribution
 
-Status: Accepted
+Status: Accepted (amended by [ADR-0008](0008-phone-renders-game-view.md): the phone also renders the 3D game view)
 
 ## Context
 Hosts are likely non-developers who want to double-click an installer, see the game on a TV and have phones connect. The host must run a Node server, serve the controller, and show the display with WebGL2/WebGPU.

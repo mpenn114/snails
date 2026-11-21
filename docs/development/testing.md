@@ -1,0 +1,61 @@
+# Testing
+
+Runner: **Vitest** across all packages (`pnpm test`, `pnpm -F @snails/core test --watch`). Tests are colocated as `*.test.ts` or in a package `test/` directory for integration scenarios.
+
+## Pyramid
+
+| Layer | Tool | Where | Notes |
+| --- | --- | --- | --- |
+| Unit: core determinism and rules | Vitest | `packages/core` | Fastest, most numerous; no I/O, no DOM. |
+| Content validation | Vitest | `packages/content-base` | Every definition passes its zod schema; tech tree has no cycles; refs resolve. |
+| Protocol schema | Vitest | `packages/protocol` | Valid/invalid message fixtures; version rules. |
+| Server integration | Vitest + `ws` client | `apps/server/test` | In-process server on port 0; simulate display + controllers. |
+| AI | Vitest | `packages/ai` | Seeded scenarios: bot hits a stationary target within tolerance. |
+| Golden replays | Vitest | `packages/core/test/replays` | Later (M2+). |
+| Controller E2E | Playwright | `apps/controller/e2e` | Later; mobile emulation. |
+| Render smoke | Playwright + headless GPU (SwiftShader) | `packages/render` | Later; canvas not blank, no console errors. |
+
+## Core determinism tests
+
+Principle: same `(seed, content hash, command list)` yields the same state hash, always.
+
+- Fixture helper `runScenario({ seed, map, teams, commands })` returns final state + events.
+- Assert exact values (no tolerance) for positions, health, terrain checksum after a fixed number of ticks.
+- Property tests (fast-check): stepping N ticks in one call equals stepping N times; cloning state mid-run and continuing gives identical results; command order within a tick is stable.
+- State hash function (`hashState(state)`, FNV-1a/xxhash over canonical serialisation) is itself tested; used in replays and server/AI cross-checks.
+- Guard tests: a lint/test scans `packages/core/src` for forbidden identifiers (`Math.random`, `Date.now`, `performance.now`, `process`, `window`, `document`).
+- Terrain: carve a sphere, assert SDF values, dirty-chunk set, and that two identical edit sequences give identical checksums.
+
+```ts
+it('bazooka shot at seed 42 destroys the same terrain every run', () => {
+  const a = runScenario(shotScenario(42));
+  const b = runScenario(shotScenario(42));
+  expect(hashState(a.state)).toBe(hashState(b.state));
+  expect(a.events.filter((e) => e.type === 'explosion')).toHaveLength(1);
+});
+```
+
+## Protocol schema tests
+
+- For each message type: a valid fixture parses; each invalid fixture (missing field, wrong type, out-of-range power, oversize string, unknown `t`) fails with the expected issue path.
+- Round-trip: `parse(serialize(msg))` equals `msg`.
+- Version tests: mismatched `v` yields `version_mismatch`; unknown optional fields are stripped without error.
+- Fuzz: random JSON/garbage never throws out of the parse function; it returns a result object.
+- Fixtures live in `packages/protocol/test/fixtures/*.json` and are reused by server and controller tests.
+
+## Golden replay tests (later)
+
+A replay file is `{ protocolVersion, contentHash, seed, settings, commands:[{tick, command}], checkpoints:[{tick, stateHash}] }`. CI replays each file in `packages/core/test/replays/` and asserts checkpoint hashes. A deliberate rules change regenerates replays with `pnpm replay:update` in a dedicated commit that explains why; accidental hash changes fail CI. Replays also reproduce user bug reports (the server can export the last match).
+
+## Playwright for controller (later)
+
+- Mobile emulation (Pixel 7 viewport, touch) against a server started by the test config with a fake display client.
+- Flows: join with code, lobby ready-up, aim drag and fire, reconnect after `page.context().setOffline(true)`, spectator mode.
+- Visual checks are screenshots of non-3D UI only; the 3D view is covered by the render smoke test.
+
+## Practices
+
+- Tests must be deterministic: fake timers (`vi.useFakeTimers`) for server timers; never real sleeps over 50 ms.
+- Coverage is tracked (`vitest --coverage`), with a soft target of 80% for `core` and `protocol`; no gate on apps initially.
+- Bug fix = failing test first.
+- Test files obey the same 500-line limit; split by feature.

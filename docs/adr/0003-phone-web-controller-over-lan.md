@@ -1,6 +1,6 @@
 # 0003. Phones join via a web controller (PWA) over LAN WebSocket
 
-Status: Accepted
+Status: Accepted (amended by [ADR-0008](0008-phone-renders-game-view.md): the phone also renders the 3D game view)
 
 ## Context
 Players sit around a shared screen and want to use their own Android phones. Requiring an app install kills spontaneous play. The host is a PC on the same Wi-Fi/LAN; no internet service should be needed.
