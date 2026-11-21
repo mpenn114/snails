@@ -4,3 +4,6 @@ export * from './view.js';
 export * from './scene-graph.js';
 export * from './render-loop.js';
 export * from './terrain/marching-cubes.js';
+export * from './snail-assets.js';
+export * from './snail-view.js';
+export * from './snail-layer.js';
