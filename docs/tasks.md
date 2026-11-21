@@ -53,7 +53,7 @@ small and need the real behaviour below.
 | M1-16 | Seeded wind that changes per turn | core | M1-03, M1-14 | ✅ |
 | M1-17 | Typed `EventBus` events (turn, damage, terrain carve, death, win) | core | M0-08 | 🚧 |
 | M1-18 | `ContentRegistry` skeleton and definition types for weapons | core | M0-08 | ✅ |
-| M1-19 | Pebble Toss weapon wired through registry, commands and projectile | core | M1-12, M1-13, M1-18 | ⬜ |
+| M1-19 | Pebble Toss weapon wired through registry, commands and projectile | core | M1-12, M1-13, M1-18 | ✅ |
 | M1-20 | Win condition (last team standing) and draw handling | core | M1-13, M1-15 | ⬜ |
 | M1-21 | Command validation layer (`move`, `aim`, `fire`, `endTurn`) with rejection reasons | core | M1-02, M1-14 | ✅ |
 | M1-22 | Headless full-match test from a seed with a scripted bot | core | M1-19, M1-20, M1-21 | ⬜ |
