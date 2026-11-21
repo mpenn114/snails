@@ -1,4 +1,5 @@
 import type { Vec3 } from '../state/types.js';
+import { carveSphere, type CarveResult } from './carve.js';
 
 /** Default chunk edge length in cells. */
 export const DEFAULT_CHUNK_SIZE = 16;
@@ -202,24 +203,8 @@ export class SdfGrid {
     return this.sampleLinear(p) < 0;
   }
 
-  /** Subtracts a sphere from the terrain (CSG difference). */
-  carveSphere(center: Vec3, radius: number): void {
-    const r = Math.ceil(radius / this.cellSize) + 1;
-    const cx = Math.round(center.x / this.cellSize);
-    const cy = Math.round(center.y / this.cellSize);
-    const cz = Math.round(center.z / this.cellSize);
-    for (let z = Math.max(0, cz - r); z <= Math.min(this.nz - 1, cz + r); z++) {
-      for (let y = Math.max(0, cy - r); y <= Math.min(this.ny - 1, cy + r); y++) {
-        for (let x = Math.max(0, cx - r); x <= Math.min(this.nx - 1, cx + r); x++) {
-          const d = Math.hypot(
-            x * this.cellSize - center.x,
-            y * this.cellSize - center.y,
-            z * this.cellSize - center.z,
-          );
-          const next = Math.max(this.get(x, y, z), -(d - radius));
-          if (next !== this.get(x, y, z)) this.set(x, y, z, next);
-        }
-      }
-    }
+  /** Subtracts a sphere from the terrain (CSG difference) and reports changed chunks. */
+  carveSphere(center: Vec3, radius: number): CarveResult {
+    return carveSphere(this, center, radius);
   }
 }
