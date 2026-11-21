@@ -33,6 +33,11 @@ export interface Team {
   colour: string;
   snails: Snail[];
   researched: string[];
+  /**
+   * Round-robin cursor: index into `snails` of the next snail to be offered a turn.
+   * Advanced by `selectNextActive`; dead snails are skipped at selection time.
+   */
+  nextSnailIndex: number;
 }
 
 /** Wind: `direction` radians about +Y, `strength` in m/s^2 (>= 0). */

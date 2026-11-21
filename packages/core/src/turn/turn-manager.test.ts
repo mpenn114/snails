@@ -20,6 +20,7 @@ const team = (id: string, snails: Team['snails']): Team => ({
   colour: '#fff',
   snails,
   researched: [],
+  nextSnailIndex: 0,
 });
 
 describe('TurnManager', () => {

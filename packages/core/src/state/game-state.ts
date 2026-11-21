@@ -53,8 +53,13 @@ export function createInitialState(options: InitialStateOptions): GameState {
     colour: t.colour,
     snails: t.snails.map((s) => makeSnail(t.id, s, t.colour)),
     researched: [],
+    nextSnailIndex: 0,
   }));
   const firstTeam = teams[0];
+  // The first team's snail 0 is already the active snail, so its cursor starts after it.
+  if (firstTeam && firstTeam.snails.length > 0) {
+    firstTeam.nextSnailIndex = 1 % firstTeam.snails.length;
+  }
   return {
     tick: 0,
     seed: options.seed,
