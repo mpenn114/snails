@@ -46,7 +46,7 @@ small and need the real behaviour below.
 | M1-09 | Snail entity: health, team, position, facing, alive flag | core | M1-01 | ✅ |
 | M1-10 | Snail movement: crawl on terrain surface, slope limit, jump | core | M1-08, M1-09 | ⬜ |
 | M1-11 | Fall damage and drowning rules | core | M1-10 | ⬜ |
-| M1-12 | Ballistic projectile stepping with gravity, wind and terrain hit | core | M1-02, M1-08 | 🚧 |
+| M1-12 | Ballistic projectile stepping with gravity, wind and terrain hit | core | M1-02, M1-08 | ✅ |
 | M1-13 | Explosion resolution: damage falloff, knockback, terrain carve, events | core | M1-05, M1-12, M1-09 | ⬜ |
 | M1-14 | Turn manager phases (intro, action, fire, resolve, retreat, settle) with timer | core | M1-02 | ✅ |
 | M1-15 | Team rotation, round-robin snail selection, skip dead teams | core | M1-14 | 🚧 |
