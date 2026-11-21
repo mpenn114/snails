@@ -2,11 +2,13 @@ import { describe, expect, it } from 'vitest';
 import { createInitialState } from '../state/game-state.js';
 import type { GameState } from '../state/types.js';
 import type { SimEvent } from '../sim/types.js';
+import { findSnail, kill } from '../entities/snail.js';
 import {
   DEFAULT_TURN_CONFIG as C,
   advanceTurn,
   notifyFired,
   requestEndTurn,
+  selectNextActive,
   startTurn,
 } from './turn-phases.js';
 
@@ -95,6 +97,25 @@ describe('turn phases', () => {
     expect(state.turn.phase).toBe('intro');
     expect(state.turn.turnNumber).toBe(2);
   });
+  it('requestEndTurn after a shot goes to retreat, not settle', () => {
+    const { state, run, emit } = setup();
+    run(C.introDuration);
+    notifyFired(state, emit);
+    run(DT);
+    expect(state.turn.phase).toBe('resolve');
+    run(C.resolveDelay);
+    expect(state.turn.phase).toBe('retreat');
+    // Ending early from retreat is a no-op (only action can end the turn early).
+    requestEndTurn(state, emit);
+    expect(state.turn.phase).toBe('retreat');
+  });
+  it('requestEndTurn after a shot in the same action phase goes to retreat', () => {
+    const { state, run, emit } = setup();
+    run(C.introDuration + 1);
+    state.turn.fired = true;
+    requestEndTurn(state, emit);
+    expect(state.turn.phase).toBe('retreat');
+  });
   it('state survives a JSON round trip mid-turn', () => {
     const a = setup();
     a.run(C.introDuration + 5);
@@ -104,5 +125,104 @@ describe('turn phases', () => {
       advanceTurn(copy, C, DT, () => undefined);
     }
     expect(copy).toEqual(a.state);
+  });
+});
+
+function build(teams: { id: string; snails: string[] }[]): GameState {
+  return createInitialState({
+    seed: 1,
+    terrain: { nx: 4, ny: 4, nz: 4 },
+    teams: teams.map((t) => ({
+      id: t.id,
+      name: t.id,
+      colour: '#fff',
+      snails: t.snails.map((id) => ({ id, name: id })),
+    })),
+  });
+}
+
+/** Runs one selection and makes it the active turn, returning the chosen snail id. */
+function pick(state: GameState): string | undefined {
+  const next = selectNextActive(state);
+  if (!next) return undefined;
+  state.turn.activeTeamId = next.teamId;
+  state.turn.activeSnailId = next.snailId;
+  return next.snailId;
+}
+
+function picks(state: GameState, n: number): (string | undefined)[] {
+  return Array.from({ length: n }, () => pick(state));
+}
+
+describe('team rotation and snail selection', () => {
+  it('rotates through teams in order, starting with team 0 on the first turn', () => {
+    const state = build([
+      { id: 'A', snails: ['a1'] },
+      { id: 'B', snails: ['b1'] },
+      { id: 'C', snails: ['c1'] },
+    ]);
+    state.turn.activeTeamId = null;
+    state.turn.activeSnailId = null;
+    expect(picks(state, 4)).toEqual(['a1', 'b1', 'c1', 'a1']);
+  });
+  it('each team cycles its own snails independently', () => {
+    const state = build([
+      { id: 'A', snails: ['a1', 'a2'] },
+      { id: 'B', snails: ['b1', 'b2', 'b3'] },
+      { id: 'C', snails: ['c1'] },
+    ]);
+    // Team A's first snail is already active from createInitialState.
+    expect(picks(state, 6)).toEqual(['b1', 'c1', 'a2', 'b2', 'c1', 'a1']);
+    expect(picks(state, 3)).toEqual(['b3', 'c1', 'a2']);
+  });
+  it('wraps from the last team back to the first', () => {
+    const state = build([
+      { id: 'A', snails: ['a1'] },
+      { id: 'B', snails: ['b1'] },
+      { id: 'C', snails: ['c1'] },
+    ]);
+    state.turn.activeTeamId = 'C';
+    expect(selectNextActive(state)).toEqual({ teamId: 'A', snailId: 'a1' });
+  });
+  it('skips dead snails within a team', () => {
+    const state = build([
+      { id: 'A', snails: ['a1', 'a2', 'a3'] },
+      { id: 'B', snails: ['b1'] },
+    ]);
+    kill(findSnail(state, 'a2')!);
+    state.turn.activeTeamId = 'B';
+    expect(picks(state, 3)).toEqual(['a3', 'b1', 'a1']);
+    expect(picks(state, 2)).toEqual(['b1', 'a3']);
+  });
+  it('skips a team with no living snails', () => {
+    const state = build([
+      { id: 'A', snails: ['a1'] },
+      { id: 'B', snails: ['b1'] },
+      { id: 'C', snails: ['c1'] },
+    ]);
+    kill(findSnail(state, 'b1')!);
+    expect(picks(state, 3)).toEqual(['c1', 'a1', 'c1']);
+  });
+  it('returns the only living team repeatedly, and null when none are alive', () => {
+    const state = build([
+      { id: 'A', snails: ['a1'] },
+      { id: 'B', snails: ['b1'] },
+    ]);
+    kill(findSnail(state, 'b1')!);
+    expect(picks(state, 2)).toEqual(['a1', 'a1']);
+    kill(findSnail(state, 'a1')!);
+    expect(selectNextActive(state)).toBeNull();
+  });
+  it('keeps per-team cursors through a JSON round trip', () => {
+    const state = build([
+      { id: 'A', snails: ['a1', 'a2', 'a3'] },
+      { id: 'B', snails: ['b1', 'b2'] },
+    ]);
+    picks(state, 3);
+    const copy = JSON.parse(JSON.stringify(state)) as GameState;
+    expect(copy.teams.map((t) => t.nextSnailIndex)).toEqual(
+      state.teams.map((t) => t.nextSnailIndex),
+    );
+    expect(picks(copy, 4)).toEqual(picks(state, 4));
   });
 });
