@@ -1,6 +1,11 @@
 import { PROTOCOL_VERSION, parseServerMessage } from '@snails/protocol';
 import type { ServerMessage } from '@snails/protocol';
 
+/** Same-origin WebSocket URL (`ws(s)://host/ws`) so the dev proxy and production both work. */
+export function relativeWsUrl(loc: Pick<Location, 'protocol' | 'host'>): string {
+  return `${loc.protocol === 'https:' ? 'wss' : 'ws'}://${loc.host}/ws`;
+}
+
 /** WebSocket client that joins a room as the "display" role. */
 export class DisplayClient {
   /** Called for every valid server message. */
@@ -25,8 +30,12 @@ export class DisplayClient {
         }),
       ),
     );
-    ws.addEventListener('message', (e) =>
-      this.onMessage(parseServerMessage(JSON.parse(String(e.data)))),
-    );
+    ws.addEventListener('message', (e) => {
+      try {
+        this.onMessage(parseServerMessage(JSON.parse(String(e.data))));
+      } catch {
+        // Ignore malformed or unknown messages.
+      }
+    });
   }
 }
