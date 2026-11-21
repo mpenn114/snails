@@ -15,3 +15,8 @@ export * from './terrain/terrain-mesh-manager.js';
 export * from './terrain/terrain-material.js';
 export * from './terrain/terrain-shader.js';
 export * from './terrain/rebuild-scheduler.js';
+export * from './camera/damping.js';
+export * from './camera/camera-pose.js';
+export * from './camera/follow-tracker.js';
+export * from './camera/camera-rig.js';
+export * from './camera/camera-input-binding.js';
