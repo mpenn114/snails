@@ -42,3 +42,4 @@ export * from './rules/hazards.js';
 export * from './rules/win.js';
 export * from './sim/match.js';
 export * from './sim/scripted-bot.js';
+export * from './sim/replay.js';

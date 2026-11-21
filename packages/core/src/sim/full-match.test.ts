@@ -1,18 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import type { WeaponDefinition } from '../content/types.js';
 import { createMatch } from './match.js';
 import { createScriptedBot } from './scripted-bot.js';
 import type { SimEvent } from './events.js';
-
-const PEBBLE: WeaponDefinition = {
-  id: 'test:pebble-toss',
-  name: 'Pebble Toss',
-  kind: 'projectile',
-  launch: { minSpeed: 5, maxSpeed: 22, gravityScale: 1, windScale: 1, projectileRadius: 0.1 },
-  fuseSeconds: 0,
-  explosion: { radius: 4, maxDamage: 45, knockback: 6, falloff: 'linear' },
-  ammo: 'infinite',
-};
+import { PEBBLE, testMatchOptions } from './test-match.js';
 
 const TICK_CAP = 60 * 60 * 40;
 
@@ -24,16 +14,7 @@ function hash(events: SimEvent[]): string {
 }
 
 function playMatch(seed: number) {
-  const { sim } = createMatch({
-    seed,
-    teams: [
-      { id: 'a', name: 'A', colour: '#f00', snailNames: ['A1', 'A2'] },
-      { id: 'b', name: 'B', colour: '#00f', snailNames: ['B1', 'B2'] },
-    ],
-    terrain: { nx: 64, ny: 32, nz: 64, caveDensity: 0, islandFalloff: false, baseHeight: 8 },
-    turn: { introDuration: 0.5, retreatDuration: 0.5, maxTurns: 60 },
-    weapons: [PEBBLE],
-  });
+  const { sim } = createMatch(testMatchOptions(seed));
   const bots = ['a', 'b'].map((id) => createScriptedBot(id, PEBBLE));
   const events: SimEvent[] = [];
   let lastTick = -1;
