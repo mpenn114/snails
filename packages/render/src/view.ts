@@ -9,7 +9,6 @@ import {
   type RenderStateSource,
 } from './render-loop.js';
 import { createSceneGraph, type SceneRoots } from './scene-graph.js';
-import { SnailMesh } from './snail-mesh.js';
 
 /** Options for createGameView. */
 export interface GameViewOptions {
@@ -53,7 +52,6 @@ export function createGameViewWith(deps: GameViewDeps): GameView {
   sun.position.set(5, 10, 5);
   sun.castShadow = q.shadows;
   roots.environment.add(sun);
-  roots.entities.add(new SnailMesh().group);
 
   const loop = createRenderLoop({
     renderer: deps.renderer,
