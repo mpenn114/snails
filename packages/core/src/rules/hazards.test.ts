@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { moveCommandHandler, movementSystem } from '../movement/movement.js';
 import { RngStreams } from '../rng-streams.js';
 import { Simulation } from '../sim/simulation.js';
-import type { SimEvent } from '../sim/types.js';
+import type { SimEvent } from '../sim/events.js';
 import { createInitialState } from '../state/game-state.js';
 import type { Snail } from '../state/types.js';
 import { SdfGrid } from '../terrain/sdf-grid.js';

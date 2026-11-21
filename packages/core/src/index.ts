@@ -18,7 +18,6 @@ export {
   type CommandType,
   type CommandHandler,
   type SimContext,
-  type SimEvent,
   type SimRng,
   type SystemFn,
   type MoveCommand,
@@ -26,6 +25,7 @@ export {
   type FireCommand,
   type EndTurnCommand,
 } from './sim/types.js';
+export * from './sim/events.js';
 export * from './sim/simulation.js';
 export * from './sim/validation.js';
 export * from './state/game-state.js';

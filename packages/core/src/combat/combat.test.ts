@@ -3,7 +3,7 @@ import { ContentRegistry } from '../content/registry.js';
 import type { WeaponDefinition } from '../content/types.js';
 import { RngStreams } from '../rng-streams.js';
 import { Simulation } from '../sim/simulation.js';
-import type { SimEvent } from '../sim/types.js';
+import type { SimEvent } from '../sim/events.js';
 import { createInitialState } from '../state/game-state.js';
 import { SdfGrid } from '../terrain/sdf-grid.js';
 import { aimCommandHandler, registerCombat } from './combat.js';

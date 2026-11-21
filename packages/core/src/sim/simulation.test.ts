@@ -43,17 +43,17 @@ describe('Simulation', () => {
     const order: string[] = [];
     sim.registerCommandHandler('fire', (ctx) => {
       order.push('cmd');
-      ctx.emit({ type: 'fired' });
+      ctx.emit({ type: 'snailDrowned', snailId: 'a' });
     });
     sim.addSystem('one', (ctx) => {
       order.push('one');
-      ctx.emit({ type: 'one' });
+      ctx.emit({ type: 'snailDrowned', snailId: 'b' });
     });
     sim.addSystem('two', () => order.push('two'));
     sim.enqueue({ type: 'fire', snailId: 's', weaponId: 'w' });
     const events = sim.step();
     expect(order).toEqual(['cmd', 'one', 'two']);
-    expect(events.map((e) => e.type)).toEqual(['fired', 'one', 'tick']);
+    expect(events.map((e) => e.type)).toEqual(['snailDrowned', 'snailDrowned', 'tick']);
     expect(sim.systemNames()).toEqual(['one', 'two']);
   });
 
