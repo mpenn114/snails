@@ -6,3 +6,5 @@ export * from './state/types.js';
 export * from './turn/turn-manager.js';
 export * from './terrain/sdf-grid.js';
 export * from './physics/ballistics.js';
+export * from './math/vec3.js';
+export * from './terrain/collision.js';
