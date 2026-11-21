@@ -74,7 +74,7 @@ is a stub client.
 | M2-04 | Web Worker chunk meshing with transferable buffers and dirty-chunk queue | render | M2-03 | ✅ |
 | M2-05 | Terrain materials and triplanar shading | render | M2-04 | ✅ |
 | M2-06 | Chunk rebuild budget scheduler (stay under 8 ms per frame) | render | M2-04 | ✅ |
-| M2-07 | Apply carve events to the local terrain copy and remesh | render | M2-04, M1-05 | ⬜ |
+| M2-07 | Apply carve events to the local terrain copy and remesh | render | M2-04, M1-05 | ✅ |
 | M2-08 | Placeholder snail meshes with team colours, health bars and name tags | render | M2-01 | ✅ |
 | M2-09 | Projectile and explosion rendering (basic particles, flash) | render | M2-01, M1-13 | ⬜ |
 | M2-10 | Camera rig: follow, free, cinematic modes | render | M2-01 | ✅ |
