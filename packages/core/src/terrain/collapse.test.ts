@@ -24,7 +24,7 @@ describe('collapse', () => {
     expect(clusters).toHaveLength(1);
     expect(clusters[0]!.cells).toHaveLength(27);
     expect(clusters[0]!.bounds.min).toEqual({ x: 8, y: 8, z: 8 });
-    const res = collapseFloating(g, clusters);
+    const res = collapseFloating(g, clusters, 'remove');
     expect(res.removedCells).toBe(27);
     expect(res.chunks.length).toBeGreaterThan(0);
     expect(g.get(9, 9, 9)).toBeGreaterThan(0);
@@ -38,7 +38,7 @@ describe('collapse', () => {
     block(g, 11, 3, 8, 3, 1);
     block(g, 8, 3, 11, 3, 1);
     block(g, 11, 3, 11, 3, 1);
-    const res = resolveCollapse(g, { x: 10, y: 4, z: 10 }, 4);
+    const res = resolveCollapse(g, { x: 10, y: 4, z: 10 }, 4, { mode: 'remove' });
     expect(res.removedCells).toBe(216 - 4 * 27);
     expect(g.get(9, 7, 9)).toBeGreaterThan(0);
   });

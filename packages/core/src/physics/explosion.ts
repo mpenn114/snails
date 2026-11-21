@@ -20,7 +20,7 @@ export interface ExplosionSpec {
   /** Terrain carve radius; defaults to `radius`. */
   carveRadius?: number;
   falloff: FalloffKind;
-  /** Remove terrain left floating by the carve and emit terrainCollapsed; default false. */
+  /** Drop (or remove, if unsupported) terrain left floating by the carve and emit terrainCollapsed; default false. */
   collapse?: boolean;
 }
 
@@ -65,9 +65,15 @@ function knockbackDir(from: Vec3, to: Vec3): Vec3 {
 
 /** Removes terrain left floating by a carve and emits `terrainCollapsed` if anything fell. */
 function collapseAfterCarve(ctx: SimContext, centre: Vec3, radius: number): void {
-  const col = resolveCollapse(ctx.terrain, centre, radius);
-  if (col.removedCells > 0) {
-    ctx.emit({ type: 'terrainCollapsed', chunks: col.chunks, removedCells: col.removedCells });
+  const snails = ctx.state.teams.flatMap((t) => t.snails);
+  const col = resolveCollapse(ctx.terrain, centre, radius, { snails });
+  if (col.removedCells > 0 || col.fallen.length > 0) {
+    ctx.emit({
+      type: 'terrainCollapsed',
+      chunks: col.chunks,
+      removedCells: col.removedCells,
+      fallen: col.fallen,
+    });
   }
 }
 

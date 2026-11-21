@@ -1,5 +1,6 @@
 import type { MatchStatus, TurnPhase, Vec3 } from '../state/types.js';
 import type { ChunkId } from '../terrain/sdf-grid.js';
+import type { FallenCluster } from '../terrain/collapse.js';
 import type { RejectionReason } from './validation.js';
 import type { CommandType } from './types.js';
 
@@ -96,6 +97,8 @@ export interface TerrainCollapsedEvent {
   type: 'terrainCollapsed';
   chunks: ChunkId[];
   removedCells: number;
+  /** Clusters that dropped and landed (renderer can animate from this). */
+  fallen: FallenCluster[];
 }
 
 /** Why a snail took damage. */

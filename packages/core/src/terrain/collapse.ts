@@ -1,3 +1,5 @@
+import type { Snail } from '../state/types.js';
+import { livingSnailsOf, pushSnailsOut, releaseSnails } from './collapse-snails.js';
 import type { ChunkId, SdfGrid } from './sdf-grid.js';
 
 /** Inclusive cell-space box. */
@@ -19,13 +21,28 @@ export interface CollapseResult {
   removedCells: number;
   /** Sorted, unique chunks (including border neighbours) holding changed cells. */
   chunks: ChunkId[];
+  /** Clusters that fell and came to rest (in processing order). */
+  fallen: FallenCluster[];
+}
+
+/** One cluster that dropped as a rigid body. */
+export interface FallenCluster {
+  cellCount: number;
+  dropCells: number;
+  dropMetres: number;
+  /** Cell bounds after landing. */
+  bounds: CellRegion;
 }
 
 /** Plain-data collapse event. */
 export interface CollapseEvent {
   chunks: ChunkId[];
   removedCells: number;
+  fallen: FallenCluster[];
 }
+
+/** `'fall'` drops clusters onto their support (default); `'remove'` deletes them. */
+export type CollapseMode = 'fall' | 'remove';
 
 /** Margin in cells added around a carve when searching for floating clusters. */
 export const COLLAPSE_MARGIN = 2;
@@ -162,42 +179,122 @@ function addChunks(grid: SdfGrid, x: number, y: number, z: number, into: Set<Chu
       }
 }
 
+/** Cell coordinates of a linear index. */
+function coordsOf(grid: SdfGrid, i: number): Cell {
+  const plane = grid.nx * grid.ny;
+  return [i % grid.nx, Math.floor(i / grid.nx) % grid.ny, Math.floor(i / plane)];
+}
+
 /**
- * Removes floating clusters by setting their cells to air (`+cellSize`).
+ * Whole-cell drop distance of a cluster: the minimum over its columns of the gap between the
+ * column's lowest cluster cell and the first solid non-cluster cell below. Columns without
+ * support are ignored; returns null when no column has support (falls out of the grid).
+ */
+function dropDistance(grid: SdfGrid, cluster: FloatingCluster): number | null {
+  const own = new Set(cluster.cells);
+  const lowest = new Map<number, number>();
+  for (const i of cluster.cells) {
+    const [x, y, z] = coordsOf(grid, i);
+    const key = x + grid.nx * z;
+    const cur = lowest.get(key);
+    if (cur === undefined || y < cur) lowest.set(key, y);
+  }
+  let best: number | null = null;
+  for (const [key, y0] of lowest) {
+    const x = key % grid.nx;
+    const z = Math.floor(key / grid.nx);
+    for (let y = y0 - 1; y >= 0; y--) {
+      if (grid.get(x, y, z) < 0 && !own.has(grid.index(x, y, z))) {
+        const gap = y0 - y - 1;
+        if (best === null || gap < best) best = gap;
+        break;
+      }
+    }
+  }
+  return best;
+}
+
+/** Clears a cluster and rewrites its values `drop` cells lower (solid wins on overlap). */
+function moveCluster(
+  grid: SdfGrid,
+  cluster: FloatingCluster,
+  drop: number,
+  into: Set<ChunkId>,
+): void {
+  const moved = cluster.cells.map((i) => ({ c: coordsOf(grid, i), v: grid.data[i] as number }));
+  for (const { c } of moved) {
+    grid.set(c[0], c[1], c[2], grid.cellSize);
+    addChunks(grid, c[0], c[1], c[2], into);
+  }
+  for (const { c, v } of moved) {
+    const y = c[1] - drop;
+    grid.set(c[0], y, c[2], Math.min(grid.get(c[0], y, c[2]), v));
+    addChunks(grid, c[0], y, c[2], into);
+  }
+}
+
+/** Removes a cluster by setting its cells to air (`+cellSize`). */
+function removeCluster(grid: SdfGrid, cluster: FloatingCluster, into: Set<ChunkId>): void {
+  for (const i of cluster.cells) {
+    const [x, y, z] = coordsOf(grid, i);
+    grid.set(x, y, z, grid.cellSize);
+    addChunks(grid, x, y, z, into);
+  }
+}
+
+/**
+ * Resolves floating clusters (processed in ascending lowest-cell-index order).
  *
- * Stub: `'remove'` is the only mode. Making clusters fall as debris (rigid bodies that
- * re-deposit on landing) is future work.
+ * - `'fall'` (default): each cluster drops rigidly by the support gap (whole cells) and merges
+ *   with the terrain below (min, so solid wins). A cluster with no support above y = 0 is
+ *   removed. Snails resting on a cluster are set airborne (so movement and hazards handle the
+ *   fall); snails the landed cluster now overlaps are pushed up out of it. See
+ *   `collapse-snails.ts`.
+ * - `'remove'`: clusters are simply deleted.
  */
 export function collapseFloating(
   grid: SdfGrid,
   clusters: readonly FloatingCluster[],
-  mode: 'remove' = 'remove',
+  mode: CollapseMode = 'fall',
+  snails: readonly Snail[] = [],
 ): CollapseResult {
-  void mode;
   const touched = new Set<ChunkId>();
+  const fallen: FallenCluster[] = [];
   let removedCells = 0;
-  const plane = grid.nx * grid.ny;
-  for (const cluster of clusters) {
-    for (const i of cluster.cells) {
-      const x = i % grid.nx;
-      const y = Math.floor(i / grid.nx) % grid.ny;
-      const z = Math.floor(i / plane);
-      grid.set(x, y, z, grid.cellSize);
-      addChunks(grid, x, y, z, touched);
-      removedCells++;
+  const living = livingSnailsOf(snails);
+  const ordered = [...clusters].sort((a, b) => (a.cells[0] ?? 0) - (b.cells[0] ?? 0));
+  for (const cluster of ordered) {
+    const drop = mode === 'fall' ? dropDistance(grid, cluster) : null;
+    if (mode === 'fall') releaseSnails(grid, cluster, living);
+    if (drop === null) {
+      removeCluster(grid, cluster, touched);
+      removedCells += cluster.cells.length;
+      continue;
     }
+    if (drop === 0) continue;
+    moveCluster(grid, cluster, drop, touched);
+    const b = cluster.bounds;
+    const bounds = { min: { ...b.min, y: b.min.y - drop }, max: { ...b.max, y: b.max.y - drop } };
+    pushSnailsOut(grid, bounds, living);
+    fallen.push({
+      cellCount: cluster.cells.length,
+      dropCells: drop,
+      dropMetres: drop * grid.cellSize,
+      bounds,
+    });
   }
-  return { removedCells, chunks: [...touched].sort((a, b) => a - b) };
+  return { removedCells, chunks: [...touched].sort((a, b) => a - b), fallen };
 }
 
 /**
- * Convenience after a carve: finds and removes floating clusters near a sphere centre
+ * Convenience after a carve: finds and resolves floating clusters near a sphere centre
  * (search box = sphere bounds expanded by {@link COLLAPSE_MARGIN} cells).
  */
 export function resolveCollapse(
   grid: SdfGrid,
   aroundCentre: { x: number; y: number; z: number },
   radius: number,
+  opts: { mode?: CollapseMode; snails?: readonly Snail[] } = {},
 ): CollapseResult {
   const cs = grid.cellSize;
   const m = COLLAPSE_MARGIN;
@@ -207,5 +304,5 @@ export function resolveCollapse(
     min: { x: lo(aroundCentre.x), y: lo(aroundCentre.y), z: lo(aroundCentre.z) },
     max: { x: hi(aroundCentre.x), y: hi(aroundCentre.y), z: hi(aroundCentre.z) },
   };
-  return collapseFloating(grid, findFloatingClusters(grid, region), 'remove');
+  return collapseFloating(grid, findFloatingClusters(grid, region), opts.mode, opts.snails);
 }
