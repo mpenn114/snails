@@ -82,7 +82,7 @@ is a stub client.
 | M2-12 | Wind particles driven by wind state | render | M2-01 | ✅ |
 | M2-13 | Quality tier implementation (high, medium, low, mobile) applied to renderer | render | M2-01 | ✅ |
 | M2-14 | Display app: Vite config, mount `@snails/render`, connect as `display` role | display | M2-01, M3-04 | ✅ |
-| M2-15 | Scripted-match render harness with 16 snails and FPS/chunk-stall overlay | display | M2-06, M2-08, M2-14 | ⬜ |
+| M2-15 | Scripted-match render harness with 16 snails and FPS/chunk-stall overlay | display | M2-06, M2-08, M2-14 | ✅ |
 | M2-16 | Dependency check that render owns no game rules (lint rule and test) | ci | M2-01 | ✅ |
 | M2-17 | Performance pass to hit 60 fps at 1080p on mid-range laptop | render | M2-15 | ⬜ |
 
