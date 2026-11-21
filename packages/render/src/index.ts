@@ -22,3 +22,6 @@ export * from './camera/camera-rig.js';
 export * from './camera/camera-input-binding.js';
 export * from './environment/index.js';
 export * from './terrain/terrain-replica.js';
+export * from './effects/particles.js';
+export * from './effects/projectile-layer.js';
+export * from './effects/explosion-effects.js';
