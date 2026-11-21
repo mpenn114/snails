@@ -51,7 +51,7 @@ export interface TerrainDescriptor {
 }
 
 /** Turn phase. */
-export type TurnPhase = 'aiming' | 'firing' | 'resolving' | 'retreat' | 'ended';
+export type TurnPhase = 'intro' | 'action' | 'fire' | 'resolve' | 'retreat' | 'settle';
 
 /** Current turn info. */
 export interface TurnState {
@@ -61,6 +61,10 @@ export interface TurnState {
   /** Seconds left in the turn. */
   timeRemaining: number;
   turnNumber: number;
+  /** Seconds elapsed in the current phase. */
+  phaseTime: number;
+  /** True once a shot was fired this turn. */
+  fired: boolean;
 }
 
 /** A projectile in flight. */
