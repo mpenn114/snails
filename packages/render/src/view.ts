@@ -8,6 +8,8 @@ import {
   type RendererLike,
   type RenderStateSource,
 } from './render-loop.js';
+import { createEnvironment } from './environment/environment.js';
+import type { Bounds3 } from './environment/lighting.js';
 import { createSceneGraph, type SceneRoots } from './scene-graph.js';
 
 /** Options for createGameView. */
@@ -15,6 +17,10 @@ export interface GameViewOptions {
   tier: QualityTier;
   /** Optional state source pulled each frame. */
   source?: RenderStateSource;
+  /** Terrain world bounds (defaults to the core default arena). */
+  terrainBounds?: Bounds3;
+  /** Water surface height (defaults to the core default water level). */
+  waterLevel?: number;
 }
 
 /** Handle to a running game view. */
@@ -37,6 +43,8 @@ export interface GameViewDeps {
   scheduler: FrameScheduler;
   now: () => number;
   source?: RenderStateSource;
+  terrainBounds?: Bounds3;
+  waterLevel?: number;
 }
 
 /** Builds scene, camera, lights and a started render loop from injected deps. */
@@ -47,11 +55,12 @@ export function createGameViewWith(deps: GameViewDeps): GameView {
   camera.position.set(0, 4, 10);
   camera.lookAt(0, 0, 0);
 
-  roots.environment.add(new THREE.HemisphereLight(0xffffff, 0x445522, 0.8));
-  const sun = new THREE.DirectionalLight(0xffffff, 1.5);
-  sun.position.set(5, 10, 5);
-  sun.castShadow = q.shadows;
-  roots.environment.add(sun);
+  const env = createEnvironment(roots.environment, {
+    tier: deps.tier,
+    ...(deps.terrainBounds ? { bounds: deps.terrainBounds } : {}),
+    ...(deps.waterLevel !== undefined ? { waterLevel: deps.waterLevel } : {}),
+  });
+  env.applyTo(scene);
 
   const loop = createRenderLoop({
     renderer: deps.renderer,
@@ -62,6 +71,7 @@ export function createGameViewWith(deps: GameViewDeps): GameView {
     pixelRatio: q.pixelRatio,
     ...(deps.source ? { source: deps.source } : {}),
   });
+  const removeEnvUpdater = loop.addUpdater(env.update);
   loop.start();
   return {
     scene,
@@ -71,7 +81,11 @@ export function createGameViewWith(deps: GameViewDeps): GameView {
     addUpdater: (fn) => loop.addUpdater(fn),
     setSource: (s) => loop.setSource(s),
     resize: (w, h) => loop.resize(w, h),
-    dispose: () => loop.dispose(),
+    dispose: () => {
+      removeEnvUpdater();
+      env.dispose();
+      loop.dispose();
+    },
   };
 }
 
@@ -90,6 +104,8 @@ export function createGameView(canvas: HTMLCanvasElement, opts: GameViewOptions)
     },
     now: () => performance.now(),
     ...(opts.source ? { source: opts.source } : {}),
+    ...(opts.terrainBounds ? { terrainBounds: opts.terrainBounds } : {}),
+    ...(opts.waterLevel !== undefined ? { waterLevel: opts.waterLevel } : {}),
   });
   view.resize(canvas.clientWidth || 1, canvas.clientHeight || 1);
   return view;
