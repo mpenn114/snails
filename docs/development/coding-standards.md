@@ -77,6 +77,16 @@ apps/<app>/src/         # entry (main.ts), features/, ui/, net/
 - Avoid circular imports (`import/no-cycle`).
 - Keep `src/index.ts` of each package as a curated export list; adding an export is an API decision.
 
+## Render boundary (render owns no game rules)
+
+`packages/render` (`@snails/render`) and `apps/display` only *draw* state; they never run or mutate the simulation. Enforced by `eslint.config.js` (`no-restricted-imports` / `no-restricted-syntax` on `packages/render/src/**` and `apps/display/src/**`) and by `packages/render/src/architecture.test.ts`. Both read the same list in `scripts/render-boundary.json`.
+
+- Allowed from `@snails/core`: the package root only, for types, snapshot shapes, `SdfGrid` reads, constants (`FIXED_DT`, `SNAIL_RADIUS`, ...) and pure helpers (`facingVector`, `findSnail`, `createSnapshot`).
+- Forbidden: deep `@snails/core/*` or `../core/src` paths; a namespace import of `@snails/core`; the mutating names listed in `forbiddenCoreNames` (e.g. `Simulation`, `createMatch`, `carveSphere`, `resolveCollapse`, `applyDamage`, `movementSystem`, `registerCombat`); calls to `.step`, `.submit`, `.enqueue`, `.registerCommandHandler`, `.addSystem`.
+- Forbidden packages and paths: `@snails/ai`, `@snails/content-base`, `@snails/server`, `@snails/controller`, `@snails/desktop`, and their deep paths.
+- Forbidden: Node built-ins (`node:*`, `fs`, `path`, ...). Test files (`*.test.ts`) may use them; the architecture test scans sources with `node:fs`.
+- Adding a name to a forbidden list or a new allowed read-only export is a boundary decision: update `scripts/render-boundary.json` and the rule's rationale here.
+
 ## Style and process
 
 - Prettier is the formatter (no style debates); run on save and in `pnpm format:check`.
