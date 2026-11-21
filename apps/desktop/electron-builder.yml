@@ -1,0 +1,18 @@
+appId: com.snails.game
+productName: Snails
+directories:
+  output: release
+files:
+  - dist/**
+  - package.json
+extraResources:
+  - from: ../display/dist
+    to: display
+  - from: ../controller/dist
+    to: controller
+linux:
+  target: AppImage
+win:
+  target: nsis
+mac:
+  target: dmg

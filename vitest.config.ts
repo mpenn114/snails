@@ -11,6 +11,7 @@ export default defineConfig({
       '@snails/protocol': src('protocol'),
       '@snails/content-base': src('content-base'),
       '@snails/ai': src('ai'),
+      '@snails/render': src('render'),
     },
   },
   test: { include: ['{apps,packages}/*/src/**/*.test.ts'] },

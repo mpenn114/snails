@@ -21,11 +21,20 @@ export const TurnStart = z.object({
   snailId: z.string(),
   durationMs: z.number().nonnegative(),
 });
-/** Stub for authoritative state snapshots. */
+/**
+ * Stub for authoritative state snapshots. Sent to BOTH display and controller clients
+ * (ADR-0008: phones render the game locally); the same applies to the event stream.
+ */
 export const StateSnapshot = z.object({
   type: z.literal('stateSnapshot'),
   tick: z.number().int().nonnegative(),
   state: z.unknown(),
+});
+/** Gameplay event (explosion, damage, ...) broadcast to display and controller clients. */
+export const GameEventMessage = z.object({
+  type: z.literal('gameEvent'),
+  event: z.string(),
+  payload: z.unknown(),
 });
 /** Error report. */
 export const ErrorMessage = z.object({
@@ -40,6 +49,7 @@ export const ServerMessage = z.discriminatedUnion('type', [
   LobbyState,
   TurnStart,
   StateSnapshot,
+  GameEventMessage,
   ErrorMessage,
 ]);
 

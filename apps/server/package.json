@@ -1,0 +1,25 @@
+{
+  "name": "@snails/server",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": { ".": { "types": "./dist/index.d.ts", "default": "./dist/index.js" } },
+  "scripts": {
+    "dev": "tsx watch src/main.ts",
+    "start": "node dist/main.js",
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@fastify/static": "^8.0.3",
+    "@fastify/websocket": "^11.0.1",
+    "@snails/ai": "workspace:*",
+    "@snails/content-base": "workspace:*",
+    "@snails/core": "workspace:*",
+    "@snails/protocol": "workspace:*",
+    "fastify": "^5.1.0"
+  },
+  "devDependencies": { "@types/ws": "^8.5.13", "tsx": "^4.19.2" }
+}

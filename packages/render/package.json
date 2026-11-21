@@ -1,0 +1,19 @@
+{
+  "name": "@snails/render",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": { ".": { "types": "./dist/index.d.ts", "default": "./dist/index.js" } },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@snails/core": "workspace:*",
+    "@snails/protocol": "workspace:*",
+    "three": "^0.170.0"
+  },
+  "devDependencies": { "@types/three": "^0.170.0" }
+}

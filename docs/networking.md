@@ -42,7 +42,7 @@ The join URL is `http://<host-lan-ip>:<port>/?room=CODE`, rendered as a QR code 
 | Role | Created by | Can send | Receives |
 | --- | --- | --- | --- |
 | `display` | Host app | `hello`, `lobbyConfig` (host options), `resync`, ack of VFX completion if needed | Snapshots, deltas, events, lobby |
-| `controller` | Phone | `hello`, lobby/team edits, in-turn intents for the players it controls, `ping` | `playerView` for controlled players, lobby, errors |
+| `controller` | Phone | `hello`, lobby/team edits, in-turn intents for the players it controls, `ping`, `resync` | Same snapshots, deltas, terrain edits and event stream as the display ([ADR-0008](adr/0008-phone-renders-game-view.md)), plus `playerView` for controlled players, lobby, errors |
 | `spectator` | Phone/browser (`?role=spectator`) | `hello`, `ping` | Public view only |
 
 One controller connection may control several players (hot-seat: one phone, multiple teams); the server checks every intent against the players bound to that session. A room has exactly one `display`; a second display `hello` is refused unless the first has been gone for the reconnect window.
@@ -78,6 +78,10 @@ Versioning: `PROTOCOL_VERSION` is an integer incremented on any breaking schema 
 ## Heartbeats
 
 WebSocket protocol-level ping every 10 s from the server; a connection with no pong in 25 s is closed. Controllers additionally send application `ping{ts}` every 5 s during active turns, and the server replies `pong{ts, serverTime}` so the phone can display ping and estimate clock offset. Browsers cannot send protocol pings, hence the application-level ping.
+
+## Bandwidth
+
+Because phones render the world, each controller gets the same stream as the display: a full snapshot on join (terrain from seed plus edit list, typically tens of KB), then deltas at 20-30 Hz (a few KB/s while projectiles fly, near zero between turns) and events. With up to ~8 phones this is well under 1 Mbit/s each, trivial on LAN. Later optimisations: per-message delta compression against the last acked `seq`, binary encoding (MessagePack) for deltas, quantised transforms, and a lower delta rate for phones that report thermal/battery pressure (`hello.caps.maxDeltaHz`).
 
 ## Latency expectations
 

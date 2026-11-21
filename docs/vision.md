@@ -7,9 +7,10 @@ Teams of slow, stubborn snails fight over a destructible 3D heap of soil, leaves
 lobbing salt grenades and slime mortars at each other. Between turns, players research
 technologies from their phones, and every upgrade is visible on the shell the snail carries.
 
-The big screen (a TV or monitor driven by a host computer) shows the battlefield. Everyone else
-plays from the phone already in their pocket: scan a QR code, pick a name and colour, and you are
-in. No app install, no controllers to buy.
+The big screen (a TV or monitor driven by a host computer) is the shared spectator view of the
+battlefield. Every player also gets the full 3D game on the phone already in their pocket (a shared
+render package at lighter mobile quality), so a whole turn can be played looking only at the phone:
+scan a QR code, pick a name and colour, and you are in. No app install, no controllers to buy.
 
 ## Design pillars
 
@@ -24,8 +25,9 @@ in. No app install, no controllers to buy.
    are, material tier says how advanced you are, cracks say how hurt you are. A glance at the
    screen answers "who is winning and who is about to die" without reading text.
 4. **Couch multiplayer with phones.** Low friction joining, short turns, nobody waiting long. The
-   phone is a private control surface (including secret research queues), the TV is the shared
-   spectacle.
+   phone is a complete play surface: a full-screen 3D view with controls overlaid, plus private
+   information (secret research queues). The TV is the shared spectacle for everyone else in the
+   room; nobody has to look at it to play, and nobody is lost if they do.
 
 ## Target experience
 
@@ -72,7 +74,8 @@ snails leave an empty shell behind rather than gore.
   only the general genre idea is shared.
 - Not pay-to-anything. No in-app purchases, accounts or telemetry in the base game.
 - Not a heavy 3D showpiece at the cost of playability. Visual polish follows the performance
-  budgets in [graphics.md](graphics.md).
+  budgets in [graphics.md](graphics.md); the phone renders a lighter quality tier and must stay
+  playable on mid-range Android devices without overheating.
 - Not a native phone app at launch. The web controller is the product; an Android wrapper is
   optional later work.
 

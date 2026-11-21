@@ -9,8 +9,9 @@
 | Base content | `@snails/content-base` | server (and display for visuals) | Weapons, techs, shell upgrades, maps as definitions. |
 | AI | `@snails/ai` | server | CPU strategies; plans by forking core state. |
 | Server | `@snails/server` | Node 22 | Fastify (static controller bundle, `/api/info`), `ws` WebSocket, rooms/lobby, authoritative sim loop, LAN IP + QR. |
-| Display | `@snails/display` | browser/Electron | Three.js renderer, terrain mesher worker, VFX, audio, camera. Pure view. |
-| Controller | `@snails/controller` | phone browser | Join, lobby, aim/power/weapon/research UI. Sends intents. |
+| Render | `@snails/render` | browser/Electron/phone | Shared Three.js view library: scene, terrain mesher worker, shell materials, VFX, camera, quality tiers. Pure view ([ADR-0008](adr/0008-phone-renders-game-view.md)). |
+| Display | `@snails/display` | browser/Electron | Big-screen app: wraps `@snails/render` with high tier, lobby/QR screens, audio. |
+| Controller | `@snails/controller` | phone browser | Join, lobby, aim/power/weapon/research UI plus 3D view via `@snails/render` (mobile tier). Sends intents. |
 | Desktop | `@snails/desktop` | Electron | Starts server, opens display, packaging. |
 
 ## Package dependency graph
@@ -24,6 +25,7 @@ graph TD
   server["@snails/server"]
   display["@snails/display"]
   controller["@snails/controller"]
+  render["@snails/render"]
   desktop["@snails/desktop"]
   content --> core
   ai --> core
@@ -31,14 +33,17 @@ graph TD
   server --> protocol
   server --> content
   server --> ai
+  render --> protocol
+  render -. types only .-> core
+  display --> render
   display --> protocol
-  display -. types only .-> core
+  controller --> render
   controller --> protocol
   desktop --> server
   desktop -. built assets .-> display
 ```
 
-Rules: `core` imports nothing internal. `protocol` is standalone (core types only if unavoidable). `display` and `controller` never import `server`. The controller must not import `core`, which keeps the phone bundle small and prevents rules leaking into the client. ESLint `no-restricted-imports` enforces the graph.
+Rules: `core` imports nothing internal. `render` is the only package holding Three.js scene code and is shared by display and controller. `protocol` is standalone (core types only if unavoidable). `display` and `controller` never import `server`. The controller must not import `core` (only `render`, which uses core types), which prevents rules leaking into the client; the renderer is lazy-loaded to keep join fast. ESLint `no-restricted-imports` enforces the graph.
 
 ## Runtime topology
 
@@ -111,7 +116,7 @@ Server-authoritative. Clients never send state.
 | Client | Receives | Frequency | Notes |
 | --- | --- | --- | --- |
 | Display | Full `snapshot` on join/reconnect and at turn boundaries; `delta` (entity transforms) while projectiles fly; ordered `events` for VFX/audio; terrain `edits` (centre, radius, tick) | deltas ~20-30 Hz, events immediate | Interpolates with ~100 ms buffer. Rebuilds terrain from map seed + edit list. |
-| Controller | `playerView`: own team detail (inventory, research, ammo), public snail summaries, turn state, wind | on change; throttled | Filtered: no other teams' private data (e.g. hidden research choices, stock). Minimal bytes. |
+| Controller | Same snapshot/delta/terrain-edit/event stream as the display (so the phone renders the world), plus `playerView`: own team detail (inventory, research, ammo), turn state, wind | deltas ~20-30 Hz (may be lowered on mobile), views on change | Filtered: no other teams' private data (e.g. hidden research choices, stock). |
 | Spectator | Same as controller public view | on change | No intents accepted. |
 
 Events carry a `tick` and monotonically increasing `seq`; clients detect gaps and request a snapshot (`resync`). Snapshots include `seq` so deltas can be applied idempotently.
@@ -127,8 +132,9 @@ Events carry a `tick` and monotonically increasing `seq`; clients detect gaps an
 | Message shapes, validation, versioning | `protocol` |
 | Rooms, sessions, auth tokens, timers, heartbeats | `server` |
 | Sim loop scheduling and broadcast | `server` |
-| Rendering, shaders, camera, particles, audio | `display` |
-| Touch UI, haptics, local prefs | `controller` |
+| Rendering, shaders, terrain meshing, camera, particles | `render` (shared) |
+| Big-screen composition, audio, QR/lobby screens | `display` |
+| Touch UI, haptics, local prefs, mobile quality selection | `controller` |
 | Process lifecycle, packaging | `desktop` |
 | Visual-only randomness | `display` (separate RNG, never affects sim) |
 
