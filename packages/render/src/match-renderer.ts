@@ -3,6 +3,7 @@ import { SdfGrid } from '@snails/core';
 import type { GameSnapshot, SimEvent } from '@snails/core';
 import { CameraRig, type CameraMode } from './camera/camera-rig.js';
 import { ExplosionEffects } from './effects/explosion-effects.js';
+import { createWindParticles, type WindParticles } from './environment/wind-particles.js';
 import { ProjectileLayer } from './effects/projectile-layer.js';
 import { SnapshotBuffer } from './interpolation.js';
 import type { QualityTier } from './quality.js';
@@ -58,6 +59,9 @@ export interface ExtraLayer {
   updater?: FrameUpdater;
 }
 
+/** Wind mote count at particleScale 1. */
+const WIND_PARTICLE_BASE_COUNT = 600;
+
 function cloneGrid(g: SdfGrid): SdfGrid {
   const c = new SdfGrid(g.nx, g.ny, g.nz, g.cellSize, 1, g.chunkSize);
   c.data.set(g.data);
@@ -82,6 +86,7 @@ interface Built {
   projectiles: ProjectileLayer;
   explosions: ExplosionEffects;
   rig: CameraRig;
+  wind: WindParticles;
   material: THREE.Material;
   removers: (() => void)[];
 }
@@ -178,6 +183,12 @@ export class MatchRenderer {
       bounds: { min: { x: -20, y: 0, z: -20 }, max: { x: ws.x + 20, y: ws.y + 40, z: ws.z + 20 } },
       heightAt: (x, z) => groundHeight(grid, x, z),
     });
+    const wind = createWindParticles({
+      bounds: { min: new THREE.Vector3(0, 0, 0), max: new THREE.Vector3(ws.x, ws.y, ws.z) },
+      count: Math.round(WIND_PARTICLE_BASE_COUNT * q.particleScale),
+      ...(this.deps.random ? { random: this.deps.random } : {}),
+    });
+    view.roots.effects.add(wind.object);
     const built: Built = {
       view,
       terrain,
@@ -186,6 +197,7 @@ export class MatchRenderer {
       projectiles,
       explosions,
       rig,
+      wind,
       material,
       removers: [],
     };
@@ -206,6 +218,7 @@ export class MatchRenderer {
     add(b.snails.updater);
     add(b.projectiles.updater);
     add(b.explosions.updater);
+    add(b.wind.updater);
     for (const e of this.extras) this.attachExtra(b, e);
   }
 
@@ -266,6 +279,7 @@ export class MatchRenderer {
     b.snails.dispose();
     b.projectiles.dispose();
     b.explosions.dispose();
+    b.wind.dispose();
     b.material.dispose();
     b.view.dispose();
   }

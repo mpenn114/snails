@@ -17,9 +17,10 @@ const RENDER_TEST_FILES = ['packages/render/src/**/*.test.ts', 'apps/display/src
  * game-rule, AI, content, server and Node-builtin dependencies.
  *
  * @param withBuiltins - Also forbid Node built-ins (off for tests, which may use node:fs).
+ * @param allowCoreDriving - Permit core's sim-driving names (the local fake-server harness only).
  * @returns Rule options for `no-restricted-imports`.
  */
-function renderImportRestrictions(withBuiltins) {
+function renderImportRestrictions(withBuiltins, allowCoreDriving = false) {
   const packageMessage =
     'render/display must not depend on this package (see docs/development/coding-standards.md).';
   // Tests (withBuiltins false) may import core's mutating functions to compare against them.
@@ -30,7 +31,7 @@ function renderImportRestrictions(withBuiltins) {
       'Render/display may only read @snails/core. This name mutates or drives the simulation.',
   };
   const paths = [
-    ...(withBuiltins ? [corePath] : []),
+    ...(withBuiltins && !allowCoreDriving ? [corePath] : []),
     ...boundary.forbiddenPackages.map((name) => ({ name, message: packageMessage })),
   ];
   if (withBuiltins) {
@@ -124,6 +125,21 @@ export default tseslint.config(
     rules: {
       'no-restricted-imports': renderImportRestrictions(true),
       'no-restricted-syntax': ['error', ...FORBIDDEN_SYNTAX],
+    },
+  },
+  {
+    // The local harness stands in for the game server (creates and steps a sim in the browser to
+    // feed the renderer). It alone may use core's driving API; packages/Node built-ins stay banned.
+    files: ['apps/display/src/harness/**/*.ts'],
+    rules: {
+      'no-restricted-imports': renderImportRestrictions(true, true),
+      'no-restricted-syntax': [
+        'error',
+        {
+          selector: "ImportDeclaration[source.value='@snails/core'] > ImportNamespaceSpecifier",
+          message: 'Namespace imports of @snails/core are not allowed; import named exports.',
+        },
+      ],
     },
   },
   {

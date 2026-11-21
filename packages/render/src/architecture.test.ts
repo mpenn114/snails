@@ -1,6 +1,6 @@
 import { readFileSync, readdirSync } from 'node:fs';
 import { builtinModules } from 'node:module';
-import { dirname, join, relative, resolve } from 'node:path';
+import { dirname, join, relative, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
@@ -57,8 +57,18 @@ function namedImports(clause: string): string[] {
     .filter((name) => name.length > 0);
 }
 
+/**
+ * The display harness (apps/display/src/harness) is a local fake server: it legitimately creates
+ * and steps a sim to feed the renderer, so it may import core's driving API. Everything else in
+ * render/display (and all package/Node-builtin bans) still applies to it.
+ */
+function isHarnessFile(file: string): boolean {
+  return file.split(sep).join('/').includes('apps/display/src/harness/');
+}
+
 /** Collects human-readable boundary violations for one source file's text. */
 function violationsIn(file: string, text: string): string[] {
+  const allowDriving = isHarnessFile(file);
   const where = relative(repoRoot, file);
   const found: string[] = [];
   const fromRe = /\b(?:import|export)\s+(?:type\s+)?([^;'"]*?)\s*from\s*['"]([^'"]+)['"]/g;
@@ -69,7 +79,8 @@ function violationsIn(file: string, text: string): string[] {
     if (spec !== '@snails/core') continue;
     if (/\*\s*as\s/.test(clause)) found.push(`${where}: namespace import of @snails/core`);
     for (const name of namedImports(clause)) {
-      if (CORE_NAMES.has(name)) found.push(`${where}: imports mutating core API '${name}'`);
+      if (!allowDriving && CORE_NAMES.has(name))
+        found.push(`${where}: imports mutating core API '${name}'`);
     }
   }
   const bareRe = /(?:\bimport\s*\(?|\brequire\s*\()\s*['"]([^'"]+)['"]/g;

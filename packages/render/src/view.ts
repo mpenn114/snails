@@ -32,6 +32,8 @@ export interface GameViewOptions {
   terrainBounds?: Bounds3;
   /** Water surface height (defaults to the core default water level). */
   waterLevel?: number;
+  /** Called once with the WebGL renderer (for `info` stats overlays). */
+  onRenderer?: (renderer: THREE.WebGLRenderer) => void;
 }
 
 /** Handle to a running game view. */
@@ -123,6 +125,7 @@ export function createGameViewWith(deps: GameViewDeps): GameView {
 export function createGameView(canvas: HTMLCanvasElement, opts: GameViewOptions): GameView {
   const q = qualitySettings(opts.tier, window.devicePixelRatio);
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: q.antialias });
+  opts.onRenderer?.(renderer);
   renderer.shadowMap.enabled = q.shadows;
   renderer.shadowMap.type = SHADOW_TYPES[q.shadowType];
   const view = createGameViewWith({
