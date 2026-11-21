@@ -4,3 +4,4 @@ export * from './view.js';
 export * from './scene-graph.js';
 export * from './render-loop.js';
 export * from './terrain/marching-cubes.js';
+export * from './interpolation.js';
