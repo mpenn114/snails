@@ -111,10 +111,10 @@ function stepAirborne(ctx: SimContext, snail: Snail, cfg: MovementConfig): void 
   snail.velocity = { x: 0, y: 0, z: 0 };
   snail.grounded = true;
   delete snail.airborneFromY;
-  ctx.emit({
-    type: 'snailLanded',
-    snailId: snail.id,
+  const landing = {
     impactSpeed: Math.hypot(v.x, v.y, v.z),
     fallDistance: Math.max(0, fromY - hit.point.y),
-  });
+  };
+  snail.pendingLanding = landing;
+  ctx.emit({ type: 'snailLanded', snailId: snail.id, ...landing });
 }

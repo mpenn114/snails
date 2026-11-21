@@ -32,6 +32,19 @@ export interface Snail {
   grounded?: boolean;
   /** Height at which the current airborne phase began; unset while grounded. */
   airborneFromY?: number;
+  /**
+   * Set by the movement system on touchdown and consumed by the hazard system in the
+   * same step (systems run in order). Unset when there is no unprocessed landing.
+   */
+  pendingLanding?: PendingLanding;
+}
+
+/** A touchdown waiting to be resolved by the hazard system (serialisable). */
+export interface PendingLanding {
+  /** Speed at impact in m/s. */
+  impactSpeed: number;
+  /** Height dropped in metres (>= 0). */
+  fallDistance: number;
 }
 
 /** Weapon aim of a snail (serialisable). */
