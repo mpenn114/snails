@@ -1,6 +1,7 @@
 import type { RngStreams } from '../rng-streams.js';
 import type { SdfGrid } from '../terrain/sdf-grid.js';
 import type { GameState } from '../state/types.js';
+import type { SimEvent } from './events.js';
 import { FIXED_DT } from '../physics/ballistics.js';
 
 export { FIXED_DT };
@@ -42,9 +43,6 @@ export type Command = MoveCommand | AimCommand | FireCommand | EndTurnCommand;
 
 /** Command discriminator values. */
 export type CommandType = Command['type'];
-
-/** Plain-data event emitted by the simulation. */
-export type SimEvent = { type: 'tick'; tick: number } | { type: string; [key: string]: unknown };
 
 /** Everything a handler or system may touch during a step. */
 export interface SimContext {

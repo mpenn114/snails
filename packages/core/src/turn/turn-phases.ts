@@ -1,5 +1,6 @@
 import type { GameState, MatchStatus, Snail, Team, TurnPhase } from '../state/types.js';
-import type { SimContext, SimEvent } from '../sim/types.js';
+import type { SimEvent } from '../sim/events.js';
+import type { SimContext } from '../sim/types.js';
 import { rollWind, type WindConfig, DEFAULT_WIND_CONFIG } from '../sim/wind.js';
 import type { Rng } from '../rng.js';
 import { evaluateMatch, evaluateTurnLimit } from '../rules/win.js';

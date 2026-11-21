@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { createInitialState } from '../state/game-state.js';
 import type { GameState } from '../state/types.js';
-import type { SimEvent } from '../sim/types.js';
+import type { SimEvent } from '../sim/events.js';
 import { findSnail, kill } from '../entities/snail.js';
 import { Rng } from '../rng.js';
 import { DEFAULT_WIND_CONFIG } from '../sim/wind.js';

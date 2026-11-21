@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { RngStreams } from '../rng-streams.js';
-import type { SimContext, SimEvent } from '../sim/types.js';
+import type { SimEvent } from '../sim/events.js';
+import type { SimContext } from '../sim/types.js';
 import { createInitialState } from '../state/game-state.js';
 import { SdfGrid } from '../terrain/sdf-grid.js';
 import { computeFalloff, resolveExplosion, type ExplosionSpec } from './explosion.js';
@@ -91,8 +92,8 @@ describe('resolveExplosion', () => {
     const res = resolveExplosion(ctx, { x: 15, y: 15, z: 15 }, { ...SPEC, maxDamage: 500 }, SRC);
     expect(res.killed).toEqual(['a', 'b']);
     expect(events.filter((e) => e.type === 'snailDied')).toEqual([
-      { type: 'snailDied', snailId: 'a', teamId: 't' },
-      { type: 'snailDied', snailId: 'b', teamId: 't' },
+      { type: 'snailDied', snailId: 'a', teamId: 't', cause: 'explosion' },
+      { type: 'snailDied', snailId: 'b', teamId: 't', cause: 'explosion' },
     ]);
   });
 });

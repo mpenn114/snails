@@ -3,7 +3,7 @@ import { RngStreams } from '../rng-streams.js';
 import { createInitialState } from '../state/game-state.js';
 import { SdfGrid } from '../terrain/sdf-grid.js';
 import { Simulation } from '../sim/simulation.js';
-import type { SimEvent } from '../sim/types.js';
+import type { SimEvent } from '../sim/events.js';
 import type { Snail } from '../state/types.js';
 import { DEFAULT_MOVEMENT_CONFIG } from './movement-config.js';
 import { moveCommandHandler, movementSystem } from './movement.js';

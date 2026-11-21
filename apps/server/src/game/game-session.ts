@@ -1,5 +1,5 @@
 import { EventBus, TurnManager } from '@snails/core';
-import type { GameEvents, Team } from '@snails/core';
+import type { SimEvent, Team } from '@snails/core';
 
 /**
  * Authoritative game session (stub). A real implementation will step the core simulation at a
@@ -7,7 +7,7 @@ import type { GameEvents, Team } from '@snails/core';
  * (display and controllers, see ADR-0008).
  */
 export class GameSession {
-  readonly events = new EventBus<GameEvents>();
+  readonly events = new EventBus<SimEvent>();
   private readonly turns: TurnManager;
 
   /** @param teams - Teams participating in this session. */
@@ -19,7 +19,12 @@ export class GameSession {
   startNextTurn(): boolean {
     const info = this.turns.next();
     if (!info) return false;
-    this.events.emit('turnStarted', { teamId: info.team.id, snailId: info.snail.id });
+    this.events.emit({
+      type: 'turnStarted',
+      teamId: info.team.id,
+      snailId: info.snail.id,
+      turnNumber: 0,
+    });
     return true;
   }
 

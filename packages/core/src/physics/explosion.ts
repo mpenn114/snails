@@ -119,6 +119,7 @@ export function resolveExplosion(
         amount: result.dealt,
         remaining: snail.health,
         sourceSnailId: source.ownerSnailId,
+        cause: 'explosion',
       });
       damaged.push({
         snailId: snail.id,
@@ -129,7 +130,7 @@ export function resolveExplosion(
     }
     if (result.killed) {
       killed.push(snail.id);
-      ctx.emit({ type: 'snailDied', snailId: snail.id, teamId: snail.teamId });
+      ctx.emit({ type: 'snailDied', snailId: snail.id, teamId: snail.teamId, cause: 'explosion' });
     }
   }
   return { damaged, killed, carve };

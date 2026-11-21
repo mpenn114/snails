@@ -5,7 +5,7 @@ import { SdfGrid } from '../terrain/sdf-grid.js';
 import { RngStreams } from '../rng-streams.js';
 import { GRAVITY, FIXED_DT } from './ballistics.js';
 import { projectileSystem, spawnProjectile } from './projectile-system.js';
-import type { SimEvent } from '../sim/types.js';
+import type { SimEvent } from '../sim/events.js';
 
 function make(withGround = true): Simulation {
   const g = new SdfGrid(40, 40, 40, 1);
@@ -114,7 +114,7 @@ describe('projectileSystem', () => {
       maxAge: 0.5,
     });
     const ev = run(sim, 240).filter((e) => e.type === 'projectileExpired');
-    expect(ev.map((e) => (e as Record<string, unknown>)['projectileId'])).toEqual(['p2', 'p1']);
+    expect(ev.map((e) => (e as { projectileId: string }).projectileId)).toEqual(['p2', 'p1']);
     expect(sim.state.projectiles).toHaveLength(0);
   });
   it('is deterministic', () => {

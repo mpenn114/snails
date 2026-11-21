@@ -6,10 +6,10 @@ import {
   type CommandHandler,
   type CommandType,
   type SimContext,
-  type SimEvent,
   type SimRng,
   type SystemFn,
 } from './types.js';
+import type { SimEvent } from './events.js';
 import { FIXED_DT } from '../physics/ballistics.js';
 import { requestEndTurn } from '../turn/turn-phases.js';
 import { validateCommand, type ValidationResult } from './validation.js';
