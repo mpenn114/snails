@@ -48,6 +48,9 @@ const rows: Row[] = [
   ['already fired', fire, (s) => (s.turn.fired = true), 'ALREADY_FIRED'],
   ['bad direction', { ...move, direction: 2 as 1 }, () => {}, 'INVALID_VALUE'],
   ['NaN angle', { ...aim, angle: NaN }, () => {}, 'INVALID_VALUE'],
+  ['aim with facing ok', { ...aim, facing: -2 }, () => {}, null],
+  ['NaN facing', { ...aim, facing: NaN }, () => {}, 'INVALID_VALUE'],
+  ['infinite facing', { ...aim, facing: Infinity }, () => {}, 'INVALID_VALUE'],
   ['power > 1', { ...aim, power: 1.5 }, () => {}, 'INVALID_VALUE'],
   ['power < 0', { ...aim, power: -0.1 }, () => {}, 'INVALID_VALUE'],
 ];

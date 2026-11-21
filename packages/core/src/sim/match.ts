@@ -2,6 +2,7 @@ import { registerCombat } from '../combat/combat.js';
 import { ContentRegistry } from '../content/registry.js';
 import type { WeaponDefinition } from '../content/types.js';
 import { moveCommandHandler, movementSystem } from '../movement/movement.js';
+import { facingToward } from '../entities/snail.js';
 import { RngStreams } from '../rng-streams.js';
 import { registerHazards } from '../rules/hazards.js';
 import { createInitialState, type TeamConfig } from '../state/game-state.js';
@@ -44,10 +45,6 @@ export interface MatchSetup {
 
 /** Minimum horizontal spacing (m) between spawn points. */
 const SPAWN_SPACING = 4;
-
-function facingToward(from: Vec3, to: Vec3): number {
-  return Math.atan2(-(to.z - from.z), to.x - from.x);
-}
 
 function buildTeams(teams: MatchTeamOptions[], points: Vec3[]): TeamConfig[] {
   let next = 0;

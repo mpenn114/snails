@@ -98,6 +98,14 @@ export function setFacing(snail: Snail, radians: number): void {
 }
 
 /**
+ * Yaw (radians) that turns a snail at `from` to face `to`, using the `facingVector` convention.
+ * Only the XZ components are used.
+ */
+export function facingToward(from: Vec3, to: Vec3): number {
+  return Math.atan2(-(to.z - from.z), to.x - from.x);
+}
+
+/**
  * Unit direction the snail faces, in the XZ plane (+Y up).
  * Convention: facing 0 is +X; the angle is a right-handed rotation about +Y,
  * so facing PI/2 is -Z. The result is `{ x: cos f, y: 0, z: -sin f }`.

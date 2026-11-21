@@ -1,6 +1,6 @@
 import type { WeaponDefinition } from '../content/types.js';
 import type { ContentRegistry } from '../content/registry.js';
-import { facingVector, findSnail } from '../entities/snail.js';
+import { facingVector, findSnail, setFacing } from '../entities/snail.js';
 import { resolveExplosion } from '../physics/explosion.js';
 import {
   createProjectileSystem,
@@ -24,11 +24,15 @@ function clamp(v: number, lo: number, hi: number): number {
   return Math.min(hi, Math.max(lo, v));
 }
 
-/** Handles `aim` commands: stores the clamped aim on the snail. Non-finite values are ignored. */
+/**
+ * Handles `aim` commands: optionally turns the snail to `facing`, then stores the clamped aim.
+ * Non-finite values are ignored.
+ */
 export function aimCommandHandler(ctx: SimContext, cmd: AimCommand): void {
   const snail = findSnail(ctx.state, cmd.snailId);
   if (!snail || !snail.alive) return;
   if (!Number.isFinite(cmd.angle) || !Number.isFinite(cmd.power)) return;
+  if (cmd.facing !== undefined) setFacing(snail, cmd.facing);
   snail.aim = {
     angle: clamp(cmd.angle, -Math.PI / 2, Math.PI / 2),
     power: clamp(cmd.power, 0, 1),

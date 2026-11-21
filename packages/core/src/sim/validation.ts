@@ -49,6 +49,9 @@ function checkValues(cmd: Command): ValidationResult {
     }
   } else if (cmd.type === 'aim') {
     if (!Number.isFinite(cmd.angle)) return reject('INVALID_VALUE', 'angle must be finite');
+    if (cmd.facing !== undefined && !Number.isFinite(cmd.facing)) {
+      return reject('INVALID_VALUE', 'facing must be finite');
+    }
     if (!Number.isFinite(cmd.power) || cmd.power < 0 || cmd.power > 1) {
       return reject('INVALID_VALUE', 'power must be within 0..1');
     }
