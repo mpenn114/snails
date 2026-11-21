@@ -1,7 +1,8 @@
-import type { GameState, Snail, Team, TurnPhase } from '../state/types.js';
+import type { GameState, MatchStatus, Snail, Team, TurnPhase } from '../state/types.js';
 import type { SimContext, SimEvent } from '../sim/types.js';
 import { rollWind, type WindConfig, DEFAULT_WIND_CONFIG } from '../sim/wind.js';
 import type { Rng } from '../rng.js';
+import { evaluateMatch, evaluateTurnLimit } from '../rules/win.js';
 
 /** Durations (seconds) and thresholds for the turn state machine. */
 export interface TurnConfig {
@@ -13,6 +14,8 @@ export interface TurnConfig {
   settleTimeout: number;
   /** Speed (m/s) below which a snail counts as at rest. */
   restEpsilon: number;
+  /** Turn cap: once this many turns have ended, the match is decided by total health. Undefined = unlimited. */
+  maxTurns?: number;
 }
 
 /** Default turn configuration. */
@@ -125,8 +128,26 @@ function allAtRest(state: GameState, eps: number): boolean {
   );
 }
 
+/** Ends the match: records the outcome on `state.match` and emits `matchEnded`. */
+function endMatch(state: GameState, status: MatchStatus, emit: Emit): void {
+  state.match = status;
+  const winnerTeamId = status.winnerTeamId;
+  emit(
+    winnerTeamId === null
+      ? { type: 'matchEnded', status: status.status }
+      : { type: 'matchEnded', status: status.status, winnerTeamId },
+  );
+}
+
 function endTurn(state: GameState, config: TurnConfig, emit: Emit, wind?: TurnWind): void {
   emit({ type: 'turnEnded', teamId: state.turn.activeTeamId, turnNumber: state.turn.turnNumber });
+  const elimination = evaluateMatch(state);
+  const outcome =
+    elimination.status === 'playing' ? evaluateTurnLimit(state, config.maxTurns) : elimination;
+  if (outcome.status !== 'playing') {
+    endMatch(state, outcome, emit);
+    return;
+  }
   const next = selectNextActive(state);
   if (!next) return;
   state.turn.activeTeamId = next.teamId;
@@ -146,6 +167,7 @@ export function advanceTurn(
   emit: Emit,
   wind?: TurnWind,
 ): void {
+  if (state.match.status !== 'playing') return;
   const t = state.turn;
   t.phaseTime += dt;
   switch (t.phase) {
