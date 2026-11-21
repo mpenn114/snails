@@ -59,7 +59,7 @@ small and need the real behaviour below.
 | M1-22 | Headless full-match test from a seed with a scripted bot | core | M1-19, M1-20, M1-21 | ✅ |
 | M1-23 | Replay recorder and identical-replay test | core | M1-22 | ⬜ |
 | M1-24 | Property tests: carving and projectile determinism | core | M1-05, M1-12 | ✅ |
-| M1-25 | Coverage gate (90% lines on core rules) and step-time benchmark under 1 ms | ci | M1-22 | ⬜ |
+| M1-25 | Coverage gate (90% lines on core rules) and step-time benchmark under 1 ms | ci | M1-22 | ✅ |
 
 ## M2: Display rendering
 
