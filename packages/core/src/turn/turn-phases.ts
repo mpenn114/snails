@@ -1,5 +1,7 @@
-import type { GameState, TurnPhase } from '../state/types.js';
+import type { GameState, Snail, Team, TurnPhase } from '../state/types.js';
 import type { SimContext, SimEvent } from '../sim/types.js';
+import { rollWind, type WindConfig, DEFAULT_WIND_CONFIG } from '../sim/wind.js';
+import type { Rng } from '../rng.js';
 
 /** Durations (seconds) and thresholds for the turn state machine. */
 export interface TurnConfig {
@@ -26,18 +28,40 @@ export const DEFAULT_TURN_CONFIG: TurnConfig = {
 type Emit = (event: SimEvent) => void;
 
 /**
- * Picks the next active team/snail (simple team cycle, first living snail).
- * Replaceable by M1-15. Returns null if nobody is alive.
+ * Picks the next team's snail to act, and advances that team's round-robin cursor.
+ *
+ * Teams rotate in `state.teams` order, starting after `state.turn.activeTeamId` and wrapping;
+ * teams with no living snail are skipped. Within the chosen team, the snail at
+ * `team.nextSnailIndex` (or the next living one after it, wrapping) acts, and the cursor moves
+ * just past it, so each team cycles its own snails independently of the others.
+ *
+ * With no active team (first turn) the scan starts at team 0. If only one team has living
+ * snails, that team is returned again. Returns null when no team has a living snail (the win
+ * condition is handled elsewhere, M1-20). Mutates only the chosen team's `nextSnailIndex`.
  */
 export function selectNextActive(state: GameState): { teamId: string; snailId: string } | null {
   const teams = state.teams;
   const cur = teams.findIndex((t) => t.id === state.turn.activeTeamId);
   for (let i = 1; i <= teams.length; i++) {
     const team = teams[(cur + i + teams.length) % teams.length];
-    const snail = team?.snails.find((s) => s.health > 0);
+    const snail = team ? takeNextLivingSnail(team) : undefined;
     if (team && snail) return { teamId: team.id, snailId: snail.id };
   }
   return null;
+}
+
+/** Returns the next living snail of `team` from its cursor, advancing the cursor past it. */
+function takeNextLivingSnail(team: Team): Snail | undefined {
+  const n = team.snails.length;
+  for (let j = 0; j < n; j++) {
+    const idx = (team.nextSnailIndex + j) % n;
+    const snail = team.snails[idx];
+    if (snail?.alive) {
+      team.nextSnailIndex = (idx + 1) % n;
+      return snail;
+    }
+  }
+  return undefined;
 }
 
 /** Changes phase, resetting the phase timer, and emits `phaseChanged`. */
@@ -48,8 +72,21 @@ export function setPhase(state: GameState, to: TurnPhase, emit: Emit): void {
   emit({ type: 'phaseChanged', from, to });
 }
 
-/** Begins the current turn in the intro phase (call once for the first turn). */
-export function startTurn(state: GameState, config: TurnConfig, emit: Emit): void {
+/** Seeded wind source for turns: the wind RNG stream and the wind rules. */
+export interface TurnWind {
+  rng: Rng;
+  config: WindConfig;
+}
+
+/**
+ * Begins the current turn in the intro phase (call once for the first turn). When `wind` is
+ * given, the wind is rolled for this turn first and `windChanged` is emitted.
+ */
+export function startTurn(state: GameState, config: TurnConfig, emit: Emit, wind?: TurnWind): void {
+  if (wind) {
+    state.wind = rollWind(state.wind, wind.rng, wind.config);
+    emit({ type: 'windChanged', strength: state.wind.strength, direction: state.wind.direction });
+  }
   const t = state.turn;
   t.phase = 'intro';
   t.phaseTime = 0;
@@ -70,10 +107,13 @@ export function notifyFired(state: GameState, emit: Emit = () => undefined): voi
   setPhase(state, 'fire', emit);
 }
 
-/** Ends the turn early: action -> settle. No-op outside action. */
+/**
+ * Ends the turn early from action. After a shot this goes to retreat (the snail may pull into
+ * its shell); before any shot it goes straight to settle. No-op outside action.
+ */
 export function requestEndTurn(state: GameState, emit: Emit = () => undefined): void {
   if (state.turn.phase !== 'action') return;
-  setPhase(state, 'settle', emit);
+  setPhase(state, state.turn.fired ? 'retreat' : 'settle', emit);
 }
 
 function allAtRest(state: GameState, eps: number): boolean {
@@ -85,7 +125,7 @@ function allAtRest(state: GameState, eps: number): boolean {
   );
 }
 
-function endTurn(state: GameState, config: TurnConfig, emit: Emit): void {
+function endTurn(state: GameState, config: TurnConfig, emit: Emit, wind?: TurnWind): void {
   emit({ type: 'turnEnded', teamId: state.turn.activeTeamId, turnNumber: state.turn.turnNumber });
   const next = selectNextActive(state);
   if (!next) return;
@@ -93,11 +133,19 @@ function endTurn(state: GameState, config: TurnConfig, emit: Emit): void {
   state.turn.activeSnailId = next.snailId;
   state.turn.turnNumber += 1;
   emit({ type: 'phaseChanged', from: state.turn.phase, to: 'intro' });
-  startTurn(state, config, emit);
+  startTurn(state, config, emit, wind);
 }
 
-/** Advances the turn state machine by `dt` seconds. */
-export function advanceTurn(state: GameState, config: TurnConfig, dt: number, emit: Emit): void {
+/**
+ * Advances the turn state machine by `dt` seconds. `wind`, if given, is rolled at each new turn.
+ */
+export function advanceTurn(
+  state: GameState,
+  config: TurnConfig,
+  dt: number,
+  emit: Emit,
+  wind?: TurnWind,
+): void {
   const t = state.turn;
   t.phaseTime += dt;
   switch (t.phase) {
@@ -119,13 +167,20 @@ export function advanceTurn(state: GameState, config: TurnConfig, dt: number, em
       break;
     case 'settle':
       if (allAtRest(state, config.restEpsilon) || t.phaseTime >= config.settleTimeout) {
-        endTurn(state, config, emit);
+        endTurn(state, config, emit, wind);
       }
       break;
   }
 }
 
-/** Creates a system for `Simulation.addSystem` driving the turn phases. */
-export function turnSystem(config: TurnConfig = DEFAULT_TURN_CONFIG): (ctx: SimContext) => void {
-  return (ctx) => advanceTurn(ctx.state, config, ctx.dt, ctx.emit);
+/**
+ * Creates a system for `Simulation.addSystem` driving the turn phases. Wind is rolled from the
+ * simulation's wind stream at each new turn using `windConfig`.
+ */
+export function turnSystem(
+  config: TurnConfig = DEFAULT_TURN_CONFIG,
+  windConfig: WindConfig = DEFAULT_WIND_CONFIG,
+): (ctx: SimContext) => void {
+  return (ctx) =>
+    advanceTurn(ctx.state, config, ctx.dt, ctx.emit, { rng: ctx.rng.wind, config: windConfig });
 }

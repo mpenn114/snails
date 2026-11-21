@@ -8,6 +8,8 @@ export * from './turn/turn-manager.js';
 export * from './terrain/sdf-grid.js';
 export * from './terrain/carve.js';
 export * from './physics/ballistics.js';
+export * from './physics/projectile-system.js';
+export * from './sim/wind.js';
 export {
   FIXED_DT,
   type Command,
@@ -29,3 +31,4 @@ export * from './terrain/collision.js';
 export * from './entities/snail.js';
 export * from './turn/turn-phases.js';
 export * from './movement/index.js';
+export * from './physics/explosion.js';

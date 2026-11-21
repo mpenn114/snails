@@ -47,6 +47,11 @@ export interface Team {
   colour: string;
   snails: Snail[];
   researched: string[];
+  /**
+   * Round-robin cursor: index into `snails` of the next snail to be offered a turn.
+   * Advanced by `selectNextActive`; dead snails are skipped at selection time.
+   */
+  nextSnailIndex: number;
 }
 
 /** Wind: `direction` radians about +Y, `strength` in m/s^2 (>= 0). */
@@ -88,6 +93,16 @@ export interface Projectile {
   velocity: Vec3;
   ownerSnailId: string;
   weaponId: string;
+  /** Collision sphere radius in metres. */
+  radius: number;
+  /** Seconds since spawn. */
+  age: number;
+  /** Lifetime/fuse in seconds; the projectile expires at this age. */
+  maxAge: number;
+  /** Gravity multiplier, 0..1. */
+  gravityScale: number;
+  /** Wind multiplier, 0..1. */
+  windScale: number;
 }
 
 /** Match outcome. */
@@ -105,6 +120,8 @@ export interface GameState {
   teams: Team[];
   turn: TurnState;
   projectiles: Projectile[];
+  /** Counter used to assign deterministic projectile ids. */
+  nextProjectileId: number;
   match: MatchStatus;
 }
 
