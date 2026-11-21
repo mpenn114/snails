@@ -1,0 +1,32 @@
+{
+  "name": "snails",
+  "version": "0.1.0",
+  "private": true,
+  "packageManager": "pnpm@10.28.0",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "dev": "pnpm build:packages && pnpm --parallel --filter @snails/server --filter @snails/display --filter @snails/controller dev",
+    "lint": "eslint .",
+    "typecheck": "pnpm build:packages && pnpm -r --workspace-concurrency=1 typecheck",
+    "test": "vitest run",
+    "build": "pnpm build:packages && pnpm -r --workspace-concurrency=1 --filter \"./apps/*\" build",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "check-limits": "node scripts/check-limits.mjs",
+    "ci": "pnpm lint && pnpm typecheck && pnpm check-limits && pnpm test && pnpm build",
+    "build:packages": "pnpm -r --workspace-concurrency=1 --filter \"./packages/*\" build"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.15.0",
+    "@types/node": "^22.9.0",
+    "eslint": "^9.15.0",
+    "eslint-plugin-jsdoc": "^50.5.0",
+    "globals": "^15.12.0",
+    "prettier": "^3.3.3",
+    "typescript": "^5.6.3",
+    "typescript-eslint": "^8.15.0",
+    "vitest": "^2.1.5"
+  }
+}
