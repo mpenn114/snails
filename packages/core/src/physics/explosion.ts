@@ -3,6 +3,7 @@ import { distance, normalize, sub } from '../math/vec3.js';
 import type { SimContext } from '../sim/types.js';
 import type { Vec3 } from '../state/types.js';
 import { type CarveResult, carveSphere, toCarveEvent } from '../terrain/carve.js';
+import { resolveCollapse } from '../terrain/collapse.js';
 import { SNAIL_RADIUS } from './projectile-system.js';
 
 /** Shape of the damage falloff curve. */
@@ -19,6 +20,8 @@ export interface ExplosionSpec {
   /** Terrain carve radius; defaults to `radius`. */
   carveRadius?: number;
   falloff: FalloffKind;
+  /** Remove terrain left floating by the carve and emit terrainCollapsed; default false. */
+  collapse?: boolean;
 }
 
 /** Who caused the explosion. */
@@ -60,6 +63,14 @@ function knockbackDir(from: Vec3, to: Vec3): Vec3 {
   return normalize({ x: dir.x, y: dir.y + KNOCKBACK_UP_BIAS, z: dir.z });
 }
 
+/** Removes terrain left floating by a carve and emits `terrainCollapsed` if anything fell. */
+function collapseAfterCarve(ctx: SimContext, centre: Vec3, radius: number): void {
+  const col = resolveCollapse(ctx.terrain, centre, radius);
+  if (col.removedCells > 0) {
+    ctx.emit({ type: 'terrainCollapsed', chunks: col.chunks, removedCells: col.removedCells });
+  }
+}
+
 /**
  * Resolves an explosion deterministically: carve, then per living snail (in
  * team/snail order) damage and knockback, emitting plain-data events.
@@ -79,6 +90,8 @@ export function resolveExplosion(
     weaponId: source.weaponId,
   });
   ctx.emit({ type: 'terrainCarved', ...toCarveEvent(centre, carveRadius, carve) });
+  if (spec.collapse === true && carve.cellsChanged > 0)
+    collapseAfterCarve(ctx, centre, carveRadius);
 
   const damaged: ExplosionHit[] = [];
   const killed: string[] = [];

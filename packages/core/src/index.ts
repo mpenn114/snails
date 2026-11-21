@@ -8,6 +8,7 @@ export * from './state/types.js';
 export * from './turn/turn-manager.js';
 export * from './terrain/sdf-grid.js';
 export * from './terrain/carve.js';
+export * from './terrain/collapse.js';
 export * from './physics/ballistics.js';
 export * from './physics/projectile-system.js';
 export * from './sim/wind.js';
