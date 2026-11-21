@@ -27,7 +27,7 @@ jobs:
             apps/desktop/release/*.AppImage
             apps/desktop/release/*.exe
             apps/desktop/release/*.dmg
-      - uses: softprops/action-gh-release@v2
+      - uses: softprops/action-gh-release@v3
         with:
           files: |
             apps/desktop/release/*.AppImage
