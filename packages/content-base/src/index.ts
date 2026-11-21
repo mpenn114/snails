@@ -1,10 +1,4 @@
-import type {
-  ContentPackManifest,
-  ContentRegistry,
-  ShellUpgradeDefinition,
-  TechnologyDefinition,
-  WeaponDefinition,
-} from '@snails/core';
+import type { ContentPackManifest, ContentRegistries } from '@snails/core';
 import { shellUpgrades, technologies, weapons } from './definitions.js';
 
 export { shellUpgrades, technologies, weapons };
@@ -15,13 +9,6 @@ export const baseManifest: ContentPackManifest = {
   name: 'Snails Base Content',
   version: '0.1.0',
 };
-
-/** Registries a content pack registers into. */
-export interface ContentRegistries {
-  weapons: ContentRegistry<WeaponDefinition>;
-  technologies: ContentRegistry<TechnologyDefinition>;
-  shellUpgrades: ContentRegistry<ShellUpgradeDefinition>;
-}
 
 /** Registers all base-game content into the given registries. */
 export function registerBaseContent(registries: ContentRegistries): void {
