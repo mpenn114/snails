@@ -8,3 +8,7 @@ export * from './interpolation.js';
 export * from './snail-assets.js';
 export * from './snail-view.js';
 export * from './snail-layer.js';
+export * from './terrain/mesh-protocol.js';
+export * from './terrain/mesh-transport.js';
+export * from './terrain/dirty-chunk-queue.js';
+export * from './terrain/terrain-mesh-manager.js';
