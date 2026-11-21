@@ -14,3 +14,4 @@ export * from './terrain/dirty-chunk-queue.js';
 export * from './terrain/terrain-mesh-manager.js';
 export * from './terrain/terrain-material.js';
 export * from './terrain/terrain-shader.js';
+export * from './terrain/rebuild-scheduler.js';
