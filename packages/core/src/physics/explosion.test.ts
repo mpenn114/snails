@@ -82,6 +82,8 @@ describe('resolveExplosion', () => {
     expect(b.velocity.x).toBeGreaterThan(0);
     expect(b.velocity.y).toBeGreaterThan(0);
     expect(b.velocity.z).toBeCloseTo(0);
+    expect(b.grounded).toBe(false);
+    expect(b.airborneFromY).toBe(b.position.y);
   });
 
   it('emits snailDied on kill', () => {

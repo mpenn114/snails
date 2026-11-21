@@ -94,6 +94,11 @@ export function resolveExplosion(
       y: snail.velocity.y + dir.y * speed,
       z: snail.velocity.z + dir.z * speed,
     };
+    if (speed > 0 && snail.grounded !== false) {
+      // Knocked off the ground: the movement system now flies and lands the snail.
+      snail.grounded = false;
+      snail.airborneFromY = snail.position.y;
+    }
     if (result.dealt > 0) {
       ctx.emit({
         type: 'snailDamaged',
