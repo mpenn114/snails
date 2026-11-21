@@ -24,12 +24,22 @@ export interface Snail {
   maxHealth: number;
   alive: boolean;
   shell: Shell;
+  /** Current weapon aim; absent means the default aim. */
+  aim?: Aim;
   /** Standing move/jump intent set by move commands; absent means no intent. */
   moveIntent?: MoveIntent;
   /** True while resting on terrain; absent is treated as grounded. */
   grounded?: boolean;
   /** Height at which the current airborne phase began; unset while grounded. */
   airborneFromY?: number;
+}
+
+/** Weapon aim of a snail (serialisable). */
+export interface Aim {
+  /** Elevation in radians above the facing direction, within [-PI/2, PI/2]. */
+  angle: number;
+  /** Charge in 0..1. */
+  power: number;
 }
 
 /** Persistent movement intent of a snail (serialisable). */
