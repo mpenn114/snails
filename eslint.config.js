@@ -4,7 +4,16 @@ import jsdoc from 'eslint-plugin-jsdoc';
 import globals from 'globals';
 
 export default tseslint.config(
-  { ignores: ['**/dist/**', '**/node_modules/**', '**/release/**', 'docs/**', 'pnpm-lock.yaml', '.claude/**'] },
+  {
+    ignores: [
+      '**/dist/**',
+      '**/node_modules/**',
+      '**/release/**',
+      'docs/**',
+      'pnpm-lock.yaml',
+      '.claude/**',
+    ],
+  },
   js.configs.recommended,
   ...tseslint.configs.recommended,
   {

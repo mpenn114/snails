@@ -170,7 +170,7 @@ describe('setFacing', () => {
     expect(s.facing).toBeCloseTo(-Math.PI);
     setFacing(s, 5 * Math.PI);
     expect(s.facing).toBeCloseTo(-Math.PI);
-    setFacing(s, -3 * Math.PI / 2);
+    setFacing(s, (-3 * Math.PI) / 2);
     expect(s.facing).toBeCloseTo(Math.PI / 2);
     for (const a of [-100, -7, -0.1, 0, 0.1, 7, 100]) {
       setFacing(s, a);
