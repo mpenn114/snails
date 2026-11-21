@@ -89,12 +89,7 @@ export function rayCast(
 }
 
 /** Finds the first contact of a sphere moving from `from` to `to`. */
-export function sphereSweep(
-  grid: SdfQuery,
-  from: Vec3,
-  to: Vec3,
-  radius: number,
-): SweepHit | null {
+export function sphereSweep(grid: SdfQuery, from: Vec3, to: Vec3, radius: number): SweepHit | null {
   const len = distance(from, to);
   if (len === 0) {
     if (grid.sampleLinear(from) > radius) return null;

@@ -34,7 +34,13 @@ function axisChunks(cell: number, cellCount: number, cs: number): number[] {
 }
 
 /** Adds the chunk of a changed cell and its border neighbours to the set. */
-function collectCellChunks(grid: SdfGrid, x: number, y: number, z: number, into: Set<ChunkId>): void {
+function collectCellChunks(
+  grid: SdfGrid,
+  x: number,
+  y: number,
+  z: number,
+  into: Set<ChunkId>,
+): void {
   const cs = grid.chunkSize;
   for (const cz of axisChunks(z, grid.nz, cs)) {
     for (const cy of axisChunks(y, grid.ny, cs)) {
@@ -47,7 +53,14 @@ function collectCellChunks(grid: SdfGrid, x: number, y: number, z: number, into:
 }
 
 /** Writes one cell's carved value; returns true if it changed (and marks it dirty). */
-function carveCell(grid: SdfGrid, x: number, y: number, z: number, radius: number, c: Vec3): number {
+function carveCell(
+  grid: SdfGrid,
+  x: number,
+  y: number,
+  z: number,
+  radius: number,
+  c: Vec3,
+): number {
   const cs = grid.cellSize;
   const d = Math.hypot(x * cs - c.x, y * cs - c.y, z * cs - c.z);
   const old = grid.get(x, y, z);
