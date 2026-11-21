@@ -19,12 +19,13 @@ export interface ProjectileState {
 }
 
 /**
- * Horizontal wind acceleration in m/s^2. Convention: `direction` is the angle in radians in
- * the XZ plane measured from +X toward +Z, so 0 blows along +X and PI/2 along +Z.
+ * Horizontal wind acceleration in m/s^2. Same convention as snail facing (`facingVector`):
+ * `direction` is a rotation about +Y, so the result is `{ x: cos d, y: 0, z: -sin d }`. Direction
+ * 0 blows along +X and PI/2 along -Z.
  */
 export function windAcceleration(wind: Wind): Vec3 {
   const a = wind.strength * WIND_ACCEL_SCALE;
-  return { x: a * Math.cos(wind.direction), y: 0, z: a * Math.sin(wind.direction) };
+  return { x: a * Math.cos(wind.direction), y: 0, z: -a * Math.sin(wind.direction) };
 }
 
 /**

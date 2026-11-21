@@ -9,6 +9,7 @@ export * from './terrain/sdf-grid.js';
 export * from './terrain/carve.js';
 export * from './physics/ballistics.js';
 export * from './physics/projectile-system.js';
+export * from './sim/wind.js';
 export {
   FIXED_DT,
   type Command,

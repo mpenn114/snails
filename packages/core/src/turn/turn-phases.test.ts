@@ -3,6 +3,8 @@ import { createInitialState } from '../state/game-state.js';
 import type { GameState } from '../state/types.js';
 import type { SimEvent } from '../sim/types.js';
 import { findSnail, kill } from '../entities/snail.js';
+import { Rng } from '../rng.js';
+import { DEFAULT_WIND_CONFIG } from '../sim/wind.js';
 import {
   DEFAULT_TURN_CONFIG as C,
   advanceTurn,
@@ -224,5 +226,39 @@ describe('team rotation and snail selection', () => {
       state.teams.map((t) => t.nextSnailIndex),
     );
     expect(picks(copy, 4)).toEqual(picks(state, 4));
+  });
+
+  it('rolls wind on each new turn and emits windChanged', () => {
+    const state = createInitialState({
+      seed: 1,
+      terrain: { nx: 4, ny: 4, nz: 4 },
+      teams: [
+        { id: 'A', name: 'A', colour: '#f00', snails: [{ id: 'a1', name: 'a1' }] },
+        { id: 'B', name: 'B', colour: '#0f0', snails: [{ id: 'b1', name: 'b1' }] },
+      ],
+    });
+    const events: SimEvent[] = [];
+    const emit = (e: SimEvent) => events.push(e);
+    const wind = { rng: new Rng(8), config: DEFAULT_WIND_CONFIG };
+    startTurn(state, C, emit, wind);
+    const strengths = [state.wind.strength];
+    const changes = () => events.filter((e) => e.type === 'windChanged');
+    expect(changes()).toHaveLength(1);
+    for (let i = 0; i < 3; i++) {
+      events.length = 0;
+      // Advance in steps until the next turn starts (intro again after settle).
+      let guard = 0;
+      do {
+        advanceTurn(state, C, 0.5, emit, wind);
+      } while (!changes().length && guard++ < 10000);
+      expect(changes()).toHaveLength(1);
+      strengths.push(state.wind.strength);
+    }
+    expect(new Set(strengths).size).toBeGreaterThan(1);
+    expect(changes()[0]).toEqual({
+      type: 'windChanged',
+      strength: state.wind.strength,
+      direction: state.wind.direction,
+    });
   });
 });

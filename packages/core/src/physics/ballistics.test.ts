@@ -12,10 +12,10 @@ describe('stepProjectile', () => {
     expect(s.velocity.x).toBeCloseTo(6);
     expect(s.position.y).toBeLessThan(10);
   });
-  it('wind direction is measured from +X toward +Z', () => {
+  it('wind direction uses the snail facing convention (PI/2 is -Z)', () => {
     const a = windAcceleration({ strength: 3, direction: Math.PI / 2 });
     expect(a.x).toBeCloseTo(0);
-    expect(a.z).toBeCloseTo(3);
+    expect(a.z).toBeCloseTo(-3);
   });
   it('scales gravity and wind', () => {
     const zero = { x: 0, y: 0, z: 0 };

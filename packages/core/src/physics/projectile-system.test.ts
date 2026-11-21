@@ -58,7 +58,7 @@ describe('projectileSystem', () => {
   });
   it('wind deflects along its direction', () => {
     const sim = make(false);
-    sim.state.wind = { strength: 4, direction: Math.PI / 2 };
+    sim.state.wind = { strength: 4, direction: -Math.PI / 2 };
     spawnProjectile(sim.state, {
       position: { x: 5, y: 20, z: 5 },
       velocity: Z,
