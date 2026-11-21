@@ -21,7 +21,7 @@ export function simulateMiss(ctx: AimContext, shot: Shot): number {
     velocity: { x: dir * Math.cos(shot.angle) * speed, y: Math.sin(shot.angle) * speed, z: 0 },
   };
   for (let i = 0; i < 1200 && s.position.y >= ctx.target.y; i++) {
-    s = stepProjectile(s, ctx.wind);
+    s = stepProjectile(s, { strength: Math.abs(ctx.wind), direction: ctx.wind < 0 ? Math.PI : 0 });
   }
   return Math.abs(s.position.x - ctx.target.x);
 }

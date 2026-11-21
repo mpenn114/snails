@@ -56,6 +56,7 @@ A replay file is `{ protocolVersion, contentHash, seed, settings, commands:[{tic
 ## Practices
 
 - Tests must be deterministic: fake timers (`vi.useFakeTimers`) for server timers; never real sleeps over 50 ms.
-- Coverage is tracked (`vitest --coverage`), with a soft target of 80% for `core` and `protocol`; no gate on apps initially.
+- Coverage: `pnpm test:coverage` (v8) gates `packages/core` at 90% lines (run in CI); plain `pnpm test` stays coverage-free and fast. No gate on apps initially.
+- Step benchmark: `packages/core/src/sim/step-benchmark.test.ts` asserts mean `sim.step()` < 1 ms (4x4 match, 600 ticks, p99 < 8 ms). Set `SNAILS_BENCH_STRICT=0` to downgrade failures to a warning on noisy machines.
 - Bug fix = failing test first.
 - Test files obey the same 500-line limit; split by feature.

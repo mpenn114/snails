@@ -1,37 +1,34 @@
-import type { Vec3 } from './state/types.js';
+import type { SimEvent } from './sim/events.js';
 
-/** Map of event name to payload type for all gameplay events. */
-export interface GameEvents {
-  turnStarted: { teamId: string; snailId: string };
-  turnEnded: { teamId: string; snailId: string };
-  projectileFired: { snailId: string; weaponId: string; origin: Vec3; velocity: Vec3 };
-  explosion: { position: Vec3; radius: number; weaponId: string };
-  snailDamaged: { snailId: string; amount: number; remaining: number };
-  researchCompleted: { teamId: string; technologyId: string };
-}
+/** Handler receiving the event narrowed to its type. */
+export type Handler<E> = (event: E) => void;
 
-/** Handler for an event with payload `P`. */
-export type Handler<P> = (payload: P) => void;
+/** Typed publish/subscribe bus over a discriminated union with a string `type`. */
+export class EventBus<E extends { type: string } = SimEvent> {
+  private readonly handlers = new Map<string, Handler<never>[]>();
 
-/** Minimal typed publish/subscribe bus. */
-export class EventBus<E extends { [K in keyof E]: unknown } = GameEvents> {
-  private handlers: { [K in keyof E]?: Set<Handler<E[K]>> } = {};
-
-  /** Subscribes to an event. Returns an unsubscribe function. */
-  on<K extends keyof E>(event: K, handler: Handler<E[K]>): () => void {
-    const set = this.handlers[event] ?? new Set<Handler<E[K]>>();
-    set.add(handler);
-    this.handlers[event] = set;
-    return () => this.off(event, handler);
+  /** Subscribes to one event type. Returns an unsubscribe function. */
+  on<T extends E['type']>(type: T, handler: Handler<Extract<E, { type: T }>>): () => void {
+    const list = this.handlers.get(type) ?? [];
+    list.push(handler as Handler<never>);
+    this.handlers.set(type, list);
+    return () => this.off(type, handler);
   }
 
-  /** Removes a previously registered handler. */
-  off<K extends keyof E>(event: K, handler: Handler<E[K]>): void {
-    this.handlers[event]?.delete(handler);
+  /** Removes a previously registered handler (first match). */
+  off<T extends E['type']>(type: T, handler: Handler<Extract<E, { type: T }>>): void {
+    const list = this.handlers.get(type);
+    const i = list ? list.indexOf(handler as Handler<never>) : -1;
+    if (list && i >= 0) this.handlers.set(type, [...list.slice(0, i), ...list.slice(i + 1)]);
   }
 
-  /** Emits an event to all current handlers. */
-  emit<K extends keyof E>(event: K, payload: E[K]): void {
-    this.handlers[event]?.forEach((h) => h(payload));
+  /** Emits an event to its handlers in subscription order. */
+  emit(event: E): void {
+    for (const h of this.handlers.get(event.type) ?? []) (h as Handler<E>)(event);
+  }
+
+  /** Emits each event in order. */
+  emitAll(events: readonly E[]): void {
+    for (const e of events) this.emit(e);
   }
 }

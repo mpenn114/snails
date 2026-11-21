@@ -69,6 +69,8 @@ shapes; some add material.
   landing).
 - **Collapse:** Unsupported soil fragments fall. Small chunks become debris that deals 5 to 10
   damage; large chunks bury snails (trapped, they must dig out using a tool or wait).
+  (Core currently drops each floating cluster rigidly onto its support and lifts snails out of it;
+  unsupported clusters are removed. Debris damage and burial are not yet implemented.)
 - **Maps:** Hand-authored seeds plus procedural generation. Maps are 3D but playable as a mostly
   side-on 2.5D view; vertical depth matters through tunnels and burrows.
 - **Camera:** Display-side concern; follows action, never decides rules.

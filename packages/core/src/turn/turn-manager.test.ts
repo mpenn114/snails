@@ -7,6 +7,9 @@ const snail = (id: string, teamId: string, health = 100) => ({
   teamId,
   name: id,
   position: { x: 0, y: 0, z: 0 },
+  velocity: { x: 0, y: 0, z: 0 },
+  facing: 0,
+  alive: health > 0,
   health,
   maxHealth: 100,
   shell: { upgradeId: null, colour: '#fff' },
@@ -17,6 +20,7 @@ const team = (id: string, snails: Team['snails']): Team => ({
   colour: '#fff',
   snails,
   researched: [],
+  nextSnailIndex: 0,
 });
 
 describe('TurnManager', () => {

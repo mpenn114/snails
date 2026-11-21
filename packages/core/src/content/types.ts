@@ -1,14 +1,41 @@
-/** Definition of a weapon. */
+import type { ExplosionSpec } from '../physics/explosion.js';
+
+/** Kind of weapon, which selects how it is aimed and released. */
+export type WeaponKind = 'projectile' | 'thrown' | 'utility';
+
+/** Launch parameters that drive projectile motion for a weapon. */
+export interface WeaponLaunchSpec {
+  /** Minimum launch speed in m/s (power at zero charge). */
+  minSpeed: number;
+  /** Maximum launch speed in m/s (power at full charge). */
+  maxSpeed: number;
+  /** Multiplier applied to world gravity for this projectile. */
+  gravityScale: number;
+  /** Multiplier applied to wind acceleration for this projectile. */
+  windScale: number;
+  /** Projectile collision radius in metres. */
+  projectileRadius: number;
+}
+
+/**
+ * Definition of a weapon. Fully data-driven: the sim reads launch, fuse and
+ * explosion parameters from here without weapon-specific code.
+ */
 export interface WeaponDefinition {
+  /** Content id in the form `pack:kebab-name`, e.g. `base:salt-bomb`. */
   id: string;
+  /** Display name. */
   name: string;
-  kind: 'projectile' | 'thrown' | 'utility';
-  damage: number;
-  blastRadius: number;
-  /** Muzzle speed in world units per second. */
-  speed: number;
+  /** Kind of weapon. */
+  kind: WeaponKind;
+  /** Projectile launch parameters. */
+  launch: WeaponLaunchSpec;
   /** Fuse in seconds for timed weapons; 0 = explode on impact. */
   fuseSeconds: number;
+  /** Explosion produced when the weapon detonates. */
+  explosion: ExplosionSpec;
+  /** Number of uses per match, or `'infinite'`. */
+  ammo: number | 'infinite';
   /** Technology id required to unlock; undefined = available from the start. */
   requiresTech?: string;
 }
