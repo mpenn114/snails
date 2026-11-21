@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import type { QualityTier } from '../quality.js';
+import { tierProfile, type QualityTier } from '../quality.js';
 
 /** Water options. */
 export interface WaterOptions {
@@ -58,6 +58,7 @@ void main() {
 /** Creates a large animated water plane at `level` extending beyond the bounds. */
 export function createWater(opts: WaterOptions): Water {
   const margin = opts.margin ?? 200;
+  const profile = tierProfile(opts.tier);
   const size = opts.bounds.max.clone().sub(opts.bounds.min);
   const centre = opts.bounds.min.clone().add(opts.bounds.max).multiplyScalar(0.5);
   const geometry = new THREE.PlaneGeometry(size.x + margin * 2, size.z + margin * 2);
@@ -67,12 +68,12 @@ export function createWater(opts: WaterOptions): Water {
     fragmentShader: FRAG,
     transparent: true,
     depthWrite: false,
-    defines: opts.tier === 'mobile' ? {} : { RIPPLES: '' },
+    defines: profile.waterQuality === 'ripples' ? { RIPPLES: '' } : {},
     uniforms: {
       uTime: { value: 0 },
       uShallow: { value: new THREE.Color(0x3fa7c4) },
       uDeep: { value: new THREE.Color(0x0b3a5c) },
-      uOpacity: { value: opts.tier === 'mobile' ? 0.85 : 0.7 },
+      uOpacity: { value: profile.waterOpacity },
     },
   });
   const mesh = new THREE.Mesh(geometry, material);

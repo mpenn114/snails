@@ -1,6 +1,6 @@
 import { Color, MeshStandardMaterial } from 'three';
 import type { WebGLProgramParametersWithUniforms } from 'three';
-import type { QualityTier } from '../quality.js';
+import { tierProfile, type QualityTier } from '../quality.js';
 import {
   TERRAIN_FRAGMENT_COLOR,
   TERRAIN_FRAGMENT_PARS,
@@ -42,7 +42,7 @@ export interface TerrainMaterialOptions {
 
 /** Returns material options for a quality tier. */
 export function terrainMaterialOptionsForTier(tier: QualityTier): TerrainMaterialOptions {
-  return tier === 'mobile' ? { detail: false } : { detail: true };
+  return { detail: tierProfile(tier).terrainDetail };
 }
 
 /**
