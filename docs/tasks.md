@@ -71,7 +71,7 @@ is a stub client.
 | M2-01 | Render scene graph, renderer init, resize, render loop with injectable state source | render | M0-08 | ✅ |
 | M2-02 | Snapshot interpolation buffer for smooth rendering between sim snapshots | render | M2-01, M1-01 | ✅ |
 | M2-03 | Marching cubes mesher (pure function over chunk data) | render | M1-04 | ✅ |
-| M2-04 | Web Worker chunk meshing with transferable buffers and dirty-chunk queue | render | M2-03 | ⬜ |
+| M2-04 | Web Worker chunk meshing with transferable buffers and dirty-chunk queue | render | M2-03 | ✅ |
 | M2-05 | Terrain materials and triplanar shading | render | M2-04 | ⬜ |
 | M2-06 | Chunk rebuild budget scheduler (stay under 8 ms per frame) | render | M2-04 | ⬜ |
 | M2-07 | Apply carve events to the local terrain copy and remesh | render | M2-04, M1-05 | ⬜ |
