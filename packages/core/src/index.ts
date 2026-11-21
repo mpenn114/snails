@@ -36,3 +36,4 @@ export * from './movement/index.js';
 export * from './physics/explosion.js';
 export * from './terrain/noise.js';
 export * from './terrain/generator.js';
+export * from './combat/combat.js';

@@ -15,8 +15,7 @@ export type RejectionReason =
 
 /** Outcome of validating a command. */
 export type ValidationResult =
-  | { ok: true }
-  | { ok: false; reason: RejectionReason; message: string };
+  { ok: true } | { ok: false; reason: RejectionReason; message: string };
 
 /** Extra inputs for {@link validateCommand}. */
 export interface ValidationContext {

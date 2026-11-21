@@ -84,35 +84,74 @@ function byId(a: Projectile, b: Projectile): number {
   return a.id < b.id ? -1 : a.id > b.id ? 1 : 0;
 }
 
-/**
- * Simulation system: steps projectiles (id order), resolves terrain and snail hits, and
- * removes expired ones. Emits `projectileHit` and `projectileExpired` events.
- */
-export function projectileSystem(ctx: SimContext): void {
-  const gone = new Set<string>();
-  for (const p of [...ctx.state.projectiles].sort(byId)) {
-    const next = stepProjectile(p, ctx.state.wind, ctx.dt);
-    const contact = findContact(ctx, p, next.position);
-    if (contact) {
-      gone.add(p.id);
-      ctx.emit({
-        type: 'projectileHit',
-        projectileId: p.id,
-        position: contact.position,
-        normal: contact.normal,
-        weaponId: p.weaponId,
-        ownerSnailId: p.ownerSnailId,
-        ...(contact.snailId !== undefined ? { snailId: contact.snailId } : {}),
-      });
-      continue;
-    }
-    p.position = next.position;
-    p.velocity = next.velocity;
-    p.age += ctx.dt;
-    if (p.age >= p.maxAge || outOfBounds(ctx, p.position)) {
-      gone.add(p.id);
-      ctx.emit({ type: 'projectileExpired', projectileId: p.id, position: p.position });
-    }
-  }
-  ctx.state.projectiles = ctx.state.projectiles.filter((p) => !gone.has(p.id));
+/** A projectile reaching its end of life where it should detonate (impact or fuse). */
+export interface Detonation {
+  projectileId: string;
+  position: Vec3;
+  normal: Vec3;
+  weaponId: string;
+  ownerSnailId: string;
+  cause: 'hit' | 'fuse';
 }
+
+/** Called synchronously, in projectile id order, for every impact and fuse expiry. */
+export type DetonationHandler = (ctx: SimContext, detonation: Detonation) => void;
+
+function detonation(
+  p: Projectile,
+  position: Vec3,
+  normal: Vec3,
+  cause: Detonation['cause'],
+): Detonation {
+  return {
+    projectileId: p.id,
+    position: { ...position },
+    normal,
+    weaponId: p.weaponId,
+    ownerSnailId: p.ownerSnailId,
+    cause,
+  };
+}
+
+/**
+ * Builds the projectile system: steps projectiles (id order), resolves terrain and snail hits,
+ * and removes finished ones. Emits `projectileHit` and `projectileExpired` (with
+ * `reason: 'fuse' | 'bounds'`) and invokes `onDetonate` after each hit or fuse expiry.
+ */
+export function createProjectileSystem(onDetonate?: DetonationHandler): (ctx: SimContext) => void {
+  return (ctx) => {
+    const gone = new Set<string>();
+    for (const p of [...ctx.state.projectiles].sort(byId)) {
+      const next = stepProjectile(p, ctx.state.wind, ctx.dt);
+      const contact = findContact(ctx, p, next.position);
+      if (contact) {
+        gone.add(p.id);
+        ctx.emit({
+          type: 'projectileHit',
+          projectileId: p.id,
+          position: contact.position,
+          normal: contact.normal,
+          weaponId: p.weaponId,
+          ownerSnailId: p.ownerSnailId,
+          ...(contact.snailId !== undefined ? { snailId: contact.snailId } : {}),
+        });
+        onDetonate?.(ctx, detonation(p, contact.position, contact.normal, 'hit'));
+        continue;
+      }
+      p.position = next.position;
+      p.velocity = next.velocity;
+      p.age += ctx.dt;
+      const oob = outOfBounds(ctx, p.position);
+      if (p.age >= p.maxAge || oob) {
+        gone.add(p.id);
+        const reason = oob ? 'bounds' : 'fuse';
+        ctx.emit({ type: 'projectileExpired', projectileId: p.id, position: p.position, reason });
+        if (!oob) onDetonate?.(ctx, detonation(p, p.position, { x: 0, y: 1, z: 0 }, 'fuse'));
+      }
+    }
+    ctx.state.projectiles = ctx.state.projectiles.filter((p) => !gone.has(p.id));
+  };
+}
+
+/** Projectile system without detonation handling (projectiles just vanish). */
+export const projectileSystem: (ctx: SimContext) => void = createProjectileSystem();
