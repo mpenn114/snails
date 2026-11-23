@@ -93,9 +93,9 @@ loop or broadcast snapshots and events. The controller has stub net and turn-con
 
 | ID | Task | Area | Depends on | Status |
 |---|---|---|---|---|
-| M3-01 | Protocol: zod schemas for client and server messages, version constant | protocol | M0-08 | 🚧 |
-| M3-02 | Protocol: snapshot, event batch and carve-event messages with compact encoding | protocol | M3-01, M1-01 | ⬜ |
-| M3-03 | Protocol version handshake and mismatch error | protocol | M3-01 | ⬜ |
+| M3-01 | Protocol: zod schemas for client and server messages, version constant | protocol | M0-08 | ✅ |
+| M3-02 | Protocol: snapshot, event batch and carve-event messages with compact encoding | protocol | M3-01, M1-01 | ✅ |
+| M3-03 | Protocol version handshake and mismatch error | protocol | M3-01 | ✅ |
 | M3-04 | Server WebSocket endpoint with envelope validation and role assignment | server | M3-01 | 🚧 |
 | M3-05 | Room manager: create, join, room codes, player slots, display/controller roles | server | M3-04 | 🚧 |
 | M3-06 | LAN IP detection (skip virtual adapters, multiple NICs) and `/api/info` | server | M0-08 | ✅ |
