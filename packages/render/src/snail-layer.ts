@@ -7,11 +7,11 @@ import { SnailMesh } from './snail-mesh.js';
 import { snailViewsFromSnapshot, type SnailView } from './snail-view.js';
 
 /** Camera distance (m) at which labels have their base size. */
-export const LABEL_REF_DISTANCE = 12;
+export const LABEL_REF_DISTANCE = 24;
 /** Largest label scale factor (caps size for very distant snails). */
-export const LABEL_MAX_SCALE = 8;
+export const LABEL_MAX_SCALE = 3;
 /** Smallest label scale factor (keeps close-up labels from vanishing). */
-export const LABEL_MIN_SCALE = 0.4;
+export const LABEL_MIN_SCALE = 0.25;
 
 /** Label scale giving a roughly constant on-screen size: proportional to distance (clamped). */
 export function labelScaleForDistance(distance: number): number {
@@ -94,11 +94,8 @@ export class SnailLayer {
         this.group.add(mesh.group);
       }
       mesh.apply(v);
-      if (this.camera) {
-        mesh.barGroup.quaternion.copy(this.camera.quaternion);
-        const d = this.camera.position.distanceTo(mesh.group.position);
-        mesh.setLabelScale(labelScaleForDistance(d));
-      }
+      this.faceCamera(mesh);
+      mesh.billboard = () => this.faceCamera(mesh);
     }
     for (const [id, mesh] of this.meshes) {
       if (seen.has(id)) continue;
@@ -106,6 +103,14 @@ export class SnailLayer {
       this.meshes.delete(id);
     }
     this.declutter();
+  }
+
+  /** Orients the bar towards the camera and sizes labels for its current distance. */
+  private faceCamera(mesh: SnailMesh): void {
+    const cam = this.camera;
+    if (!cam) return;
+    mesh.barGroup.quaternion.copy(cam.quaternion);
+    mesh.setLabelScale(labelScaleForDistance(cam.position.distanceTo(mesh.group.position)));
   }
 
   /** Hides or lifts name tags that would overlap on screen; nearer snails win. */

@@ -99,6 +99,19 @@ describe('SnailLayer', () => {
     l.dispose();
   });
 
+  it('re-faces and re-scales bars at render time when the camera moves after sync', () => {
+    const { layer } = makeLayer();
+    const cam = new THREE.PerspectiveCamera();
+    layer.setCamera(cam);
+    layer.sync([view('a')]);
+    cam.position.set(0, 0, 1e4);
+    cam.quaternion.setFromEuler(new THREE.Euler(0.3, 1, 0));
+    const bar = layer.get('a')!.barGroup;
+    bar.updateMatrixWorld(true);
+    expect(bar.quaternion.equals(cam.quaternion)).toBe(true);
+    expect(bar.scale.x).toBe(LABEL_MAX_SCALE);
+  });
+
   it('billboards bars toward the camera', () => {
     const { layer } = makeLayer();
     const cam = new THREE.PerspectiveCamera();
@@ -114,7 +127,7 @@ describe('SnailLayer', () => {
     cam.position.set(0, 2, 0);
     cam.lookAt(0, 2, -50);
     layer.setCamera(cam);
-    const at = (z: number) => ({ position: { x: 0, y: 0, z } });
+    const at = (z: number) => ({ position: { x: 0, y: 0, z }, isActive: true });
     layer.sync([view('far', at(-40)), view('near', at(-10))]);
     const far = layer.get('far')!.nameTag;
     const near = layer.get('near')!.nameTag;
@@ -159,8 +172,8 @@ describe('team colours', () => {
 describe('label scaling', () => {
   it('keeps base size up close, grows with distance and caps', () => {
     expect(labelScaleForDistance(0.1)).toBe(LABEL_MIN_SCALE);
-    expect(labelScaleForDistance(12)).toBeCloseTo(1);
-    expect(labelScaleForDistance(24)).toBeCloseTo(2);
+    expect(labelScaleForDistance(24)).toBeCloseTo(1);
+    expect(labelScaleForDistance(48)).toBeCloseTo(2);
     expect(labelScaleForDistance(1e6)).toBe(LABEL_MAX_SCALE);
   });
   it('scales tag and bar of far snails', () => {
@@ -169,7 +182,7 @@ describe('label scaling', () => {
     cam.position.set(1, 2, 87);
     layer.setCamera(cam);
     layer.sync([view('a')]);
-    expect(layer.get('a')?.barGroup.scale.x).toBeCloseTo(7);
+    expect(layer.get('a')?.barGroup.scale.x).toBeCloseTo(LABEL_MAX_SCALE);
   });
 
   it.each([true, false])('sets snail body castShadow to %s, never on labels or bars', (on) => {

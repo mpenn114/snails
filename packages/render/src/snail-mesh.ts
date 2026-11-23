@@ -21,6 +21,11 @@ export class SnailMesh {
   readonly bodyGroup = new THREE.Group();
   /** Billboarded group holding the health bar quads. */
   readonly barGroup = new THREE.Group();
+  /**
+   * Called right before the bar's world matrix is computed each frame, so the bar can face the
+   * camera at its final pose for the frame (set by SnailLayer).
+   */
+  billboard: (() => void) | null = null;
   readonly barFill: THREE.Mesh;
   readonly highlight: THREE.Mesh;
   readonly grave: THREE.Mesh;
@@ -60,8 +65,15 @@ export class SnailMesh {
     const barBack = new THREE.Mesh(assets.barBack, assets.barBackMat);
     // Quads are left-anchored; shift them so the billboard pivot is the bar centre.
     barBack.position.x = this.barFill.position.x = -BAR_WIDTH / 2;
+    barBack.renderOrder = 1000;
+    this.barFill.renderOrder = 1001;
     this.barGroup.add(barBack, this.barFill);
+    this.barGroup.updateMatrixWorld = (force?: boolean): void => {
+      this.billboard?.();
+      THREE.Object3D.prototype.updateMatrixWorld.call(this.barGroup, force);
+    };
     this.nameTag = new THREE.Sprite(this.nameMaterial);
+    this.nameTag.renderOrder = 1002;
     this.setLabelScale(1);
     this.group.add(this.bodyGroup, this.highlight, this.grave, this.barGroup, this.nameTag);
     this.setColour(shellColour);
@@ -78,9 +90,9 @@ export class SnailMesh {
    */
   setLabelScale(factor: number): void {
     this.barGroup.scale.setScalar(factor);
-    this.barGroup.position.y = 1.4 + 0.1 * factor;
-    this.nameTag.scale.set(1.6 * factor, 0.4 * factor, 1);
-    this.nameTag.position.y = this.barGroup.position.y + 0.4 * factor;
+    this.barGroup.position.y = 1.25 + 0.1 * factor;
+    this.nameTag.scale.set(2.4 * factor, 0.6 * factor, 1);
+    this.nameTag.position.y = this.barGroup.position.y + 0.35 * factor;
   }
 
   /** Sets the shell tint as a hex number. */
@@ -114,7 +126,7 @@ export class SnailMesh {
     this.bodyGroup.visible = v.alive;
     this.grave.visible = !v.alive;
     this.barGroup.visible = v.alive;
-    this.nameTag.visible = v.alive;
+    this.nameTag.visible = v.alive && v.isActive;
     this.highlight.visible = v.alive && v.isActive;
     const frac = v.maxHealth > 0 ? Math.min(1, Math.max(0, v.health / v.maxHealth)) : 0;
     this.barFill.scale.x = Math.max(frac, 1e-4);
