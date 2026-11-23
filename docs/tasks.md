@@ -112,7 +112,7 @@ loop or broadcast snapshots and events. The controller has stub net and turn-con
 | M3-17 | Controller lobby (team setup, colours, ready, host start) | controller | M3-16 | ✅ |
 | M3-18 | Lobby and match settings handling on the display and server | display | M3-17, M3-07 | ✅ |
 | M3-19 | Phone 3D view via `@snails/render` (lazy loaded, mobile tier) | controller | M2-13, M3-15, M2-04 | ✅ |
-| M3-20 | Phone camera modes: follow, aim, free; minimap and HUD overlays | controller | M3-19, M2-10 | ⬜ |
+| M3-20 | Phone camera modes: follow, aim, free; minimap and HUD overlays | controller | M3-19, M2-10 | ✅ |
 | M3-21 | Own-turn controls: joystick move, jump, aim drag, power, fire | controller | M3-19, M3-10 | ✅ |
 | M3-22 | Weapon picker UI and turn timer display | controller | M3-21, M1-18 | ✅ |
 | M3-23 | Waiting and spectating screen with other players' turn view | controller | M3-19 | ⬜ |
