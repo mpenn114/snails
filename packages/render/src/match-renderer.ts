@@ -198,12 +198,7 @@ export class MatchRenderer {
     view.roots.effects.add(projectiles.group, explosions.group);
 
     const ws = grid.worldSize();
-    const rig = new CameraRig(view.camera, {
-      mode: 'follow',
-      shot: { kind: 'overview', rate: 0.05, extent: Math.max(ws.x, ws.z) * 0.8 },
-      bounds: { min: { x: -20, y: 0, z: -20 }, max: { x: ws.x + 20, y: ws.y + 40, z: ws.z + 20 } },
-      heightAt: (x, z) => groundHeight(grid, x, z),
-    });
+    const rig = createRig(view.camera, grid);
     const wind = createWindParticles({
       bounds: { min: new THREE.Vector3(0, 0, 0), max: new THREE.Vector3(ws.x, ws.y, ws.z) },
       count: Math.round(WIND_PARTICLE_BASE_COUNT * q.particleScale),
@@ -333,4 +328,15 @@ export class MatchRenderer {
     this.ownedLoader?.dispose();
     this.ownedLoader = null;
   }
+}
+
+/** Camera rig framing the island (overview extent 0.8 x map span) with terrain-aware clamping. */
+function createRig(camera: THREE.PerspectiveCamera, grid: SdfGrid): CameraRig {
+  const ws = grid.worldSize();
+  return new CameraRig(camera, {
+    mode: 'follow',
+    shot: { kind: 'overview', rate: 0.05, extent: Math.max(ws.x, ws.z) * 0.8 },
+    bounds: { min: { x: -20, y: 0, z: -20 }, max: { x: ws.x + 20, y: ws.y + 40, z: ws.z + 20 } },
+    heightAt: (x, z) => groundHeight(grid, x, z),
+  });
 }
