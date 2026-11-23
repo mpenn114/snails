@@ -43,7 +43,10 @@ function watch(page, label, errors) {
       }
     });
   });
-  page.on('pageerror', (e) => errors.push(`${label} pageerror: ${e.message}`));
+  page.on('pageerror', (e) => {
+    console.log(`[e2e] ${label} pageerror: ${e.message}`);
+    errors.push(`${label} pageerror: ${e.message}`);
+  });
   page.on('console', (m) => {
     if (m.type() === 'error') console.log(`[e2e] ${label} console.error: ${m.text()}`);
   });
