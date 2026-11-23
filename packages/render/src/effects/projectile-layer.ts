@@ -10,7 +10,7 @@ import { createTrailState, emitTrail, type TrailSpec, type TrailState } from './
 
 /** Options for {@link ProjectileLayer}. */
 export interface ProjectileLayerOptions {
-  /** Trail puffs kept alive per projectile at quality 1 (min 4, default 16). */
+  /** Trail puffs kept alive per projectile at quality 1 (min 4, default 48). */
   trailLength?: number;
   /** Tier particle multiplier (`particleScale`); thins the trail on weak devices. Default 1. */
   quality?: number;
@@ -23,7 +23,7 @@ export interface ProjectileLayerOptions {
 }
 
 /** Pebble visual size relative to the sim radius (the sim radius is the hit sphere, small). */
-const PEBBLE_SCALE = 1.5;
+const PEBBLE_SCALE = 1.9;
 /** Pebble tumble rate, rad/s (subtle). */
 const SPIN_RATE = 7;
 /** Seconds one trail puff lives. */
@@ -93,8 +93,8 @@ export class ProjectileLayer {
   /** Creates an empty layer. */
   constructor(opts: ProjectileLayerOptions = {}) {
     const q = Math.min(1, Math.max(0.1, opts.quality ?? 1));
-    const perProjectile = Math.max(4, Math.floor((opts.trailLength ?? 28) * q));
-    this.spacing = 0.28 / Math.sqrt(q);
+    const perProjectile = Math.max(4, Math.floor((opts.trailLength ?? 48) * q));
+    this.spacing = 0.2 / Math.sqrt(q);
     this.radiusScale = opts.radiusScale ?? 1;
     this.shadows = opts.shadows ?? false;
     this.group.name = 'projectiles';
@@ -144,7 +144,7 @@ export class ProjectileLayer {
       mesh.apply(p, this.radiusScale);
       const spec: TrailSpec = {
         spacing: this.spacing,
-        size: Math.max(0.05, p.radius) * this.radiusScale * PEBBLE_SCALE * 0.8,
+        size: Math.max(0.05, p.radius) * this.radiusScale * PEBBLE_SCALE * 0.55,
         life: PUFF_LIFE,
         colour: TRAIL_COLOUR,
       };

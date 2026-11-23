@@ -9,6 +9,7 @@ import {
   puffScale,
   ringOpacity,
   ringScale,
+  smokeAlpha,
   smokeColour,
   smokeScale,
 } from './blast-params.js';
@@ -18,7 +19,7 @@ describe('blastCounts', () => {
   it('grows with radius and stays inside art-direction ranges at radius 4', () => {
     const c = blastCounts(4, 1);
     expect(c.smoke).toBeGreaterThanOrEqual(5);
-    expect(c.smoke).toBeLessThanOrEqual(12);
+    expect(c.smoke).toBeLessThanOrEqual(20);
     expect(c.debris).toBeGreaterThanOrEqual(6);
     const small = blastCounts(1, 1);
     expect(small.smoke).toBeLessThan(c.smoke);
@@ -56,7 +57,10 @@ describe('curves', () => {
     smokeColour(0, a);
     smokeColour(1, b);
     expect(a[0]).toBeGreaterThan(0.9);
-    expect((b[0] ?? 1) + (b[1] ?? 1) + (b[2] ?? 1)).toBeLessThan((a[0] ?? 0) * 3 * 0.7);
+    expect((b[0] ?? 1) + (b[1] ?? 1) + (b[2] ?? 1)).toBeLessThan((a[0] ?? 0) * 3 * 0.9);
+    expect(Math.abs((b[0] ?? 0) - (b[2] ?? 0))).toBeLessThan(0.15);
+    expect(smokeAlpha(0)).toBeGreaterThan(0.8);
+    expect(smokeAlpha(1)).toBeCloseTo(0);
   });
 });
 

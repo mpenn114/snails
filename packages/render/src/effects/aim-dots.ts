@@ -93,5 +93,5 @@ function bisect(a: DotPoint, b: DotPoint, isSolid: (p: DotPoint) => boolean): Do
 
 /** Dot radius in metres at fraction `u` along the arc: small near the snail, larger towards the target. */
 export function dotRadius(u: number): number {
-  return 0.07 + 0.06 * Math.min(1, Math.max(0, u));
+  return 0.11 + 0.08 * Math.min(1, Math.max(0, u));
 }

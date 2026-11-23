@@ -13,6 +13,39 @@ export interface ChunkStyle {
   scale: (t: number) => number;
   /** Optional dynamic colour (sRGB 0..1 into `out`); when absent the spawn colour is used. */
   colour?: (t: number, out: Float32Array) => void;
+  /** Optional per-instance opacity over age (needs a material patched with {@link withInstanceAlpha}). */
+  alpha?: (t: number) => number;
+}
+
+/** Name of the per-instance opacity attribute. */
+const ALPHA_ATTR = 'aAlpha';
+
+/**
+ * Patches a material so each instance fades out by screen-door dithering: fragments are
+ * discarded where the per-instance `aAlpha` attribute is below an ordered-dither threshold.
+ * The material stays opaque (depth-written), so overlapping puffs never show through each
+ * other. Chains any existing `onBeforeCompile` (e.g. the toon rim).
+ */
+export function withInstanceAlpha<T extends THREE.Material>(material: T): T {
+  const prev = material.onBeforeCompile.bind(material);
+  const prevKey = material.customProgramCacheKey.bind(material);
+  material.onBeforeCompile = (shader, renderer) => {
+    prev(shader, renderer);
+    shader.vertexShader = shader.vertexShader
+      .replace(
+        '#include <common>',
+        '#include <common>\nattribute float aAlpha;\nvarying float vAlpha;',
+      )
+      .replace('#include <begin_vertex>', '#include <begin_vertex>\nvAlpha = aAlpha;');
+    shader.fragmentShader = shader.fragmentShader
+      .replace('#include <common>', '#include <common>\nvarying float vAlpha;')
+      .replace(
+        '#include <opaque_fragment>',
+        'if (vAlpha * 1.4 < fract(52.9829189 * fract(dot(gl_FragCoord.xy, vec2(0.06711056, 0.00583715))))) discard;\n#include <opaque_fragment>',
+      );
+  };
+  material.customProgramCacheKey = () => `${prevKey()}-ialpha`;
+  return material;
 }
 
 const tmpEuler = new THREE.Euler();
@@ -32,6 +65,7 @@ export class InstancedChunks {
   readonly mesh: THREE.InstancedMesh;
   /** Simulation data; emit into it with `emitChunk`. */
   readonly pool: ChunkPool;
+  private alphaAttr: THREE.InstancedBufferAttribute | null = null;
 
   /** Creates the mesh with `capacity` instances. */
   constructor(
@@ -46,6 +80,11 @@ export class InstancedChunks {
     this.mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
     this.mesh.setColorAt(0, tmpColor.set(0xffffff));
     this.mesh.frustumCulled = false;
+    if (style.alpha) {
+      this.alphaAttr = new THREE.InstancedBufferAttribute(new Float32Array(capacity), 1);
+      this.alphaAttr.setUsage(THREE.DynamicDrawUsage);
+      geometry.setAttribute(ALPHA_ATTR, this.alphaAttr);
+    }
     this.writeAll();
   }
 
@@ -75,6 +114,7 @@ export class InstancedChunks {
         tmpScale.set(0, 0, 0);
         tmpPos.set(0, 0, 0);
         tmpQuat.identity();
+        this.alphaAttr?.setX(i, 0);
       } else {
         const t = (p.age[i] ?? 0) / life;
         const s = (p.size[i] ?? 0) * Math.max(0, this.style.scale(t));
@@ -83,12 +123,14 @@ export class InstancedChunks {
         tmpEuler.set(p.rot[k] ?? 0, p.rot[k + 1] ?? 0, p.rot[k + 2] ?? 0);
         tmpQuat.setFromEuler(tmpEuler);
         this.writeColour(i, t);
+        this.alphaAttr?.setX(i, this.style.alpha?.(t) ?? 1);
       }
       tmpMat.compose(tmpPos, tmpQuat, tmpScale);
       this.mesh.setMatrixAt(i, tmpMat);
     }
     this.mesh.instanceMatrix.needsUpdate = true;
     if (this.mesh.instanceColor) this.mesh.instanceColor.needsUpdate = true;
+    if (this.alphaAttr) this.alphaAttr.needsUpdate = true;
   }
 
   private writeColour(i: number, t: number): void {

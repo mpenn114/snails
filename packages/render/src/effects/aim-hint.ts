@@ -149,7 +149,7 @@ function writeDots(parts: Parts, layout: DotLayout, buf: Float32Array): void {
  */
 export function createAimHint(opts: AimHintOptions = {}): AimHint {
   const samples = opts.samples ?? 28;
-  const spacing = opts.dotSpacing ?? 0.8;
+  const spacing = opts.dotSpacing ?? 1;
   const parts = buildParts();
   const buf = new Float32Array(MAX_DOTS * 4);
   let aim: AimHintInput | null = null;
@@ -206,7 +206,7 @@ function placeMarker(parts: Parts, layout: DotLayout, colour: number, time: numb
   parts.ringTeam.visible = !!at;
   if (!at) return;
   const pulse = 0.9 + 0.1 * Math.sin(time * 5);
-  const size = 0.55 * pulse;
+  const size = 0.9 * pulse;
   for (const m of [parts.ringInk, parts.ringTeam]) {
     m.position.set(at.x, at.y + 0.1, at.z);
     m.scale.set(size, 1, size);

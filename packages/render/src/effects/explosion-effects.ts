@@ -13,11 +13,12 @@ import {
   ringOpacity,
   ringRadius,
   ringScale,
+  smokeAlpha,
   smokeColour,
   smokeScale,
 } from './blast-params.js';
 import { emitChunk, type ChunkPhysics } from './chunk-pool.js';
-import { InstancedChunks } from './instanced-chunks.js';
+import { InstancedChunks, withInstanceAlpha } from './instanced-chunks.js';
 import {
   aliveCount,
   createParticleData,
@@ -44,7 +45,7 @@ export interface ExplosionEffectsOptions {
 }
 
 /** Pool capacities at quality 1. */
-const SMOKE_CAP = 48;
+const SMOKE_CAP = 64;
 const DEBRIS_CAP = 96;
 
 const SMOKE: ChunkPhysics = { gravity: -1.4, drag: 2.2, restitution: 0 };
@@ -121,11 +122,11 @@ export class ExplosionEffects {
   private readonly sparks: SparkPool;
   private readonly sprite = createSoftSpriteTexture(32);
   private readonly ballGeo = new THREE.IcosahedronGeometry(1, 1);
-  private readonly smokeGeo = new THREE.IcosahedronGeometry(1, 1);
+  private readonly smokeGeo = new THREE.IcosahedronGeometry(1, 2);
   private readonly cubeGeo = new THREE.BoxGeometry(1, 1, 1);
   private readonly wedgeGeo = new THREE.TetrahedronGeometry(0.8);
   private readonly ringGeo = new THREE.RingGeometry(0.8, 1, 24).rotateX(-Math.PI / 2);
-  private readonly smokeMat = createToonMaterial({ color: 0xffffff });
+  private readonly smokeMat = withInstanceAlpha(createToonMaterial({ color: 0xffffff, rim: 0.6 }));
   private readonly debrisMat = createToonMaterial({ color: 0xffffff, flat: true });
   private readonly quality: number;
   private readonly random: () => number;
@@ -142,6 +143,7 @@ export class ExplosionEffects {
     this.smoke = new InstancedChunks(this.smokeGeo, this.smokeMat, cap(SMOKE_CAP), SMOKE, {
       scale: smokeScale,
       colour: smokeColour,
+      alpha: smokeAlpha,
     });
     this.cubes = new InstancedChunks(this.cubeGeo, this.debrisMat, cap(DEBRIS_CAP / 2), DEBRIS, {
       scale: debrisScale,
@@ -230,8 +232,8 @@ export class ExplosionEffects {
     const r = this.random;
     for (let i = 0; i < count; i++) {
       const phi = r() * Math.PI * 2;
-      const out = radius * (0.2 + 0.5 * r());
-      const speed = radius * (0.8 + 1.0 * r());
+      const out = radius * (0.1 + 0.55 * r());
+      const speed = radius * (0.5 + 0.8 * r());
       emitChunk(this.smoke.pool, {
         x: e.position.x + Math.cos(phi) * out,
         y: e.position.y + radius * (0.05 + 0.25 * r()),
@@ -245,9 +247,9 @@ export class ExplosionEffects {
         sx: 0,
         sy: 0,
         sz: 0,
-        size: radius * (0.16 + 0.14 * r()),
+        size: radius * (0.05 + 0.2 * r() * r()),
         colour: PALETTE.uiPaper,
-        life: 1 + 0.5 * r(),
+        life: 0.9 + 0.55 * r(),
         floorY: 0,
       });
     }

@@ -37,7 +37,7 @@ export function blastCounts(radius: number, quality: number): BlastCounts {
   const q = clamp(quality, 0, 2);
   if (q === 0) return { smoke: 0, debris: 0, sparks: 0 };
   return {
-    smoke: Math.round(clamp((4 + r * 1.2) * q, 2, 12)),
+    smoke: Math.round(clamp((6 + r * 2) * q, 3, 20)),
     debris: Math.round(clamp((5 + r * 2.2) * q, 3, 24)),
     sparks: Math.round(clamp(r * 5 * q, 2, 28)),
   };
@@ -88,23 +88,23 @@ export function flashScale(t: number): number {
 }
 
 const [PAPER_R, PAPER_G, PAPER_B] = hexToRgb(PALETTE.uiPaper);
-const [SUN_R, SUN_G, SUN_B] = hexToRgb(PALETTE.sunLight);
-const [SCORCH_R, SCORCH_G, SCORCH_B] = hexToRgb(PALETTE.scorch);
+const [GREY_R, GREY_G, GREY_B] = hexToRgb(PALETTE.rock);
 
 /**
- * Smoke ball colour (sRGB 0..1) over normalised age, written into `out[0..2]`: warm white,
- * brightening to `sunLight`, then a grey that darkens towards `scorch` (60% mix at the end).
+ * Smoke ball colour (sRGB 0..1) over normalised age, written into `out[0..2]`: warm white
+ * (`uiPaper`) cooling to a light neutral grey (half way to `rock`), never tan or dark.
  */
 export function smokeColour(t: number, out: Float32Array | number[]): void {
+  const m = 0.55 * easeOutCubic(clamp(t, 0, 1) / 0.8);
+  out[0] = (PAPER_R + (GREY_R - PAPER_R) * m) / 255;
+  out[1] = (PAPER_G + (GREY_G - PAPER_G) * m) / 255;
+  out[2] = (PAPER_B + (GREY_B - PAPER_B) * m) / 255;
+}
+
+/** Smoke ball opacity over normalised age: nearly opaque puff that thins out as it rises. */
+export function smokeAlpha(t: number): number {
   const c = clamp(t, 0, 1);
-  const warm = easeOutCubic(c / 0.2);
-  const grey = easeInCubic(c) * 0.6;
-  const r = (PAPER_R + (SUN_R - PAPER_R) * warm) * (1 - grey) + SCORCH_R * grey;
-  const g = (PAPER_G + (SUN_G - PAPER_G) * warm) * (1 - grey) + SCORCH_G * grey;
-  const b = (PAPER_B + (SUN_B - PAPER_B) * warm) * (1 - grey) + SCORCH_B * grey;
-  out[0] = r / 255;
-  out[1] = g / 255;
-  out[2] = b / 255;
+  return 0.92 * (1 - easeInCubic((c - 0.2) / 0.8));
 }
 
 /** Weighted terrain colours debris is tinted with (soil heavy, some grass turf, rock). */
