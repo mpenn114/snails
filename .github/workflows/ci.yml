@@ -25,7 +25,7 @@ jobs:
   e2e:
     needs: ci
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v7
       - uses: pnpm/action-setup@v6
@@ -43,3 +43,12 @@ jobs:
       - run: pnpm e2e:reconnect
         env:
           NODE_PATH: ${{ runner.temp }}/pw/node_modules
+      - run: pnpm shots
+        env:
+          NODE_PATH: ${{ runner.temp }}/pw/node_modules
+          SHOTS_DIR: ${{ runner.temp }}/shots
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: shots
+          path: ${{ runner.temp }}/shots

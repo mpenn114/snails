@@ -60,3 +60,21 @@ A replay file is `{ protocolVersion, contentHash, seed, settings, commands:[{tic
 - Step benchmark: `packages/core/src/sim/step-benchmark.test.ts` asserts mean `sim.step()` < 1 ms (4x4 match, 600 ticks, p99 < 8 ms). Set `SNAILS_BENCH_STRICT=0` to downgrade failures to a warning on noisy machines.
 - Bug fix = failing test first.
 - Test files obey the same 500-line limit; split by feature.
+
+## Visual reference shots (`pnpm shots`)
+
+`pnpm build && NODE_PATH=$(npm root -g) pnpm shots` writes reference screenshots and an
+`index.html` contact sheet to `$SHOTS_DIR` (default `./shots-out`, gitignored). Look at them
+before and after any visual change.
+
+- Display, 1920x1080, High tier: `display-close`, `display-wide`, `display-crater`. These use
+  `apps/display/harness.html?shot=1&cam=close|wide|crater&seed=7&quality=high`
+  (`src/harness/shot-mode.ts`): fixed seed, simulated clock with a fixed frame step, seeded
+  particle randomness and a manual frame scheduler, so repeated runs are byte-identical. The
+  page sets `window.__shotReady` once terrain meshing is idle and frames have rendered.
+- Phone, 390x844, Mobile tier: `phone-my-turn` from a live two-phone match on the real server
+  (random seed, so it is only near-identical between runs).
+- `pnpm shots --compare <oldDir>` adds the old image beside each new one in the contact sheet
+  (keep a copy of the previous run's directory, or download the CI artifact).
+- A run takes about 3 minutes under software WebGL. CI uploads the directory as the
+  `shots` artifact from the e2e job.

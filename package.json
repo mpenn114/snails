@@ -19,6 +19,7 @@
     "ci": "pnpm lint && pnpm typecheck && pnpm check-limits && pnpm test && pnpm build",
     "build:packages": "pnpm -r --workspace-concurrency=1 --filter \"./packages/*\" --filter @snails/server build",
     "e2e": "node e2e/smoke.mjs",
+    "shots": "node e2e/shots.mjs",
     "e2e:reconnect": "node e2e/reconnect.mjs"
   },
   "devDependencies": {
