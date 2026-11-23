@@ -1,3 +1,5 @@
+import { createToonMaterial } from '../style/materials.js';
+import { PALETTE } from '../style/palette.js';
 import * as THREE from 'three';
 import type { Projectile } from '@snails/core';
 import type { FrameUpdater, RenderState } from '../render-loop.js';
@@ -93,10 +95,10 @@ export class ProjectileLayer {
   readonly updater: FrameUpdater;
   private readonly meshes = new Map<string, ProjectileMesh>();
   private readonly pebbleGeo = new THREE.SphereGeometry(1, 10, 8);
-  private readonly pebbleMat = new THREE.MeshStandardMaterial({ color: 0x8a7f72, roughness: 0.9 });
+  private readonly pebbleMat = createToonMaterial({ color: PALETTE.rock, flat: true });
   private readonly trailMat = new THREE.LineBasicMaterial({
     vertexColors: true,
-    color: 0xffe6b0,
+    color: PALETTE.sunLight,
     transparent: true,
     blending: THREE.AdditiveBlending,
     depthWrite: false,

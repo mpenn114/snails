@@ -1,3 +1,4 @@
+import { PALETTE } from '../style/palette.js';
 /** Owns one Three.js mesh per terrain chunk, fed by a worker mesher. */
 import * as THREE from 'three';
 import type { SdfGrid } from '@snails/core';
@@ -65,7 +66,7 @@ export class TerrainMeshManager {
     this.group.name = 'terrain-chunks';
     this.shadows = opts.shadows ?? false;
     this.ownsMaterial = !opts.material;
-    this.material = opts.material ?? new THREE.MeshStandardMaterial({ color: 0x8a7a5a });
+    this.material = opts.material ?? new THREE.MeshStandardMaterial({ color: PALETTE.soil });
     this.maxInFlight = opts.maxInFlight ?? 4;
     this.lodDistance = opts.lodDistance ?? 0;
     this.scheduler = new RebuildScheduler(opts.budgetMs, opts.now);

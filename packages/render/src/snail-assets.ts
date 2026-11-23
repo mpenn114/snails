@@ -1,3 +1,5 @@
+import { createToonMaterial } from './style/materials.js';
+import { PALETTE } from './style/palette.js';
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 
@@ -42,10 +44,10 @@ function buildBody(): THREE.BufferGeometry {
   const body = new THREE.CapsuleGeometry(0.25, 0.8, 4, 12);
   const stalk = new THREE.CylinderGeometry(0.03, 0.03, 0.3, 6);
   const eye = new THREE.SphereGeometry(0.06, 8, 6);
-  const parts = [bake(body, new THREE.Matrix4().makeRotationZ(Math.PI / 2), 0xb8c9a0)];
+  const parts = [bake(body, new THREE.Matrix4().makeRotationZ(Math.PI / 2), PALETTE.snailSkin)];
   for (const z of [-0.1, 0.1]) {
-    parts.push(bake(stalk, new THREE.Matrix4().makeTranslation(0.5, 0.3, z), 0xb8c9a0));
-    parts.push(bake(eye, new THREE.Matrix4().makeTranslation(0.5, 0.47, z), 0x222222));
+    parts.push(bake(stalk, new THREE.Matrix4().makeTranslation(0.5, 0.3, z), PALETTE.snailSkin));
+    parts.push(bake(eye, new THREE.Matrix4().makeTranslation(0.5, 0.47, z), PALETTE.uiInk));
   }
   const merged = mergeGeometries(parts, false);
   for (const g of [body, stalk, eye, ...parts]) g.dispose();
@@ -67,16 +69,16 @@ export class SnailAssets {
     0,
     -0.001,
   );
-  readonly bodyMat = new THREE.MeshStandardMaterial({ vertexColors: true });
+  readonly bodyMat = createToonMaterial({ color: 0xffffff, vertexColors: true, flat: true });
   readonly ringMat = new THREE.MeshBasicMaterial({
-    color: 0xffffff,
+    color: PALETTE.uiPaper,
     side: THREE.DoubleSide,
     transparent: true,
     opacity: 0.9,
   });
-  readonly graveMat = new THREE.MeshStandardMaterial({ color: 0x888888 });
-  readonly barBackMat = new THREE.MeshBasicMaterial({ color: 0x111111, depthTest: false });
-  readonly barFillMat = new THREE.MeshBasicMaterial({ color: 0x44dd55, depthTest: false });
+  readonly graveMat = createToonMaterial({ color: PALETTE.rock, flat: true });
+  readonly barBackMat = new THREE.MeshBasicMaterial({ color: PALETTE.uiInk, depthTest: false });
+  readonly barFillMat = new THREE.MeshBasicMaterial({ color: PALETTE.grassTop, depthTest: false });
 
   /** Frees all shared GPU resources. */
   dispose(): void {

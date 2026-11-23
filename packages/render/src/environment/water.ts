@@ -1,3 +1,4 @@
+import { PALETTE } from '../style/palette.js';
 import * as THREE from 'three';
 import { tierProfile, type QualityTier } from '../quality.js';
 
@@ -78,8 +79,8 @@ export function createWater(opts: WaterOptions): Water {
     uniforms: {
       ...THREE.UniformsUtils.clone(THREE.UniformsLib['fog']),
       uTime: { value: 0 },
-      uShallow: { value: new THREE.Color(0x2c7f9c) },
-      uDeep: { value: new THREE.Color(0x082c48) },
+      uShallow: { value: new THREE.Color(PALETTE.waterShallow) },
+      uDeep: { value: new THREE.Color(PALETTE.waterDeep) },
       uOpacity: { value: Math.max(0.94, profile.waterOpacity) },
     },
   });

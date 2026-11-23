@@ -1,3 +1,4 @@
+import { createToonMaterial } from './style/materials.js';
 import * as THREE from 'three';
 import {
   BAR_WIDTH,
@@ -19,8 +20,9 @@ export class SnailMesh {
   readonly highlight: THREE.Mesh;
   readonly grave: THREE.Mesh;
   readonly nameTag: THREE.Sprite;
-  private readonly shellMaterial = new THREE.MeshStandardMaterial({ roughness: 0.5 });
+  private readonly shellMaterial = createToonMaterial({ color: 0xc98b4a, rim: 0.35 });
   private readonly nameMaterial = new THREE.SpriteMaterial({ depthTest: false });
+  private shellRoughness = 0.5;
   private baseColour = 0xc98b4a;
   private labelText: string | null = null;
   private labelTexture: THREE.Texture | null = null;
@@ -88,13 +90,13 @@ export class SnailMesh {
   /** Placeholder: darkens the shell as damage (0 = intact, 1 = destroyed). */
   setShellDamage(damage: number): void {
     const d = Math.min(1, Math.max(0, damage));
-    this.shellMaterial.roughness = 0.5 + d * 0.5;
+    this.shellRoughness = 0.5 + d * 0.5;
     this.shellMaterial.color.setHex(this.baseColour).multiplyScalar(1 - d * 0.5);
   }
 
   /** Current shell roughness (exposed for tests). */
   get roughness(): number {
-    return this.shellMaterial.roughness;
+    return this.shellRoughness;
   }
 
   /** Applies a view: transform, colour, facing, health, name, active and dead state. */

@@ -1,3 +1,4 @@
+import { configureRenderer } from './style/renderer-setup.js';
 import * as THREE from 'three';
 import {
   applyQuality,
@@ -142,6 +143,7 @@ export function createGameView(canvas: HTMLCanvasElement, opts: GameViewOptions)
     antialias: q.antialias,
     ...(opts.powerPreference ? { powerPreference: opts.powerPreference } : {}),
   });
+  configureRenderer(renderer);
   opts.onRenderer?.(renderer);
   renderer.shadowMap.enabled = q.shadows;
   renderer.shadowMap.type = SHADOW_TYPES[q.shadowType];

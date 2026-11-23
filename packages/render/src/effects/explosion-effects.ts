@@ -1,3 +1,4 @@
+import { PALETTE } from '../style/palette.js';
 import * as THREE from 'three';
 import type { ExplosionEvent, SimEvent } from '@snails/core';
 import type { FrameUpdater } from '../render-loop.js';
@@ -166,7 +167,7 @@ export class ExplosionEffects {
         speedMax: radius * 4,
         lifeMin: 0.8,
         lifeMax: 1.6,
-        colour: 0x6b4a2b,
+        colour: PALETTE.soil,
       },
       this.random,
     );
@@ -180,7 +181,7 @@ export class ExplosionEffects {
         speedMax: radius * 1.8,
         lifeMin: 0.6,
         lifeMax: 1.4,
-        colour: 0xb59b78,
+        colour: PALETTE.haze,
       },
       this.random,
     );
@@ -219,10 +220,10 @@ export class ExplosionEffects {
   }
 
   private makeSlot(): FlashSlot {
-    const light = new THREE.PointLight(0xffb060, 0, 1, 2);
+    const light = new THREE.PointLight(PALETTE.sunLight, 0, 1, 2);
     light.visible = false;
     const mat = new THREE.MeshBasicMaterial({
-      color: 0xff9a3c,
+      color: PALETTE.uiAccent,
       transparent: true,
       blending: THREE.NormalBlending,
       depthWrite: false,

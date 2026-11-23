@@ -1,3 +1,4 @@
+import { PALETTE } from './style/palette.js';
 import * as THREE from 'three';
 
 /** Named root groups that feature modules attach their objects to. */
@@ -21,7 +22,7 @@ export interface SceneGraph {
 /** Creates an empty scene containing the four named root groups. */
 export function createSceneGraph(): SceneGraph {
   const scene = new THREE.Scene();
-  scene.background = new THREE.Color(0x87ceeb);
+  scene.background = new THREE.Color(PALETTE.skyTop);
   const make = (name: string): THREE.Group => {
     const g = new THREE.Group();
     g.name = name;

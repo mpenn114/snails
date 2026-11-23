@@ -1,3 +1,4 @@
+import { LIGHTING, PALETTE } from '../style/palette.js';
 import * as THREE from 'three';
 import { tierProfile, type QualityTier } from '../quality.js';
 
@@ -73,11 +74,15 @@ export function shadowMapSize(tier: QualityTier): number {
 
 /** Creates hemisphere light and a shadow-casting sun fitted to the terrain bounds. */
 export function createLighting(opts: LightingOptions): Lighting {
-  const skyColor = new THREE.Color(opts.skyColor ?? 0x87ceeb);
+  const skyColor = new THREE.Color(opts.skyColor ?? PALETTE.skyTop);
   const group = new THREE.Group();
   group.name = 'lighting';
-  const hemisphere = new THREE.HemisphereLight(0xffffff, 0x445522, 0.8);
-  const sun = new THREE.DirectionalLight(0xfff4e0, 1.5);
+  const hemisphere = new THREE.HemisphereLight(
+    LIGHTING.hemiSkyColor,
+    LIGHTING.hemiGroundColor,
+    LIGHTING.hemiIntensity,
+  );
+  const sun = new THREE.DirectionalLight(LIGHTING.sunColor, LIGHTING.sunIntensity);
   const frustum = fitShadowFrustum(opts.bounds, opts.sunDirection ?? new THREE.Vector3(5, 10, 5));
   sun.position.copy(frustum.position);
   sun.target.position.copy(frustum.target);

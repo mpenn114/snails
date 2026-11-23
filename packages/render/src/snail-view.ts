@@ -1,3 +1,4 @@
+import { TEAM_COLORS } from './style/palette.js';
 import { Color } from 'three';
 import type { GameSnapshot } from '@snails/core';
 
@@ -18,9 +19,7 @@ export interface SnailView {
 }
 
 /** Fallback team palette, indexed by team order. */
-export const TEAM_PALETTE: readonly number[] = [
-  0xe74c3c, 0x3498db, 0x2ecc71, 0xf1c40f, 0x9b59b6, 0xe67e22, 0x1abc9c, 0xec407a,
-];
+export const TEAM_PALETTE: readonly number[] = TEAM_COLORS;
 
 /** Deterministic palette colour for a team index (wraps). */
 export function paletteColour(teamIndex: number): number {

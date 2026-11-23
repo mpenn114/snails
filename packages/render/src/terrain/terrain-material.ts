@@ -1,3 +1,4 @@
+import { PALETTE } from '../style/palette.js';
 import { Color, MeshStandardMaterial } from 'three';
 import type { WebGLProgramParametersWithUniforms } from 'three';
 import { tierProfile, type QualityTier } from '../quality.js';
@@ -18,10 +19,10 @@ export interface TerrainPalette {
 
 /** Default earthy palette. */
 export const DEFAULT_TERRAIN_PALETTE: TerrainPalette = {
-  grass: 0x5f9a3a,
-  soil: 0x7a5a3c,
-  rock: 0x8a8378,
-  deepSoil: 0x3e2d20,
+  grass: PALETTE.grassTop,
+  soil: PALETTE.soil,
+  rock: PALETTE.rock,
+  deepSoil: PALETTE.deepSoil,
 };
 
 /** Options for {@link createTerrainMaterial}. */
