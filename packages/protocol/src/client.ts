@@ -1,16 +1,29 @@
 import { z } from 'zod';
-import { PROTOCOL_VERSION } from './version.js';
+import { Colour, MatchSettings, Role, TeamId } from './common.js';
 
-/** First message a client sends after connecting. */
+/**
+ * First message after connecting. `protocolVersion` accepts any number so a mismatch is
+ * reportable (see `checkHello`) instead of being a parse failure.
+ */
 export const ClientHello = z.object({
   type: z.literal('hello'),
-  role: z.enum(['controller', 'display']),
+  role: Role,
   name: z.string().min(1).max(32),
-  roomCode: z.string().min(1).max(16),
-  protocolVersion: z.literal(PROTOCOL_VERSION),
+  /** Omitted by a display that wants a new room. */
+  roomCode: z.string().min(1).max(16).optional(),
+  protocolVersion: z.number(),
+  /** Token from a previous welcome, to rejoin as the same player. */
+  sessionToken: z.string().min(1).max(128).optional(),
 });
 
-/** Controller intents. */
+/** Lobby actions. */
+export const CreateRoom = z.object({ type: z.literal('createRoom') });
+export const SetTeam = z.object({ type: z.literal('setTeam'), teamId: TeamId });
+export const SetColour = z.object({ type: z.literal('setColour'), colour: Colour });
+export const SetReady = z.object({ type: z.literal('setReady'), ready: z.boolean() });
+export const StartMatch = z.object({ type: z.literal('startMatch'), settings: MatchSettings });
+
+/** Controller intents. Angles are radians. */
 export const Move = z.object({
   type: z.literal('move'),
   direction: z.enum(['left', 'right', 'stop']),
@@ -18,7 +31,7 @@ export const Move = z.object({
 export const Jump = z.object({ type: z.literal('jump') });
 export const Aim = z.object({
   type: z.literal('aim'),
-  angle: z.number().min(-180).max(180),
+  angle: z.number().min(-Math.PI).max(Math.PI),
   power: z.number().min(0).max(1),
 });
 export const SelectWeapon = z.object({ type: z.literal('selectWeapon'), weaponId: z.string() });
@@ -29,9 +42,17 @@ export const QueueResearch = z.object({
   technologyId: z.string(),
 });
 
+/** Heartbeat; `t` is an opaque client timestamp echoed by `pong`. */
+export const Ping = z.object({ type: z.literal('ping'), t: z.number() });
+
 /** Any message a client may send. */
 export const ClientMessage = z.discriminatedUnion('type', [
   ClientHello,
+  CreateRoom,
+  SetTeam,
+  SetColour,
+  SetReady,
+  StartMatch,
   Move,
   Jump,
   Aim,
@@ -39,6 +60,7 @@ export const ClientMessage = z.discriminatedUnion('type', [
   Fire,
   EndTurn,
   QueueResearch,
+  Ping,
 ]);
 
 export type ClientMessage = z.infer<typeof ClientMessage>;

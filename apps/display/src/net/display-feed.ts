@@ -1,6 +1,7 @@
 import type { GameSnapshot, SimEvent } from '@snails/core';
 import type { MatchInit } from '@snails/render';
-import type { ServerMessage } from '@snails/protocol';
+import { decodeEventBatch, decodeSnapshot } from '@snails/protocol';
+import type { DecodedSnapshot, ServerMessage } from '@snails/protocol';
 
 /**
  * What the display needs from the network layer. The M3 server work supplies the terrain
@@ -12,19 +13,21 @@ export interface DisplayFeed {
   onInit(init: MatchInit): void;
   /** Authoritative snapshot. */
   onSnapshot(snapshot: GameSnapshot): void;
+  /** Compact snapshot from the wire (optional until the full-state mapping lands). */
+  onCompactSnapshot?(snapshot: DecodedSnapshot): void;
   /** Sim events since the previous snapshot. */
   onEvents(events: SimEvent[]): void;
 }
 
 /**
- * Routes parsed server messages to a feed. The protocol types `state`/`payload` as `unknown`
- * (stub), so they are trusted here as snapshot / event shapes until M3 tightens them.
+ * Routes parsed server messages to a feed. Event batches are decoded to core `SimEvent`s
+ * (structurally identical). Compact snapshots are decoded and handed to the optional
+ * `onCompactSnapshot` hook; mapping them onto a full `GameSnapshot` is follow-up work.
  */
 export function routeServerMessage(feed: DisplayFeed, m: ServerMessage): void {
-  if (m.type === 'stateSnapshot') {
-    feed.onSnapshot(m.state as GameSnapshot);
-  } else if (m.type === 'gameEvent') {
-    const body = typeof m.payload === 'object' && m.payload !== null ? m.payload : {};
-    feed.onEvents([{ ...body, type: m.event } as unknown as SimEvent]);
+  if (m.type === 'snapshot') {
+    feed.onCompactSnapshot?.(decodeSnapshot(m));
+  } else if (m.type === 'eventBatch') {
+    feed.onEvents(decodeEventBatch(m) as unknown as SimEvent[]);
   }
 }

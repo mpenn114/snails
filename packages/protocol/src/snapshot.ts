@@ -1,0 +1,164 @@
+import { z } from 'zod';
+
+/** Turn phases in wire index order (matches core's `TurnPhase`). */
+export const TURN_PHASES = ['intro', 'action', 'fire', 'resolve', 'retreat', 'settle'] as const;
+/** Turn phase. */
+export type WirePhase = (typeof TURN_PHASES)[number];
+
+/** Snail state codes on the wire (index order). */
+export const SNAIL_STATES = ['dead', 'grounded', 'airborne'] as const;
+/** Snail state. */
+export type SnailWireState = (typeof SNAIL_STATES)[number];
+
+const int = z.number().int();
+
+/**
+ * Wire snail: `[id, px,py,pz (mm), vx,vy,vz (mm/s), facing (mrad), hp, state, aimAngle (mrad),
+ * aimPower (permille)]`.
+ */
+export const WireSnail = z.tuple([
+  z.string(),
+  int,
+  int,
+  int,
+  int,
+  int,
+  int,
+  int,
+  z.number(),
+  int,
+  int,
+  int,
+]);
+/** Wire projectile: `[id, weaponId, px,py,pz (mm), vx,vy,vz (mm/s)]`. */
+export const WireProjectile = z.tuple([z.string(), z.string(), int, int, int, int, int, int]);
+
+/** Compact authoritative snapshot (sent to display and controllers alike, ADR-0008). */
+export const Snapshot = z.object({
+  type: z.literal('snapshot'),
+  tick: int.nonnegative(),
+  /** `[strength (milli m/s^2), direction (mrad)]`. */
+  wind: z.tuple([int, int]),
+  /** `[activeTeamId, activeSnailId, phaseIndex, timeRemainingMs, turnNumber]`. */
+  turn: z.tuple([z.string().nullable(), z.string().nullable(), int.nonnegative(), int, int]),
+  snails: z.array(WireSnail),
+  projectiles: z.array(WireProjectile),
+});
+/** Compact snapshot message. */
+export type Snapshot = z.infer<typeof Snapshot>;
+
+/** Vector in metres. */
+export interface Vec3 {
+  x: number;
+  y: number;
+  z: number;
+}
+
+/** Decoded snail state. */
+export interface SnailState {
+  id: string;
+  position: Vec3;
+  velocity: Vec3;
+  facing: number;
+  health: number;
+  state: SnailWireState;
+  aim: { angle: number; power: number };
+}
+
+/** Decoded projectile state. */
+export interface ProjectileState {
+  id: string;
+  weaponId: string;
+  position: Vec3;
+  velocity: Vec3;
+}
+
+/** Decoded snapshot (metres, seconds, radians). */
+export interface DecodedSnapshot {
+  tick: number;
+  wind: { strength: number; direction: number };
+  turn: {
+    activeTeamId: string | null;
+    activeSnailId: string | null;
+    phase: WirePhase;
+    timeRemaining: number;
+    turnNumber: number;
+  };
+  snails: SnailState[];
+  projectiles: ProjectileState[];
+}
+
+const q = (v: number): number => Math.round(v * 1000);
+const dq = (v: number): number => v / 1000;
+const dv = (a: number, b: number, c: number): Vec3 => ({ x: dq(a), y: dq(b), z: dq(c) });
+
+/** Quantises a snapshot into its compact wire message (positions to mm, angles to mrad). */
+export function encodeSnapshot(s: DecodedSnapshot): Snapshot {
+  return {
+    type: 'snapshot',
+    tick: s.tick,
+    wind: [q(s.wind.strength), q(s.wind.direction)],
+    turn: [
+      s.turn.activeTeamId,
+      s.turn.activeSnailId,
+      Math.max(0, TURN_PHASES.indexOf(s.turn.phase)),
+      q(s.turn.timeRemaining),
+      s.turn.turnNumber,
+    ],
+    snails: s.snails.map((n) => [
+      n.id,
+      q(n.position.x),
+      q(n.position.y),
+      q(n.position.z),
+      q(n.velocity.x),
+      q(n.velocity.y),
+      q(n.velocity.z),
+      q(n.facing),
+      n.health,
+      Math.max(0, SNAIL_STATES.indexOf(n.state)),
+      q(n.aim.angle),
+      q(n.aim.power),
+    ]),
+    projectiles: s.projectiles.map((p) => [
+      p.id,
+      p.weaponId,
+      q(p.position.x),
+      q(p.position.y),
+      q(p.position.z),
+      q(p.velocity.x),
+      q(p.velocity.y),
+      q(p.velocity.z),
+    ]),
+  };
+}
+
+/** Expands a compact snapshot; unknown phase/state codes fall back to `intro`/`dead`. */
+export function decodeSnapshot(m: Snapshot): DecodedSnapshot {
+  const [team, snail, phase, time, turnNumber] = m.turn;
+  return {
+    tick: m.tick,
+    wind: { strength: dq(m.wind[0]), direction: dq(m.wind[1]) },
+    turn: {
+      activeTeamId: team,
+      activeSnailId: snail,
+      phase: TURN_PHASES[phase] ?? 'intro',
+      timeRemaining: dq(time),
+      turnNumber,
+    },
+    snails: m.snails.map(([id, px, py, pz, vx, vy, vz, facing, health, state, angle, power]) => ({
+      id,
+      position: dv(px, py, pz),
+      velocity: dv(vx, vy, vz),
+      facing: dq(facing),
+      health,
+      state: SNAIL_STATES[state] ?? 'dead',
+      aim: { angle: dq(angle), power: dq(power) },
+    })),
+    projectiles: m.projectiles.map(([id, weaponId, px, py, pz, vx, vy, vz]) => ({
+      id,
+      weaponId,
+      position: dv(px, py, pz),
+      velocity: dv(vx, vy, vz),
+    })),
+  };
+}
