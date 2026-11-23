@@ -31,3 +31,4 @@ export * from './frame-cap.js';
 export * from './effects/aim-hint.js';
 export * from './style/index.js';
 export * from './style/index.js';
+export * from './snail/shell-geometry.js';

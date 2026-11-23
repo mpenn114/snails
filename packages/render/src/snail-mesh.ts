@@ -8,6 +8,11 @@ import {
 } from './snail-assets.js';
 import type { SnailView } from './snail-view.js';
 
+/** Shell height in metres (normalised shell height is 1). */
+const SHELL_SCALE = 0.9;
+/** Where the shell aperture sits on the body. */
+const SHELL_ANCHOR: readonly [number, number, number] = [0.1, 0.12, 0];
+
 /** Placeholder snail built from primitives, with team tint, health bar and name tag. */
 export class SnailMesh {
   /** Root group, positioned at the snail. */
@@ -20,7 +25,7 @@ export class SnailMesh {
   readonly highlight: THREE.Mesh;
   readonly grave: THREE.Mesh;
   readonly nameTag: THREE.Sprite;
-  private readonly shellMaterial = createToonMaterial({ color: 0xc98b4a, rim: 0.35 });
+  private readonly shellMaterial = createToonMaterial({ color: 0xc98b4a, rim: 0.35, flat: true });
   private readonly nameMaterial = new THREE.SpriteMaterial({ depthTest: false });
   private shellRoughness = 0.5;
   private baseColour = 0xc98b4a;
@@ -31,16 +36,18 @@ export class SnailMesh {
    * @param shellColour - Team shell colour as a hex number.
    * @param assets - Shared geometries/materials (a private set is made when omitted).
    * @param labelFactory - Name-tag texture factory.
+   * @param shellSeed - Seed of the procedural shell shape.
    */
   constructor(
     shellColour = 0xc98b4a,
     assets: SnailAssets = new SnailAssets(),
     private readonly labelFactory: LabelTextureFactory = canvasLabelFactory,
+    shellSeed = 0,
   ) {
     const body = new THREE.Mesh(assets.body, assets.bodyMat);
-    const shell = new THREE.Mesh(assets.shell, this.shellMaterial);
-    shell.scale.set(1.1, 1, 0.9);
-    shell.position.set(-0.1, 0.5, 0);
+    const shell = new THREE.Mesh(assets.shellGeometry(shellSeed), this.shellMaterial);
+    shell.scale.setScalar(SHELL_SCALE);
+    shell.position.set(...SHELL_ANCHOR);
     this.bodyGroup.add(body, shell);
     this.highlight = new THREE.Mesh(assets.ring, assets.ringMat);
     this.highlight.rotation.x = -Math.PI / 2;
