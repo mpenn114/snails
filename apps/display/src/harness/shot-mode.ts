@@ -38,19 +38,27 @@ export interface ShotPose {
 }
 
 /** Computes the fixed pose of `cam` around a snail, the explosion point and the arena size. */
-export function shotPose(cam: ShotCam, snail: Vec3, blast: Vec3 | null, world: Vec3): ShotPose {
+export function shotPose(
+  cam: ShotCam,
+  snail: Vec3,
+  blast: Vec3 | null,
+  world: Vec3,
+  facing = 0,
+): ShotPose {
   if (cam === 'close') {
+    // Three-quarter view from in front of the snail, so its face and shell both read.
+    const a = facing + 0.8;
     return {
-      eye: { x: snail.x + 1.6, y: snail.y + 1.1, z: snail.z + 2.4 },
-      look: { x: snail.x, y: snail.y + 0.35, z: snail.z },
+      eye: { x: snail.x + Math.cos(a) * 3.4, y: snail.y + 1.2, z: snail.z + Math.sin(a) * 3.4 },
+      look: { x: snail.x, y: snail.y + 0.55, z: snail.z },
     };
   }
   if (cam === 'crater' && blast) {
     return { eye: { x: blast.x + 7, y: blast.y + 6, z: blast.z + 9 }, look: blast };
   }
   return {
-    eye: { x: world.x * 0.5, y: world.y + 22, z: world.z * 0.5 + 40 },
-    look: { x: world.x * 0.5, y: world.y * 0.15, z: world.z * 0.5 },
+    eye: { x: world.x * 0.5, y: world.y + 17, z: world.z * 0.5 + 34 },
+    look: { x: world.x * 0.5, y: world.y * 0.2, z: world.z * 0.5 + 1 },
   };
 }
 
@@ -137,8 +145,9 @@ export async function runShot(canvas: HTMLCanvasElement, params: URLSearchParams
   const bots = options.teams.map((t) => createScriptedBot(t.id, HARNESS_WEAPON));
   const { events, blast } = stepScene(sim, cam, bots);
 
-  const snail = sim.state.teams[0]?.snails[0]?.position ?? { x: 0, y: 0, z: 0 };
-  const pose = shotPose(cam, snail, blast, sim.terrain.worldSize());
+  const active = sim.state.teams[0]?.snails[0];
+  const snail = active?.position ?? { x: 0, y: 0, z: 0 };
+  const pose = shotPose(cam, snail, blast, sim.terrain.worldSize(), active?.facing ?? 0);
   renderer.cameraRig?.setTarget(pose.look);
   renderer.addLayer({
     name: 'shot-camera',

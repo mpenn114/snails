@@ -77,8 +77,16 @@ export class SnailAssets {
     opacity: 0.9,
   });
   readonly graveMat = createToonMaterial({ color: PALETTE.rock, flat: true });
-  readonly barBackMat = new THREE.MeshBasicMaterial({ color: PALETTE.uiInk, depthTest: false });
-  readonly barFillMat = new THREE.MeshBasicMaterial({ color: PALETTE.grassTop, depthTest: false });
+  readonly barBackMat = new THREE.MeshBasicMaterial({
+    color: PALETTE.uiInk,
+    depthTest: false,
+    transparent: true,
+  });
+  readonly barFillMat = new THREE.MeshBasicMaterial({
+    color: PALETTE.grassTop,
+    depthTest: false,
+    transparent: true,
+  });
 
   private readonly shells = new Map<number, THREE.BufferGeometry>();
 

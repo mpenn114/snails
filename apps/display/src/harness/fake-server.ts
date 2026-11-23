@@ -23,6 +23,11 @@ export const HARNESS_WEAPON: WeaponDefinition = {
 
 const TEAM_COLOURS = ['#e6483d', '#3d7be6', '#3dc46a', '#e6c63d'];
 
+const SNAIL_NAMES = ['Gary', 'Turbo', 'Slimy', 'Dash', 'Mossy', 'Pebble', 'Nacho', 'Bramble'];
+
+const snailName = (i: number): string =>
+  `${SNAIL_NAMES[i % SNAIL_NAMES.length] as string}${i >= SNAIL_NAMES.length ? ' ' + (Math.floor(i / SNAIL_NAMES.length) + 1) : ''}`;
+
 /** Options for {@link harnessMatchOptions}. */
 export interface HarnessMatchOptions {
   seed: number;
@@ -40,7 +45,7 @@ export function harnessMatchOptions(o: HarnessMatchOptions): MatchOptions {
       id: `t${t}`,
       name: `Team ${t + 1}`,
       colour: TEAM_COLOURS[t % TEAM_COLOURS.length] as string,
-      snailNames: Array.from({ length: per }, (_, i) => `T${t + 1}S${i + 1}`),
+      snailNames: Array.from({ length: per }, (_, i) => snailName(t * per + i)),
     })),
     terrain: { nx: 160, ny: 48, nz: 160, caveDensity: 0.1 },
     turn: { introDuration: 0.5, retreatDuration: 1, maxTurns: 200 },

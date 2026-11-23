@@ -22,7 +22,11 @@ export type CameraMode = 'follow' | 'free' | 'cinematic';
 /** Scripted shot for cinematic mode. */
 export type CinematicShot =
   | { kind: 'orbit'; center: Point3; distance: number; pitch: number; rate: number }
-  | { kind: 'overview'; rate: number };
+  | {
+      kind: 'overview';
+      rate: number;
+      /** Horizontal span (m) to fit; default: the bounds. */ extent?: number;
+    };
 
 /** Input deltas for free mode (already scaled by the caller: radians, metres, log-zoom). */
 export interface FreeCameraInput {
@@ -208,8 +212,8 @@ export class CameraRig {
     return {
       target: { ...target },
       yaw,
-      pitch: this.opts.followPitch ?? 0.5,
-      distance: this.opts.followDistance ?? 14,
+      pitch: this.opts.followPitch ?? 0.45,
+      distance: this.opts.followDistance ?? 9,
     };
   }
 
@@ -226,7 +230,7 @@ export class CameraRig {
     }
     const min = b?.min ?? { x: -50, y: 0, z: -50 };
     const max = b?.max ?? { x: 50, y: 40, z: 50 };
-    const extent = Math.max(max.x - min.x, max.z - min.z);
+    const extent = this.shot.extent ?? Math.max(max.x - min.x, max.z - min.z);
     const halfFov = THREE.MathUtils.degToRad(this.camera.fov) / 2;
     return {
       target: { x: (min.x + max.x) / 2, y: min.y + (max.y - min.y) * 0.25, z: (min.z + max.z) / 2 },
