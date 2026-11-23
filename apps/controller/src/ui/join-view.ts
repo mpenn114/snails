@@ -20,7 +20,7 @@ export function mountJoinView(
   form.innerHTML = `<h1>Snails</h1>
     <input id="name" placeholder="Your name" maxlength="32" autocomplete="nickname" />
     <input id="room" placeholder="ROOM" maxlength="4" autocapitalize="characters" autocomplete="off" />
-    <button type="submit">Join</button><p class="status" role="status"></p>`;
+    <button class="primary" type="submit">Join</button><p class="status" role="status"></p>`;
   root.appendChild(form);
   const name = form.querySelector<HTMLInputElement>('#name')!;
   const room = form.querySelector<HTMLInputElement>('#room')!;

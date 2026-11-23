@@ -48,7 +48,7 @@ export class MinimapView {
     this.canvas = doc.createElement('canvas');
     this.canvas.width = SIZE;
     this.canvas.height = SIZE;
-    this.canvas.style.cssText = `width:${SIZE}px;height:${SIZE}px;pointer-events:auto;touch-action:none;background:rgba(10,20,30,0.55);border-radius:8px`;
+    this.canvas.style.cssText = `width:${SIZE}px;height:${SIZE}px;pointer-events:auto;touch-action:none;background:rgba(var(--snl-ink-rgb),0.6);border-radius:var(--snl-radius)`;
     this.ctx = this.canvas.getContext('2d');
     this.terrain = doc.createElement('canvas');
     this.terrain.width = SAMPLES;

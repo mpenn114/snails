@@ -5,7 +5,10 @@ import {
   createGameView,
   pickDefaultTier,
 } from '@snails/render';
+import { injectTheme } from '@snails/render';
 import type { QualityTier } from '@snails/render';
+
+injectTheme(document);
 import { DisplayClient, relativeWsUrl } from './net/client';
 import { fetchInfo, buildJoinUrl } from './lobby/lobby-logic';
 import { mountLobbyScreen } from './lobby/lobby-view';

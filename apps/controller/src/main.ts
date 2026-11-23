@@ -1,3 +1,4 @@
+import { injectTheme } from '@snails/render';
 import { ControllerClient } from './net/client';
 import { loadSession, saveSession } from './net/session-store';
 import { buildWsUrl } from './net/url';
@@ -8,6 +9,7 @@ import { installTouchGuards, safeStorage } from './platform/ios';
 import { createMatchShell } from './shell/match-shell';
 import { bindPageLifecycle } from './net/lifecycle';
 
+injectTheme(document);
 if (import.meta.env.PROD) void registerServiceWorker(navigator);
 
 const screen = document.getElementById('screen') as HTMLElement;
