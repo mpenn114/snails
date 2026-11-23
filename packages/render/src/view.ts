@@ -36,6 +36,8 @@ export interface GameViewOptions {
   onRenderer?: (renderer: THREE.WebGLRenderer) => void;
   /** Frame scheduler override (defaults to requestAnimationFrame), e.g. an fps-capped one. */
   scheduler?: FrameScheduler;
+  /** Clock in ms for the frame loop (defaults to performance.now); inject for deterministic captures. */
+  now?: () => number;
   /** WebGL power preference hint (iOS Safari largely ignores it). */
   powerPreference?: 'default' | 'high-performance' | 'low-power';
 }
@@ -153,7 +155,7 @@ export function createGameView(canvas: HTMLCanvasElement, opts: GameViewOptions)
       request: (cb) => window.requestAnimationFrame(cb),
       cancel: (h) => window.cancelAnimationFrame(h),
     },
-    now: () => performance.now(),
+    now: opts.now ?? (() => performance.now()),
     ...(opts.source ? { source: opts.source } : {}),
     ...(opts.terrainBounds ? { terrainBounds: opts.terrainBounds } : {}),
     ...(opts.waterLevel !== undefined ? { waterLevel: opts.waterLevel } : {}),
