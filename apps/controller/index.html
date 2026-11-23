@@ -57,27 +57,59 @@
         border-radius: 8px;
         border: 0;
       }
-      #join {
+      #screen {
+        position: fixed;
+        inset: 0;
+        pointer-events: none;
+      }
+      .join {
+        pointer-events: auto;
         position: fixed;
         inset: 0;
         display: flex;
         flex-direction: column;
-        gap: 12px;
-        align-items: center;
+        gap: 14px;
         justify-content: center;
+        padding: max(24px, env(safe-area-inset-top)) max(24px, env(safe-area-inset-right))
+          max(24px, env(safe-area-inset-bottom)) max(24px, env(safe-area-inset-left));
         background: #101820;
+        touch-action: manipulation;
+      }
+      .join h1 {
+        text-align: center;
+        margin: 0;
+      }
+      .join input {
+        font-size: 1.3rem;
+        min-height: 56px;
+        padding: 0 16px;
+        border-radius: 12px;
+        border: 2px solid #2a3a4a;
+        background: #1a2631;
+        color: #fff;
+      }
+      .join #room {
+        text-transform: uppercase;
+        letter-spacing: 0.4em;
+        text-align: center;
+      }
+      .join button {
+        min-height: 56px;
+      }
+      .join button:disabled {
+        opacity: 0.4;
+      }
+      .join .status {
+        text-align: center;
+        min-height: 1.4em;
+        margin: 0;
       }
     </style>
   </head>
   <body>
     <canvas id="view"></canvas>
     <div id="overlay"></div>
-    <form id="join">
-      <h1>Snails</h1>
-      <input id="name" placeholder="Your name" required maxlength="32" />
-      <input id="room" placeholder="Room code" required maxlength="16" />
-      <button type="submit">Join</button>
-    </form>
+    <div id="screen"></div>
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>

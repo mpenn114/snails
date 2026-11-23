@@ -1,26 +1,48 @@
 import { createGameView } from '@snails/render';
 import { ControllerClient } from './net/client';
+import { loadSession, saveSession } from './net/session-store';
+import { buildWsUrl } from './net/url';
+import { mountJoinView } from './ui/join-view';
+import { parseRoomParam } from './ui/join-logic';
 import { mountTurnControls } from './ui/turn-controls';
 import { registerServiceWorker } from './pwa/register-sw';
 
 if (import.meta.env.PROD) void registerServiceWorker(navigator);
 
 const canvas = document.getElementById('view') as HTMLCanvasElement;
-const join = document.getElementById('join') as HTMLFormElement;
 const overlay = document.getElementById('overlay') as HTMLElement;
-const roomInput = document.getElementById('room') as HTMLInputElement;
-roomInput.value = new URLSearchParams(location.search).get('room') ?? '';
+const screen = document.getElementById('screen') as HTMLElement;
 
-join.addEventListener('submit', (e) => {
-  e.preventDefault();
-  const name = (document.getElementById('name') as HTMLInputElement).value;
-  const client = new ControllerClient(`ws://${location.host}/ws`, name, roomInput.value);
-  client.connect();
-  join.remove();
+const stored = loadSession(localStorage);
+const initial = {
+  name: stored?.name ?? '',
+  room: parseRoomParam(location.search) || stored?.roomCode || '',
+};
 
+/** Placeholder until the lobby task lands: shows a joined notice plus the game view. */
+function showLobbyPlaceholder(client: ControllerClient): void {
+  screen.innerHTML =
+    '<div class="join"><h1>Lobby</h1><p class="status">Joined. Waiting...</p></div>';
   const view = createGameView(canvas, { tier: 'mobile' });
   const resize = (): void => view.resize(window.innerWidth, window.innerHeight);
   window.addEventListener('resize', resize);
   resize();
   mountTurnControls(overlay, client);
+}
+
+const joinView = mountJoinView(screen, initial, (v) => {
+  saveSession(localStorage, { name: v.name, roomCode: v.room });
+  const client = new ControllerClient({
+    url: buildWsUrl(location),
+    name: v.name,
+    roomCode: v.room,
+  });
+  client.onState(() => joinView.update(client));
+  client.on('error', () => joinView.update(client));
+  client.on('welcome', () => {
+    joinView.destroy();
+    showLobbyPlaceholder(client);
+  });
+  client.connect();
+  joinView.update(client);
 });
