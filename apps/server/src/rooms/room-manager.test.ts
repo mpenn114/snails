@@ -112,6 +112,13 @@ describe('RoomManager', () => {
     room.handleLobbyAction(b, { type: 'setTeam', teamId: 'blue' });
     room.handleLobbyAction(a, { type: 'startMatch', settings: { ...settings, seed: -1 } });
     expect(last('a')).toMatchObject({ code: 'invalid_settings' });
+    for (const bad of [{ turnTimeSeconds: 9 }, { turnTimeSeconds: 121 }, { snailsPerTeam: 9 }]) {
+      room.handleLobbyAction(a, { type: 'startMatch', settings: { ...settings, ...bad } });
+      expect(last('a')).toMatchObject({ code: 'invalid_settings' });
+    }
+    expect(room.lobbyState()).toMatchObject({
+      settings: { turnTimeSeconds: 30, snailsPerTeam: 3, seed: 1 },
+    });
     room.handleLobbyAction(a, { type: 'startMatch', settings });
     expect(started).toEqual(settings);
     expect(room.phase).toBe('playing');

@@ -29,7 +29,7 @@ export type Role = z.infer<typeof Role>;
 /** Match settings chosen by the host. */
 export const MatchSettings = z.object({
   /** Seconds each turn lasts. */
-  turnTimeSeconds: z.number().int().min(5).max(300),
+  turnTimeSeconds: z.number().int().min(10).max(120),
   snailsPerTeam: z.number().int().min(1).max(8),
   /** Terrain and simulation seed (uint32). */
   seed: z.number().int().min(0).max(0xffffffff),

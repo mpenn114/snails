@@ -104,6 +104,40 @@
         min-height: 1.4em;
         margin: 0;
       }
+      .lobby {
+        justify-content: flex-start;
+        overflow: auto;
+      }
+      .lobby .roster {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+      }
+      .lobby .row {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+      }
+      .lobby .pick {
+        min-width: 56px;
+        min-height: 56px;
+        border: 3px solid transparent;
+      }
+      .lobby .pick.on {
+        border-color: #fff;
+      }
+      .lobby .pick:disabled {
+        opacity: 0.2;
+      }
+      .lobby .settings label {
+        display: block;
+        margin: 6px 0;
+      }
+      .lobby .settings input {
+        width: 6em;
+        min-height: 40px;
+        font-size: 1rem;
+      }
     </style>
   </head>
   <body>
