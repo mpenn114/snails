@@ -1,8 +1,8 @@
 import { fileURLToPath } from 'node:url';
 import Fastify, { type FastifyInstance } from 'fastify';
 import websocket from '@fastify/websocket';
-import { PROTOCOL_VERSION, checkHello } from '@snails/protocol';
-import type { ServerMessage } from '@snails/protocol';
+import { PROTOCOL_VERSION } from '@snails/protocol';
+import { registerWsEndpoint } from './net/ws-endpoint.js';
 import { RoomManager } from './rooms/room-manager.js';
 import { buildServerInfo, type ServerInfo } from './info.js';
 import { installSpaFallback, registerStaticRoots } from './static.js';
@@ -55,47 +55,6 @@ export async function buildServer(opts: ServerOptions = {}): Promise<FastifyInst
   await registerStaticRoots(app, roots);
   installSpaFallback(app, roots);
 
-  app.get('/ws', { websocket: true }, (socket) => {
-    const send = (m: ServerMessage): void => socket.send(JSON.stringify(m));
-    let joined: { code: string; id: string } | undefined;
-    socket.on('message', (data) => {
-      try {
-        const raw: unknown = JSON.parse(String(data));
-        if (typeof raw === 'object' && raw !== null && (raw as { type?: unknown }).type !== 'hello')
-          return;
-        const check = checkHello(raw);
-        if (!check.ok) {
-          return send(helloError(check));
-        }
-        const msg = check.hello;
-        const code = msg.roomCode ?? (msg.role === 'display' ? rooms.createRoom().code : undefined);
-        const player = code ? rooms.join(code, msg.name, msg.role) : undefined;
-        if (!code || !player)
-          return send({ type: 'error', code: 'no_room', message: 'Unknown room' });
-        joined = { code, id: player.id };
-        send({
-          type: 'welcome',
-          playerId: player.id,
-          roomCode: code.toUpperCase(),
-          sessionToken: player.id,
-          role: msg.role,
-          protocolVersion: PROTOCOL_VERSION,
-        });
-      } catch {
-        send({ type: 'error', code: 'bad_message', message: 'Invalid message' });
-      }
-    });
-    socket.on('close', () => joined && rooms.leave(joined.code, joined.id));
-  });
+  registerWsEndpoint(app, rooms);
   return app;
-}
-
-/** Builds the error reply for a rejected hello. */
-function helloError(check: Exclude<ReturnType<typeof checkHello>, { ok: true }>): ServerMessage {
-  return {
-    type: 'error',
-    code: check.error,
-    message: check.error === 'bad_message' ? 'Invalid message' : 'Protocol mismatch',
-    ...(check.error === 'protocol_mismatch' ? { expected: check.expected, got: check.got } : {}),
-  };
 }
