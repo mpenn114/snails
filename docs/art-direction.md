@@ -72,7 +72,15 @@ fill, never black: darkest lit band stays at 58% brightness.
 - Flat facets are welcome; do not smooth-shade away low-poly character on props. Terrain uses
   smoothed normals quantised through the toon ramp.
 - Low roughness (0.25 to 0.4) only for shells and water. Everything else is matte (roughness 1).
-- No image textures. Only subtle procedural noise (at most 8% brightness variation) on terrain.
+- Terrain only: three CC0 tileable textures (grass, dirt, rock; `packages/content-base/assets/textures/`)
+  sampled triplanar in world space. They are neutralised to mean grey, so the palette above
+  supplies the hue and the texture only adds low-contrast detail. Grass on up-facing surfaces
+  with a soft noisy edge, dirt on slopes and below the cap, rock on steep walls and deep down.
+  Terrain uses smooth normals with a softened toon ramp. Phones: one projected sample per
+  layer, 512 px, no normal maps. Everything else stays untextured (procedural or flat colour).
+- Post (TV display only): High tier runs N8AO ambient occlusion, mild bloom, a slight warm grade
+  (1.04 / 1.0 / 0.93), a light vignette, AgX tone mapping and SMAA through the pmndrs
+  `postprocessing` composer; Medium runs AgX + SMAA; Low and phones render straight to the canvas.
 - Outline: optional, High tier on the display only (inverted-hull or post pass), 2 px, `uiInk`
   at 70% opacity. Never on phones.
 - Rim light on shells (fresnel, `sunLight`, 25% strength) helps silhouettes at TV distance.

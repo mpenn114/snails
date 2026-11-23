@@ -19,6 +19,7 @@ import { MatchOverlay } from './match-overlay';
 import { guardContextLoss } from './context-guard';
 import { capPixelRatio, isIos } from '../platform/ios';
 import type { PlatformNavigator } from '../platform/ios';
+import { TERRAIN_TEXTURES } from '../terrain-textures';
 
 /** Subset of the WebGL renderer touched when scaling resolution. */
 interface PixelRatioTarget {
@@ -87,6 +88,7 @@ export class PhoneView {
     this.canvas = canvas;
     this.renderer = new MatchRenderer({
       now: () => this.deps.now(),
+      terrainTextures: TERRAIN_TEXTURES,
       makeView: (env) => this.makeView(canvas, env),
     });
     this.renderer.setTier(this.governor.settings.tier);

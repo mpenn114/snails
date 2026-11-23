@@ -1,9 +1,14 @@
 import { defineConfig } from 'vite';
+import { fileURLToPath } from 'node:url';
 import { resolve } from 'node:path';
 import { buildDevProxy, serverUrlFromEnv } from './src/dev-proxy';
 
+/** Static art shared with the game content package (CC0 terrain textures, see its CREDITS.md). */
+const assets = fileURLToPath(new URL('../../packages/content-base/assets', import.meta.url));
+
 /** Vite config: ES-module workers (terrain mesher), dev proxy to the game server. */
 export default defineConfig({
+  resolve: { alias: { '@assets': assets } },
   // Relative asset URLs: the bundle is served by the game server under /display/.
   base: './',
   build: {

@@ -17,6 +17,7 @@ import { MatchAdapter } from './match/match-adapter';
 import { mountHud } from './match/hud-view';
 import { buildTerrainInit } from './match/terrain-init';
 import { mountDebugOverlay } from './debug/debug-overlay';
+import { TERRAIN_TEXTURES } from './terrain-textures';
 
 const canvas = document.getElementById('view') as HTMLCanvasElement;
 const params = new URLSearchParams(location.search);
@@ -34,8 +35,9 @@ function chooseTier(): QualityTier {
 const tier = chooseTier();
 const renderer = new MatchRenderer({
   now: () => performance.now(),
+  terrainTextures: TERRAIN_TEXTURES,
   makeView: ({ bounds, waterLevel }) =>
-    createGameView(canvas, { tier, terrainBounds: bounds, waterLevel }),
+    createGameView(canvas, { tier, terrainBounds: bounds, waterLevel, postProcessing: true }),
 });
 renderer.setTier(tier);
 const onResize = (): void => renderer.resize(window.innerWidth, window.innerHeight);

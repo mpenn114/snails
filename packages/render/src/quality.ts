@@ -10,6 +10,9 @@ export type ShadowType = 'pcfsoft' | 'pcf' | 'basic';
 /** Water shader quality: animated ripples or a flat tinted plane. */
 export type WaterQuality = 'ripples' | 'flat';
 
+/** Post-processing level: AO + bloom + SMAA + grade (`full`), SMAA + tone mapping (`basic`), or none. */
+export type PostMode = 'full' | 'basic' | 'none';
+
 /** Static, device-independent settings of one tier (the central quality table row). */
 export interface TierProfile {
   /** Upper bound for the device pixel ratio. */
@@ -24,6 +27,8 @@ export interface TierProfile {
   /** Terrain detail-noise shading in the terrain material. */
   terrainDetail: boolean;
   waterQuality: WaterQuality;
+  /** Post-processing composer level (only used when the app opts in, i.e. the TV display). */
+  post: PostMode;
   /** Water surface opacity. */
   waterOpacity: number;
   /** Multiplier for particle counts (consumed by effects). */
@@ -52,6 +57,7 @@ export const QUALITY_TABLE: Readonly<Record<QualityTier, TierProfile>> = {
     shadowType: 'pcfsoft',
     terrainDetail: true,
     waterQuality: 'ripples',
+    post: 'full',
     waterOpacity: 0.7,
     particleScale: 1,
     maxDynamicLights: 8,
@@ -68,6 +74,7 @@ export const QUALITY_TABLE: Readonly<Record<QualityTier, TierProfile>> = {
     shadowType: 'pcf',
     terrainDetail: true,
     waterQuality: 'ripples',
+    post: 'basic',
     waterOpacity: 0.75,
     particleScale: 0.6,
     maxDynamicLights: 4,
@@ -84,6 +91,7 @@ export const QUALITY_TABLE: Readonly<Record<QualityTier, TierProfile>> = {
     shadowType: 'basic',
     terrainDetail: false,
     waterQuality: 'flat',
+    post: 'none',
     waterOpacity: 0.85,
     particleScale: 0.3,
     maxDynamicLights: 2,
@@ -100,6 +108,7 @@ export const QUALITY_TABLE: Readonly<Record<QualityTier, TierProfile>> = {
     shadowType: 'basic',
     terrainDetail: false,
     waterQuality: 'flat',
+    post: 'none',
     waterOpacity: 0.85,
     particleScale: 0.25,
     maxDynamicLights: 0,

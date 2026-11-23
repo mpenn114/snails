@@ -1,6 +1,7 @@
 import { FIXED_DT, createMatch, createScriptedBot, type SimEvent, type Vec3 } from '@snails/core';
 import { MatchRenderer, QUALITY_TIERS, createGameView, type QualityTier } from '@snails/render';
 import { HARNESS_WEAPON, harnessMatchOptions } from './fake-server';
+import { TERRAIN_TEXTURES } from '../terrain-textures';
 
 /** Fixed camera framings for reference screenshots. */
 export const SHOT_CAMS = ['close', 'wide', 'crater'] as const;
@@ -97,11 +98,14 @@ function makeShotRenderer(
   const renderer = new MatchRenderer({
     now: () => clock.ms,
     random: seededRandom(seed),
+    // Anisotropic filtering is very slow in software GL; captures do not need it.
+    terrainTextures: { ...TERRAIN_TEXTURES, anisotropy: 1 },
     makeView: ({ bounds, waterLevel }) =>
       createGameView(canvas, {
         tier,
         terrainBounds: bounds,
         waterLevel,
+        postProcessing: true,
         scheduler,
         now: () => clock.ms,
       }),
@@ -134,6 +138,7 @@ export async function runShot(canvas: HTMLCanvasElement, params: URLSearchParams
   const options = harnessMatchOptions({ seed, teams: 3, snailsPerTeam: 3 });
   const sim = createMatch(options).sim;
   renderer.init({ grid: sim.terrain, waterLevel: sim.state.terrain.waterLevel });
+  await Promise.all([renderer.terrainTexturesReady, renderer.view?.postReady]);
   const bots = options.teams.map((t) => createScriptedBot(t.id, HARNESS_WEAPON));
   const { events, blast } = stepScene(sim, cam, bots);
 

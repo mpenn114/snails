@@ -15,6 +15,8 @@ import {
   type RendererLike,
   type RenderStateSource,
 } from './render-loop.js';
+import { createPostController, type PostFactory } from './post/post-controller.js';
+import { createPostPipeline } from './post/post-pipeline.js';
 import { createEnvironment } from './environment/environment.js';
 import type { Bounds3 } from './environment/lighting.js';
 import { createSceneGraph, type SceneRoots } from './scene-graph.js';
@@ -42,6 +44,11 @@ export interface GameViewOptions {
   now?: () => number;
   /** WebGL power preference hint (iOS Safari largely ignores it). */
   powerPreference?: 'default' | 'high-performance' | 'low-power';
+  /**
+   * Opt in to the post-processing composer for tiers that have one (`quality.post`): the TV
+   * display does, phones never do. Libraries load lazily; frames render directly until ready.
+   */
+  postProcessing?: boolean;
 }
 
 /** Handle to a running game view. */
@@ -57,6 +64,8 @@ export interface GameView {
   readonly tier: QualityTier;
   /** Current resolved quality settings (e.g. chunkBudgetMs, particleScale). */
   readonly quality: QualitySettings;
+  /** Resolves true once the post chain for the current tier is active (false when none). */
+  readonly postReady: Promise<boolean>;
   /** Switches tier at runtime (pixel ratio, shadow flag, draw distance); see applyQuality. */
   setTier(tier: QualityTier): void;
   dispose(): void;
@@ -72,31 +81,37 @@ export interface GameViewDeps {
   source?: RenderStateSource;
   terrainBounds?: Bounds3;
   waterLevel?: number;
+  /** Builds the post chain for a config (enables post-processing when given). */
+  createPost?: PostFactory;
+}
+
+/** Re-applies the fog range after the far plane changes, so distant terrain fades out. */
+function fitFog(scene: THREE.Scene, camera: THREE.PerspectiveCamera): void {
+  if (scene.fog instanceof THREE.Fog) {
+    scene.fog.near = camera.far * LIGHTING.fogStartFraction;
+    scene.fog.far = camera.far * LIGHTING.fogEndFraction;
+  }
+}
+
+function createCamera(far: number): THREE.PerspectiveCamera {
+  const camera = new THREE.PerspectiveCamera(60, 1, 0.1, far);
+  camera.position.set(0, 4, 10);
+  camera.lookAt(0, 0, 0);
+  return camera;
 }
 
 /** Builds scene, camera, lights and a started render loop from injected deps. */
 export function createGameViewWith(deps: GameViewDeps): GameView {
   const q = qualitySettings(deps.tier, deps.devicePixelRatio);
   const { scene, roots } = createSceneGraph();
-  const camera = new THREE.PerspectiveCamera(60, 1, 0.1, 500 * q.drawDistanceScale);
-  camera.position.set(0, 4, 10);
-  camera.lookAt(0, 0, 0);
-
+  const camera = createCamera(500 * q.drawDistanceScale);
   const env = createEnvironment(roots.environment, {
     tier: deps.tier,
     ...(deps.terrainBounds ? { bounds: deps.terrainBounds } : {}),
     ...(deps.waterLevel !== undefined ? { waterLevel: deps.waterLevel } : {}),
   });
   env.applyTo(scene);
-  const fitFog = (): void => {
-    // Fade distant terrain/water into the sky before the far plane so no edge shows.
-    if (scene.fog instanceof THREE.Fog) {
-      scene.fog.near = camera.far * LIGHTING.fogStartFraction;
-      scene.fog.far = camera.far * LIGHTING.fogEndFraction;
-    }
-  };
-  fitFog();
-
+  fitFog(scene, camera);
   const loop = createRenderLoop({
     renderer: deps.renderer,
     scene,
@@ -109,7 +124,11 @@ export function createGameViewWith(deps: GameViewDeps): GameView {
   const removeEnvUpdater = loop.addUpdater(env.update);
   loop.start();
   const state = { tier: deps.tier, quality: q };
+  const post = createPostController(deps, loop, scene, camera);
   return {
+    get postReady() {
+      return post.ready();
+    },
     get tier() {
       return state.tier;
     },
@@ -119,9 +138,10 @@ export function createGameViewWith(deps: GameViewDeps): GameView {
     setTier: (tier) => {
       state.tier = tier;
       state.quality = applyQuality(deps.renderer, tier, deps.devicePixelRatio);
+      post.apply(tier);
       camera.far = 500 * state.quality.drawDistanceScale;
       camera.updateProjectionMatrix();
-      fitFog();
+      fitFog(scene, camera);
     },
     scene,
     camera,
@@ -129,8 +149,12 @@ export function createGameViewWith(deps: GameViewDeps): GameView {
     loop,
     addUpdater: (fn) => loop.addUpdater(fn),
     setSource: (s) => loop.setSource(s),
-    resize: (w, h) => loop.resize(w, h),
+    resize: (w, h) => {
+      post.size = [w, h];
+      loop.resize(w, h);
+    },
     dispose: () => {
+      post.dispose();
       removeEnvUpdater();
       env.dispose();
       loop.dispose();
@@ -159,6 +183,11 @@ export function createGameView(canvas: HTMLCanvasElement, opts: GameViewOptions)
       cancel: (h) => window.cancelAnimationFrame(h),
     },
     now: opts.now ?? (() => performance.now()),
+    ...(opts.postProcessing
+      ? {
+          createPost: (config, ctx) => createPostPipeline({ renderer, config, ...ctx }),
+        }
+      : {}),
     ...(opts.source ? { source: opts.source } : {}),
     ...(opts.terrainBounds ? { terrainBounds: opts.terrainBounds } : {}),
     ...(opts.waterLevel !== undefined ? { waterLevel: opts.waterLevel } : {}),
