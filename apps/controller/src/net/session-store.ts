@@ -29,10 +29,34 @@ export function loadSession(storage: StorageLike | undefined): StoredSession | u
   }
 }
 
-/** Saves the session; storage failures are ignored. */
+/**
+ * True when a full page reload should rejoin straight away: a session token is stored and the
+ * join screen holds the same name and room as that session.
+ */
+export function canAutoResume(
+  stored: StoredSession | undefined,
+  values: { name: string; room: string },
+): boolean {
+  return (
+    stored?.sessionToken !== undefined &&
+    stored.roomCode === values.room &&
+    stored.name === values.name.trim() &&
+    values.room !== ''
+  );
+}
+
+/**
+ * Saves the session; storage failures are ignored. A save without a token keeps the token of an
+ * already stored session for the same room, so re-submitting the join form still rejoins.
+ */
 export function saveSession(storage: StorageLike | undefined, s: StoredSession): void {
   try {
-    storage?.setItem(KEY, JSON.stringify(s));
+    const prev = s.sessionToken === undefined ? loadSession(storage) : undefined;
+    const next: StoredSession =
+      prev?.sessionToken !== undefined && prev.roomCode === s.roomCode
+        ? { ...s, sessionToken: prev.sessionToken }
+        : s;
+    storage?.setItem(KEY, JSON.stringify(next));
   } catch {
     /* storage unavailable */
   }

@@ -1,4 +1,6 @@
 import type { ControllerClient } from '../net/client';
+import { loadSession, canAutoResume } from '../net/session-store';
+import { safeStorage } from '../platform/ios';
 import { canJoin, normaliseRoom, statusText } from './join-logic';
 
 /** Values entered on the join screen. */
@@ -41,6 +43,11 @@ export function mountJoinView(
     onJoin({ name: name.value.trim(), room: room.value });
   });
   refresh();
+  // A full reload with a stored session token rejoins automatically (deferred so the caller
+  // has finished wiring the returned handle).
+  if (canAutoResume(loadSession(safeStorage()), initial)) {
+    setTimeout(() => onJoin({ name: initial.name.trim(), room: initial.room }), 0);
+  }
   return {
     update: (client) => {
       busy = client.state === 'connecting' || client.state === 'reconnecting';

@@ -17,6 +17,8 @@ export interface MatchRunnerOptions {
   rejectIntervalMs?: number;
   /** Grace before auto-ending the turn of a team with nobody connected. Default 10000. */
   absentTurnGraceMs?: number;
+  /** How long the final state stays up (winner screen) before the room returns to the lobby. Default 8000. */
+  endHoldMs?: number;
 }
 
 const FALLBACK_COLOURS = ['#e63946', '#2a9d8f', '#e9c46a', '#457b9d', '#9b5de5', '#f4a261'];
@@ -54,6 +56,7 @@ export class MatchRunner implements ActiveMatch {
   private lastAimAt = Number.NEGATIVE_INFINITY;
   private stopped = false;
   private skipTimer: unknown = null;
+  private endTimer: unknown = null;
   private readonly teamPlayers = new Map<string, string[]>();
   private readonly now: () => number;
 
@@ -81,7 +84,7 @@ export class MatchRunner implements ActiveMatch {
         this.membersChanged();
       },
       onTurnTimer: (remainingMs) => this.broadcast({ type: 'turnTimer', remainingMs }),
-      onMatchEnd: () => this.room.endMatch(),
+      onMatchEnd: () => this.scheduleEnd(),
     });
     this.latest = this.session.snapshot();
     this.broadcast(this.session.matchStartedMessage());
@@ -151,9 +154,21 @@ export class MatchRunner implements ActiveMatch {
     return this.session.tick;
   }
 
+  /** Lets clients show the result, then returns the room to the lobby. */
+  private scheduleEnd(): void {
+    if (this.stopped || this.endTimer !== null) return;
+    this.clearSkip();
+    this.endTimer = (this.opts.setTimeout ?? setTimeout)(() => {
+      this.endTimer = null;
+      this.room.endMatch();
+    }, this.opts.endHoldMs ?? 8000);
+  }
+
   /** Stops the session and pending timers. */
   stop(): void {
     this.stopped = true;
+    if (this.endTimer !== null) (this.opts.clearTimeout ?? clearTimeout)(this.endTimer as never);
+    this.endTimer = null;
     this.session.stop();
     this.clearSkip();
     if (this.aimTimer !== null) (this.opts.clearTimeout ?? clearTimeout)(this.aimTimer as never);
