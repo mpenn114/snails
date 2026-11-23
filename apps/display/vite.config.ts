@@ -4,6 +4,8 @@ import { buildDevProxy, serverUrlFromEnv } from './src/dev-proxy';
 
 /** Vite config: ES-module workers (terrain mesher), dev proxy to the game server. */
 export default defineConfig({
+  // Relative asset URLs: the bundle is served by the game server under /display/.
+  base: './',
   build: {
     target: 'es2022',
     // The three chunk is ~505 kB minified on its own (126 kB gzip) and is cached separately.
