@@ -13,7 +13,7 @@ export class DisplayClient {
 
   constructor(
     private readonly url: string,
-    private readonly roomCode: string,
+    private readonly roomCode?: string,
   ) {}
 
   /** Opens the socket and sends the hello. */
@@ -25,7 +25,7 @@ export class DisplayClient {
           type: 'hello',
           role: 'display',
           name: 'Display',
-          roomCode: this.roomCode,
+          ...(this.roomCode ? { roomCode: this.roomCode } : {}),
           protocolVersion: PROTOCOL_VERSION,
         }),
       ),

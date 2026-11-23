@@ -22,3 +22,24 @@ jobs:
       - run: pnpm check-limits
       - run: pnpm test:coverage
       - run: pnpm build
+  e2e:
+    needs: ci
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build
+      - run: npm install --no-save --prefix "$RUNNER_TEMP/pw" playwright@1.63.0
+      - run: npx --prefix "$RUNNER_TEMP/pw" playwright install --with-deps chromium
+      - run: pnpm e2e
+        env:
+          NODE_PATH: ${{ runner.temp }}/pw/node_modules
+      - run: pnpm e2e:reconnect
+        env:
+          NODE_PATH: ${{ runner.temp }}/pw/node_modules

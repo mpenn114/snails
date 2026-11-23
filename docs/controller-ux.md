@@ -110,10 +110,14 @@ Portrait variant: the scene on the upper two-thirds, controls in a bottom panel.
 
 Controls:
 - **Movement:** virtual joystick (left thumb) controls crawl; dead zone and left/right-handed
-  swap in settings. Joystick direction is relative to the camera.
+  swap in settings. Joystick direction is relative to the camera: the stick vector is projected onto
+  the active snail's on-screen facing (forward = stick toward where the snail faces, so stick-up in
+  the follow view, stick-right/left in a side view); the perpendicular part is ignored because the
+  sim has no turn intent.
 - **Jump:** button (right thumb); tap for hop, swipe up for backflip.
 - **Aim by drag:** touch and drag anywhere on the scene (outside buttons) from the snail: direction
-  sets yaw/pitch, distance sets power. An **angle/power arc preview** is drawn in the 3D scene
+  sets yaw/pitch (in a side view the drag direction is the shot direction; behind the snail drag up =
+  steeper, down = flatter), distance sets power. An **angle/power arc preview** is drawn in the 3D scene
   (and mirrored on the big screen so spectators follow the shot), including wind drift only if the
   Eye Stalk Optics tech is owned ([technology-research.md](technology-research.md)).
   Release to lock; a fine-tune slider appears for 1-degree steps.

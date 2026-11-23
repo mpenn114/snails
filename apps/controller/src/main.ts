@@ -1,23 +1,36 @@
-import { createGameView } from '@snails/render';
 import { ControllerClient } from './net/client';
-import { mountTurnControls } from './ui/turn-controls';
+import { loadSession, saveSession } from './net/session-store';
+import { buildWsUrl } from './net/url';
+import { mountJoinView } from './ui/join-view';
+import { parseRoomParam } from './ui/join-logic';
+import { registerServiceWorker } from './pwa/register-sw';
+import { installTouchGuards, safeStorage } from './platform/ios';
+import { createMatchShell } from './shell/match-shell';
+import { bindPageLifecycle } from './net/lifecycle';
 
-const canvas = document.getElementById('view') as HTMLCanvasElement;
-const join = document.getElementById('join') as HTMLFormElement;
-const overlay = document.getElementById('overlay') as HTMLElement;
-const roomInput = document.getElementById('room') as HTMLInputElement;
-roomInput.value = new URLSearchParams(location.search).get('room') ?? '';
+if (import.meta.env.PROD) void registerServiceWorker(navigator);
 
-join.addEventListener('submit', (e) => {
-  e.preventDefault();
-  const name = (document.getElementById('name') as HTMLInputElement).value;
-  const client = new ControllerClient(`ws://${location.host}/ws`, name, roomInput.value);
+const screen = document.getElementById('screen') as HTMLElement;
+
+installTouchGuards(document);
+const storage = safeStorage();
+const stored = loadSession(storage);
+const initial = {
+  name: stored?.name ?? '',
+  room: parseRoomParam(location.search) || stored?.roomCode || '',
+};
+
+const joinView = mountJoinView(screen, initial, (v) => {
+  saveSession(storage, { name: v.name, roomCode: v.room });
+  const client = new ControllerClient({
+    url: buildWsUrl(location),
+    name: v.name,
+    roomCode: v.room,
+  });
+  client.onState(() => joinView.update(client));
+  client.on('error', () => joinView.update(client));
+  createMatchShell(client, screen, () => joinView.destroy());
+  bindPageLifecycle(client, window, document);
   client.connect();
-  join.remove();
-
-  const view = createGameView(canvas, { tier: 'mobile' });
-  const resize = (): void => view.resize(window.innerWidth, window.innerHeight);
-  window.addEventListener('resize', resize);
-  resize();
-  mountTurnControls(overlay, client);
+  joinView.update(client);
 });

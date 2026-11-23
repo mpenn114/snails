@@ -129,8 +129,8 @@ export default tseslint.config(
   },
   {
     // The local harness stands in for the game server (creates and steps a sim in the browser to
-    // feed the renderer). It alone may use core's driving API; packages/Node built-ins stay banned.
-    files: ['apps/display/src/harness/**/*.ts'],
+    // feed the renderer; match/terrain-init.ts regenerates the seeded terrain). Only these may use core's driving API; packages/Node built-ins stay banned.
+    files: ['apps/display/src/harness/**/*.ts', 'apps/display/src/match/terrain-init.ts'],
     rules: {
       'no-restricted-imports': renderImportRestrictions(true, true),
       'no-restricted-syntax': [

@@ -1,7 +1,19 @@
-import { MatchRenderer, QUALITY_TIERS, createGameView, pickDefaultTier } from '@snails/render';
+import {
+  MatchRenderer,
+  QUALITY_TIERS,
+  createAimHint,
+  createGameView,
+  pickDefaultTier,
+} from '@snails/render';
 import type { QualityTier } from '@snails/render';
 import { DisplayClient, relativeWsUrl } from './net/client';
-import { routeServerMessage, type DisplayFeed } from './net/display-feed';
+import { fetchInfo, buildJoinUrl } from './lobby/lobby-logic';
+import { mountLobbyScreen } from './lobby/lobby-view';
+import type { LobbyModel } from './lobby/lobby-view';
+import { MatchAdapter } from './match/match-adapter';
+import { mountHud } from './match/hud-view';
+import { buildTerrainInit } from './match/terrain-init';
+import { mountDebugOverlay } from './debug/debug-overlay';
 
 const canvas = document.getElementById('view') as HTMLCanvasElement;
 const params = new URLSearchParams(location.search);
@@ -27,15 +39,35 @@ const onResize = (): void => renderer.resize(window.innerWidth, window.innerHeig
 window.addEventListener('resize', onResize);
 onResize();
 
-const feed: DisplayFeed = {
-  onInit: (init) => renderer.init(init),
-  onSnapshot: (s) => void renderer.pushSnapshot(s),
-  onEvents: (e) => renderer.handleEvents(e),
+const aimHint = createAimHint();
+renderer.addLayer(aimHint.layer);
+const hud = mountHud(document.getElementById('lobby-root') as HTMLElement);
+const lobby = mountLobbyScreen(document.getElementById('lobby-root') as HTMLElement);
+const adapter = new MatchAdapter({
+  renderer,
+  aim: aimHint,
+  buildInit: buildTerrainInit,
+  onHud: hud.update,
+  onMatchVisible: (visible) => hud.setVisible(visible),
+});
+const info = fetchInfo((u) => fetch(u));
+const client = new DisplayClient(relativeWsUrl(location), params.get('room') ?? undefined);
+const debug = mountDebugOverlay(location.search);
+client.onMessage = (m) => {
+  if (m.type === 'snapshot') debug.onSnapshot(m.tick);
+  adapter.handle(m);
+  if (m.type === 'lobbyState' && m.phase === 'lobby') {
+    void info.then((i) => {
+      const model: LobbyModel = {
+        roomCode: m.roomCode,
+        joinUrl: i ? buildJoinUrl(i.joinUrl, m.roomCode) : undefined,
+        players: m.players,
+        settings: m.settings,
+      };
+      lobby.update(model);
+    });
+  } else if (m.type === 'matchStarted') {
+    lobby.hide();
+  }
 };
-
-const room = params.get('room');
-if (room) {
-  const client = new DisplayClient(relativeWsUrl(location), room);
-  client.onMessage = (m) => routeServerMessage(feed, m);
-  client.connect();
-}
+client.connect();

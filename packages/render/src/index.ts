@@ -26,3 +26,6 @@ export * from './effects/particles.js';
 export * from './effects/projectile-layer.js';
 export * from './effects/explosion-effects.js';
 export * from './match-renderer.js';
+export * from './wire-snapshot.js';
+export * from './frame-cap.js';
+export * from './effects/aim-hint.js';

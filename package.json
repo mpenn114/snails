@@ -17,7 +17,9 @@
     "format:check": "prettier --check .",
     "check-limits": "node scripts/check-limits.mjs",
     "ci": "pnpm lint && pnpm typecheck && pnpm check-limits && pnpm test && pnpm build",
-    "build:packages": "pnpm -r --workspace-concurrency=1 --filter \"./packages/*\" --filter @snails/server build"
+    "build:packages": "pnpm -r --workspace-concurrency=1 --filter \"./packages/*\" --filter @snails/server build",
+    "e2e": "node e2e/smoke.mjs",
+    "e2e:reconnect": "node e2e/reconnect.mjs"
   },
   "devDependencies": {
     "@eslint/js": "^9.15.0",

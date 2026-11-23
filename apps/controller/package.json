@@ -6,9 +6,12 @@
   "scripts": {
     "dev": "vite --port 5174 --host",
     "build": "vite build",
+    "gen:icons": "node scripts/gen-icons.mjs",
     "typecheck": "tsc -p tsconfig.json"
   },
   "dependencies": {
+    "@snails/content-base": "workspace:*",
+    "@snails/core": "workspace:*",
     "@snails/protocol": "workspace:*",
     "@snails/render": "workspace:*"
   },

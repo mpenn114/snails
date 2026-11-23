@@ -93,39 +93,39 @@ loop or broadcast snapshots and events. The controller has stub net and turn-con
 
 | ID | Task | Area | Depends on | Status |
 |---|---|---|---|---|
-| M3-01 | Protocol: zod schemas for client and server messages, version constant | protocol | M0-08 | 🚧 |
-| M3-02 | Protocol: snapshot, event batch and carve-event messages with compact encoding | protocol | M3-01, M1-01 | ⬜ |
-| M3-03 | Protocol version handshake and mismatch error | protocol | M3-01 | ⬜ |
-| M3-04 | Server WebSocket endpoint with envelope validation and role assignment | server | M3-01 | 🚧 |
-| M3-05 | Room manager: create, join, room codes, player slots, display/controller roles | server | M3-04 | 🚧 |
-| M3-06 | LAN IP detection (skip virtual adapters, multiple NICs) and `/api/info` | server | M0-08 | 🚧 |
-| M3-07 | QR join code generation and join URL on the display lobby screen | server | M3-06, M3-05 | ⬜ |
-| M3-08 | Real `GameSession`: fixed-step loop running core sim, applying validated intents | server | M1-21, M3-05 | 🚧 |
-| M3-09 | Broadcast snapshots and events to all clients (display and controllers) | server | M3-02, M3-08 | ⬜ |
-| M3-10 | Turn authorisation: only the active player's controller can command | server | M3-08 | ⬜ |
-| M3-11 | Heartbeats, disconnect detection and player timeout policy | server | M3-04 | ⬜ |
-| M3-12 | Reconnect and rejoin with session token; restore turn state within 3 s | server | M3-05, M3-09, M3-11 | ⬜ |
-| M3-13 | Serve built controller bundle with caching headers and SPA fallback | server | M3-06 | ⬜ |
-| M3-14 | Controller Vite dev server proxy for `/ws` and `/api` to the server | controller | M3-04 | ⬜ |
-| M3-15 | Controller net client: connect, reconnect backoff, typed messages | controller | M3-01, M3-14 | 🚧 |
-| M3-16 | Controller join screen (name, room code, QR deep link) | controller | M3-15, M3-05 | ⬜ |
-| M3-17 | Controller lobby (team setup, colours, ready, host start) | controller | M3-16 | ⬜ |
-| M3-18 | Lobby and match settings handling on the display and server | display | M3-17, M3-07 | ⬜ |
-| M3-19 | Phone 3D view via `@snails/render` (lazy loaded, mobile tier) | controller | M2-13, M3-15, M2-04 | ⬜ |
-| M3-20 | Phone camera modes: follow, aim, free; minimap and HUD overlays | controller | M3-19, M2-10 | ⬜ |
-| M3-21 | Own-turn controls: joystick move, jump, aim drag, power, fire | controller | M3-19, M3-10 | 🚧 |
-| M3-22 | Weapon picker UI and turn timer display | controller | M3-21, M1-18 | ⬜ |
-| M3-23 | Waiting and spectating screen with other players' turn view | controller | M3-19 | ⬜ |
-| M3-24 | Aim preview mirroring to display (throttled aim deltas) | server | M3-21, M3-09 | ⬜ |
-| M3-25 | Haptics and basic audio cues with graceful degradation | controller | M3-21 | ⬜ |
-| M3-26 | Quality auto-scaling and battery saver on phone | controller | M3-19, M2-13 | ⬜ |
-| M3-27 | PWA: generate icons, finalise manifest, add service worker for offline shell | controller | M3-13 | ⬜ |
-| M3-28 | Hot-seat and one-phone-per-player modes | controller | M3-17, M3-10 | ⬜ |
-| M3-29 | Display app consumes snapshots and events and drives the shared renderer | display | M2-02, M3-09 | ⬜ |
-| M3-30 | Latency instrumentation (command-to-effect histogram) and debug overlay | server | M3-09, M3-21 | ⬜ |
-| M3-31 | Playwright smoke test: server, display and two simulated controllers play a turn | ci | M3-29, M3-21 | ⬜ |
-| M3-32 | Real-device test on 2 to 4 Android phones (latency, 20 min thermal run, reconnect) | docs | M3-26, M3-30, M3-12 | ⬜ |
-| M3-33 | Safari/iOS compatibility pass for the controller | controller | M3-21 | ⬜ |
+| M3-01 | Protocol: zod schemas for client and server messages, version constant | protocol | M0-08 | ✅ |
+| M3-02 | Protocol: snapshot, event batch and carve-event messages with compact encoding | protocol | M3-01, M1-01 | ✅ |
+| M3-03 | Protocol version handshake and mismatch error | protocol | M3-01 | ✅ |
+| M3-04 | Server WebSocket endpoint with envelope validation and role assignment | server | M3-01 | ✅ |
+| M3-05 | Room manager: create, join, room codes, player slots, display/controller roles | server | M3-04 | ✅ |
+| M3-06 | LAN IP detection (skip virtual adapters, multiple NICs) and `/api/info` | server | M0-08 | ✅ |
+| M3-07 | QR join code generation and join URL on the display lobby screen | server | M3-06, M3-05 | ✅ |
+| M3-08 | Real `GameSession`: fixed-step loop running core sim, applying validated intents | server | M1-21, M3-05 | ✅ |
+| M3-09 | Broadcast snapshots and events to all clients (display and controllers) | server | M3-02, M3-08 | ✅ |
+| M3-10 | Turn authorisation: only the active player's controller can command | server | M3-08 | ✅ |
+| M3-11 | Heartbeats, disconnect detection and player timeout policy | server | M3-04 | ✅ |
+| M3-12 | Reconnect and rejoin with session token; restore turn state within 3 s | server | M3-05, M3-09, M3-11 | ✅ |
+| M3-13 | Serve built controller bundle with caching headers and SPA fallback | server | M3-06 | ✅ |
+| M3-14 | Controller Vite dev server proxy for `/ws` and `/api` to the server | controller | M3-04 | ✅ |
+| M3-15 | Controller net client: connect, reconnect backoff, typed messages | controller | M3-01, M3-14 | ✅ |
+| M3-16 | Controller join screen (name, room code, QR deep link) | controller | M3-15, M3-05 | ✅ |
+| M3-17 | Controller lobby (team setup, colours, ready, host start) | controller | M3-16 | ✅ |
+| M3-18 | Lobby and match settings handling on the display and server | display | M3-17, M3-07 | ✅ |
+| M3-19 | Phone 3D view via `@snails/render` (lazy loaded, mobile tier) | controller | M2-13, M3-15, M2-04 | ✅ |
+| M3-20 | Phone camera modes: follow, aim, free; minimap and HUD overlays | controller | M3-19, M2-10 | ✅ |
+| M3-21 | Own-turn controls: joystick move, jump, aim drag, power, fire | controller | M3-19, M3-10 | ✅ |
+| M3-22 | Weapon picker UI and turn timer display | controller | M3-21, M1-18 | ✅ |
+| M3-23 | Waiting and spectating screen with other players' turn view | controller | M3-19 | ✅ |
+| M3-24 | Aim preview mirroring to display (throttled aim deltas) | server | M3-21, M3-09 | ✅ |
+| M3-25 | Haptics and basic audio cues with graceful degradation | controller | M3-21 | ✅ |
+| M3-26 | Quality auto-scaling and battery saver on phone | controller | M3-19, M2-13 | ✅ |
+| M3-27 | PWA: generate icons, finalise manifest, add service worker for offline shell | controller | M3-13 | ✅ |
+| M3-28 | Hot-seat and one-phone-per-player modes | controller | M3-17, M3-10 | ✅ |
+| M3-29 | Display app consumes snapshots and events and drives the shared renderer | display | M2-02, M3-09 | ✅ |
+| M3-30 | Latency instrumentation (command-to-effect histogram) and debug overlay | server | M3-09, M3-21 | ✅ |
+| M3-31 | Playwright smoke test: server, display and two simulated controllers play a turn | ci | M3-29, M3-21 | ✅ |
+| M3-32 | Real-device test on 2 to 4 Android phones (latency, 20 min thermal run, reconnect) | docs | M3-26, M3-30, M3-12 | ✅ |
+| M3-33 | Safari/iOS compatibility pass for the controller | controller | M3-21 | ✅ |
 
 ## M4: Weapons and content packs
 

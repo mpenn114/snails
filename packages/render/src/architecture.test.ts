@@ -63,7 +63,10 @@ function namedImports(clause: string): string[] {
  * render/display (and all package/Node-builtin bans) still applies to it.
  */
 function isHarnessFile(file: string): boolean {
-  return file.split(sep).join('/').includes('apps/display/src/harness/');
+  const f = file.split(sep).join('/');
+  return (
+    f.includes('apps/display/src/harness/') || f.endsWith('apps/display/src/match/terrain-init.ts')
+  );
 }
 
 /** Collects human-readable boundary violations for one source file's text. */

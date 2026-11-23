@@ -46,3 +46,4 @@ See [adr/README.md](adr/README.md) for the index and template.
 | [development/coding-standards.md](development/coding-standards.md) | Size limits, strict TS, TSDoc, naming, folders, enforcement. |
 | [development/testing.md](development/testing.md) | Vitest, determinism and protocol tests, golden replays, Playwright. |
 | [development/release-process.md](development/release-process.md) | Semver tags, release workflow, running from a release, phone join. |
+| [development/device-testing.md](development/device-testing.md) | Manual Android phone test procedure: LAN setup, latency, thermal run, reconnect, results template. |
