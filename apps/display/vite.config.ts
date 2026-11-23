@@ -1,9 +1,11 @@
 import { defineConfig } from 'vite';
+import { contentAssets } from '../../scripts/vite-content-assets.mjs';
 import { resolve } from 'node:path';
 import { buildDevProxy, serverUrlFromEnv } from './src/dev-proxy';
 
 /** Vite config: ES-module workers (terrain mesher), dev proxy to the game server. */
 export default defineConfig({
+  plugins: [contentAssets()],
   // Relative asset URLs: the bundle is served by the game server under /display/.
   base: './',
   build: {

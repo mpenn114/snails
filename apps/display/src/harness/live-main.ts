@@ -33,6 +33,7 @@ let glRenderer: GlInfo | null = null;
 const profile = params.get('profile') === '1';
 const renderer = new MatchRenderer({
   now: () => performance.now(),
+  modelBaseUrl: `${import.meta.env.BASE_URL}models/`,
   makeView: ({ bounds, waterLevel }) =>
     createGameView(canvas, {
       tier,

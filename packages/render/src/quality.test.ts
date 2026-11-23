@@ -20,6 +20,7 @@ describe('quality table', () => {
       'particleScale',
       'maxDynamicLights',
       'chunkBudgetMs',
+      'propCount',
       'drawDistanceScale',
     ] as const;
     for (const k of keys) {

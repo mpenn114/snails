@@ -6,6 +6,8 @@ import { ExplosionEffects } from './effects/explosion-effects.js';
 import { createWindParticles, type WindParticles } from './environment/wind-particles.js';
 import { ProjectileLayer } from './effects/projectile-layer.js';
 import { SnapshotBuffer } from './interpolation.js';
+import { createGltfModelLoader, type ModelLoader } from './props/model-loader.js';
+import { PropLayer } from './props/prop-layer.js';
 import type { QualityTier } from './quality.js';
 import type { FrameUpdater, RenderState } from './render-loop.js';
 import type { LabelTextureFactory } from './snail-assets.js';
@@ -47,6 +49,13 @@ export interface MatchRendererDeps {
   random?: () => number;
   /** Name-tag texture factory for snail labels (inject in Node). */
   labelFactory?: LabelTextureFactory;
+  /**
+   * URL prefix (ending in `/`) the scenery models are served from, e.g. `./models/`. Without it
+   * no props are drawn (tests, headless use).
+   */
+  modelBaseUrl?: string;
+  /** Model loader override (tests inject a fake; default fetches glTF with GLTFLoader). */
+  modelLoader?: ModelLoader;
 }
 
 /** An extra per-frame layer plugged in via {@link MatchRenderer.addLayer}. */
@@ -84,6 +93,7 @@ interface Built {
   replica: TerrainReplica;
   snails: SnailLayer;
   projectiles: ProjectileLayer;
+  props: PropLayer | null;
   explosions: ExplosionEffects;
   rig: CameraRig;
   wind: WindParticles;
@@ -101,6 +111,7 @@ export class MatchRenderer {
   private tier: QualityTier | null = null;
   private readonly buffer: SnapshotBuffer;
   private readonly extras: ExtraLayer[] = [];
+  private ownedLoader: ModelLoader | null = null;
 
   /** Creates an idle renderer; nothing is built until `init`. */
   constructor(private readonly deps: MatchRendererDeps) {
@@ -123,6 +134,10 @@ export class MatchRenderer {
   get explosionEffects(): ExplosionEffects | null {
     return this.built?.explosions ?? null;
   }
+  /** Scenery props (null before `init`, or when no `modelBaseUrl` was given). */
+  get propLayer(): PropLayer | null {
+    return this.built?.props ?? null;
+  }
   /** Terrain mesh manager (null before `init`). */
   get terrainMeshes(): TerrainMeshManager | null {
     return this.built?.terrain ?? null;
@@ -144,11 +159,11 @@ export class MatchRenderer {
     const view = this.deps.makeView({ bounds, waterLevel: init.waterLevel });
     if (this.tier) view.setTier(this.tier);
     if (this.size) view.resize(this.size.w, this.size.h);
-    this.built = this.build(view, init.grid);
+    this.built = this.build(view, init.grid, init.waterLevel);
     view.setSource(this.buffer);
   }
 
-  private build(view: GameView, source: SdfGrid): Built {
+  private build(view: GameView, source: SdfGrid, waterLevel: number): Built {
     const q = view.quality;
     const grid = cloneGrid(source);
     const transport = this.deps.makeTransport?.() ?? createWorkerPool(2);
@@ -178,6 +193,8 @@ export class MatchRenderer {
       ...(this.deps.random ? { random: this.deps.random } : {}),
     });
     view.roots.entities.add(snails.group);
+    const props = this.makeProps(grid, waterLevel, q.propCount, q.shadows);
+    if (props) view.roots.entities.add(props.group);
     view.roots.effects.add(projectiles.group, explosions.group);
 
     const ws = grid.worldSize();
@@ -198,6 +215,7 @@ export class MatchRenderer {
       replica,
       snails,
       projectiles,
+      props,
       explosions,
       rig,
       wind,
@@ -219,6 +237,7 @@ export class MatchRenderer {
       b.terrain.update();
     });
     add(b.snails.updater);
+    if (b.props) add(b.props.updater);
     add(b.projectiles.updater);
     add(b.explosions.updater);
     add((dt) => b.material.scorch.advance(dt));
@@ -274,6 +293,7 @@ export class MatchRenderer {
     b.view.setTier(tier);
     b.terrain.setShadows(b.view.quality.shadows);
     b.snails.setShadows(b.view.quality.shadows);
+    b.props?.setShadows(b.view.quality.shadows);
   }
 
   /** Resizes the view; remembered until `init`. */
@@ -290,6 +310,7 @@ export class MatchRenderer {
     for (const r of b.removers) r();
     b.terrain.dispose();
     b.snails.dispose();
+    b.props?.dispose();
     b.projectiles.dispose();
     b.explosions.dispose();
     b.wind.dispose();
@@ -297,8 +318,18 @@ export class MatchRenderer {
     b.view.dispose();
   }
 
+  /** Builds the cosmetic prop layer when a model URL prefix is configured. */
+  private makeProps(grid: SdfGrid, waterLevel: number, count: number, shadows: boolean) {
+    const baseUrl = this.deps.modelBaseUrl;
+    if (!baseUrl || count <= 0) return null;
+    const loader = this.deps.modelLoader ?? (this.ownedLoader ??= createGltfModelLoader());
+    return new PropLayer({ grid, waterLevel, count, baseUrl, loader, shadows });
+  }
+
   /** Disposes everything. */
   dispose(): void {
     this.teardown();
+    this.ownedLoader?.dispose();
+    this.ownedLoader = null;
   }
 }

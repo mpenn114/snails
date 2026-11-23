@@ -5,6 +5,7 @@ import type { GameSnapshot, SimEvent } from '@snails/core';
 import { MatchRenderer } from './match-renderer.js';
 import { createInProcessTransport } from './terrain/mesh-transport.js';
 import { createGameViewWith } from './view.js';
+import { CachedModelLoader } from './props/model-loader.js';
 
 function makeGrid(): SdfGrid {
   const g = new SdfGrid(24, 24, 24, 1, 1, 8);
@@ -45,13 +46,14 @@ const snap = (tick: number, snails: number, projectiles: number): GameSnapshot =
     })),
   }) as unknown as GameSnapshot;
 
-function setup() {
+function setup(extra: Partial<ConstructorParameters<typeof MatchRenderer>[0]> = {}) {
   let time = 0;
   let frame: ((t: number) => void) | null = null;
   const render = vi.fn();
   const r = new MatchRenderer({
     now: () => time,
     random: () => 0.5,
+    ...extra,
     labelFactory: () => new THREE.Texture(),
     makeTransport: () => createInProcessTransport({ sync: true }),
     makeView: ({ bounds, waterLevel }) =>
@@ -165,5 +167,26 @@ describe('MatchRenderer', () => {
     expect(r.view?.tier).toBe('mobile');
     r.dispose();
     expect(r.view).toBeNull();
+  });
+
+  it('has no prop layer without a model URL, and builds one (async) with a mock loader', async () => {
+    expect(setup().r.propLayer).toBeNull();
+    const loader = new CachedModelLoader(async () => [
+      { geometry: new THREE.BoxGeometry(0.2, 0.2, 0.2), material: new THREE.MeshBasicMaterial() },
+    ]);
+    const { r, tick } = setup({ modelBaseUrl: '/models/', modelLoader: loader });
+    r.init({ grid: makeGrid(), waterLevel: 2 });
+    r.pushSnapshot(snap(1, 1, 0));
+    expect(r.propLayer).not.toBeNull();
+    tick(16);
+    expect(r.propLayer?.count).toBe(0);
+    await new Promise((res) => setTimeout(res, 0));
+    tick(16);
+    tick(16);
+    expect(r.propLayer?.settled).toBe(true);
+    expect(r.propLayer?.count).toBeGreaterThan(0);
+    expect(r.propLayer?.group.parent).toBe(r.view?.roots.entities);
+    r.dispose();
+    expect(r.propLayer).toBeNull();
   });
 });

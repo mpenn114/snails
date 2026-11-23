@@ -81,6 +81,12 @@ sequenceDiagram
 
 A single large plane at the map's water level: Fresnel-blended reflection from the environment probe (planar reflection only on High), animated normal maps for ripples, depth-based colour/foam using the depth buffer, and splash particle + sound on events. Snails or projectiles that cross the plane emit `snailDrowned`/splash events from core; the view only reacts.
 
+## Scenery props and glTF assets
+
+Cosmetic scenery (rocks, mushrooms, grass, flowers, plants, a log and a stump) are CC0 Quaternius models kept in `packages/content-base/assets/models/` (credits in `assets/CREDITS.md`). Vite copies them to `models/` in the display and controller builds (`scripts/vite-content-assets.mjs`), so the server serves them with the bundles. `scripts/prepare-models.mjs` documents how the committed files were recoloured to the palette and rescaled from the original packs.
+
+In `@snails/render`, `CachedModelLoader` (`props/model-loader.ts`) loads each URL once with `GLTFLoader` and converts it to world-baked geometry plus shared flat toon materials. `PropLayer` scatters a seeded plan (`props/prop-plan.ts`: surface above water, normal.y at least 0.72, clear of snails) as one `InstancedMesh` per model part, with `propCount` instances per quality tier. It loads asynchronously (the first frame never waits), builds on the first snapshot, drops props whose ground is carved away (re-checked every few frames) and never feeds the simulation. `MatchRenderer` enables it when given `modelBaseUrl`.
+
 ## Particles and VFX
 
 - GPU instancing (`InstancedMesh`/`Points` with custom shader) pooled by effect type; no per-frame allocations.

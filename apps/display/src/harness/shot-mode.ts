@@ -96,6 +96,7 @@ function makeShotRenderer(
   };
   const renderer = new MatchRenderer({
     now: () => clock.ms,
+    modelBaseUrl: `${import.meta.env.BASE_URL}models/`,
     random: seededRandom(seed),
     makeView: ({ bounds, waterLevel }) =>
       createGameView(canvas, {
@@ -150,9 +151,11 @@ export async function runShot(canvas: HTMLCanvasElement, params: URLSearchParams
     },
   });
 
+  const propsSettled = (): boolean => renderer.propLayer?.settled ?? true;
   // Zero-dt frames: waiting on worker meshing must not advance simulated time.
   const settle = async (): Promise<void> => {
-    for (let i = 0; i < 6000 && !(renderer.terrainMeshes?.idle && i > 3); i++) await frame(0);
+    for (let i = 0; i < 6000 && !(renderer.terrainMeshes?.idle && propsSettled() && i > 3); i++)
+      await frame(0);
   };
 
   renderer.pushSnapshot(sim.snapshot());

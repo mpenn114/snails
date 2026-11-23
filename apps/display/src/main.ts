@@ -34,6 +34,7 @@ function chooseTier(): QualityTier {
 const tier = chooseTier();
 const renderer = new MatchRenderer({
   now: () => performance.now(),
+  modelBaseUrl: `${import.meta.env.BASE_URL}models/`,
   makeView: ({ bounds, waterLevel }) =>
     createGameView(canvas, { tier, terrainBounds: bounds, waterLevel }),
 });

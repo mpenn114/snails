@@ -87,6 +87,7 @@ export class PhoneView {
     this.canvas = canvas;
     this.renderer = new MatchRenderer({
       now: () => this.deps.now(),
+      modelBaseUrl: `${import.meta.env.BASE_URL}models/`,
       makeView: (env) => this.makeView(canvas, env),
     });
     this.renderer.setTier(this.governor.settings.tier);

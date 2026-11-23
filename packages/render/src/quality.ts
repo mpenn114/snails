@@ -34,6 +34,8 @@ export interface TierProfile {
   chunkBudgetMs: number;
   /** Terrain chunks farther than this (metres) from the camera target use the coarse LOD. */
   terrainLodDistance: number;
+  /** Cosmetic scenery props scattered on the terrain (0 disables). */
+  propCount: number;
   /** Multiplier on camera far plane / draw distance. */
   drawDistanceScale: number;
 }
@@ -58,6 +60,7 @@ export const QUALITY_TABLE: Readonly<Record<QualityTier, TierProfile>> = {
     chunkBudgetMs: 8,
     terrainLodDistance: 24,
     drawDistanceScale: 1,
+    propCount: 600,
   },
   medium: {
     pixelRatioCap: 1.5,
@@ -74,6 +77,7 @@ export const QUALITY_TABLE: Readonly<Record<QualityTier, TierProfile>> = {
     chunkBudgetMs: 6,
     terrainLodDistance: 20,
     drawDistanceScale: 0.8,
+    propCount: 400,
   },
   low: {
     pixelRatioCap: 1,
@@ -90,6 +94,7 @@ export const QUALITY_TABLE: Readonly<Record<QualityTier, TierProfile>> = {
     chunkBudgetMs: 4,
     terrainLodDistance: 16,
     drawDistanceScale: 0.6,
+    propCount: 220,
   },
   mobile: {
     pixelRatioCap: 1.5,
@@ -106,6 +111,7 @@ export const QUALITY_TABLE: Readonly<Record<QualityTier, TierProfile>> = {
     chunkBudgetMs: 3,
     terrainLodDistance: 12,
     drawDistanceScale: 0.5,
+    propCount: 90,
   },
 };
 
