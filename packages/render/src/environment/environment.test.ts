@@ -33,10 +33,10 @@ describe('lighting', () => {
     expect(createLighting({ tier: 'high', bounds }).sun.castShadow).toBe(true);
     expect(createLighting({ tier: 'mobile', bounds }).sun.castShadow).toBe(false);
   });
-  it('sets background and fog matching the sky', () => {
+  it('sets haze fog and leaves the background to the sky dome', () => {
     const scene = new THREE.Scene();
-    createLighting({ tier: 'high', bounds, skyColor: 0x112233 }).applyTo(scene);
-    expect((scene.background as THREE.Color).getHex()).toBe(0x112233);
+    createLighting({ tier: 'high', bounds, fogColor: 0x112233 }).applyTo(scene);
+    expect(scene.background).toBeNull();
     expect(scene.fog?.color.getHex()).toBe(0x112233);
   });
 });
