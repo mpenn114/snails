@@ -1,10 +1,13 @@
-import { PALETTE } from '../style/palette.js';
-import { Color, MeshStandardMaterial } from 'three';
-import type { WebGLProgramParametersWithUniforms } from 'three';
+import { Color } from 'three';
+import type { MeshToonMaterial, WebGLProgramParametersWithUniforms } from 'three';
 import { tierProfile, type QualityTier } from '../quality.js';
+import { createToonMaterial } from '../style/materials.js';
+import { PALETTE } from '../style/palette.js';
+import { ScorchRing } from './scorch-ring.js';
 import {
   TERRAIN_FRAGMENT_COLOR,
   TERRAIN_FRAGMENT_PARS,
+  TERRAIN_NORMAL_BLEND,
   TERRAIN_VERTEX_MAIN,
   TERRAIN_VERTEX_PARS,
 } from './terrain-shader.js';
@@ -12,74 +15,81 @@ import {
 /** Colour palette (hex) for terrain layers. */
 export interface TerrainPalette {
   grass: number;
+  grassEdge: number;
   soil: number;
   rock: number;
   deepSoil: number;
+  scorch: number;
 }
 
 /** Default earthy palette. */
 export const DEFAULT_TERRAIN_PALETTE: TerrainPalette = {
   grass: PALETTE.grassTop,
+  grassEdge: PALETTE.grassEdge,
   soil: PALETTE.soil,
   rock: PALETTE.rock,
   deepSoil: PALETTE.deepSoil,
+  scorch: PALETTE.scorch,
 };
+
+/** Recent-explosion slots passed to the shader on full and cheap tiers. */
+export const TERRAIN_BLAST_SLOTS = { full: 16, cheap: 8 } as const;
 
 /** Options for {@link createTerrainMaterial}. */
 export interface TerrainMaterialOptions {
-  /** Per-fragment triplanar noise detail (false = cheap slope/height blend). */
+  /** Full variant: extra noise octave, per-facet jitter, true flat shading (false = cheap). */
   detail?: boolean;
-  /** Triplanar blend exponent; higher = sharper transitions. */
-  sharpness?: number;
-  /** Noise frequency in 1/metres. */
-  noiseScale?: number;
+  /** Quality tier used for the toon band count. */
+  tier?: QualityTier;
   /** World height (m) at and below which soil is fully dark. */
   deepHeight?: number;
   /** Height (m) of the transition band above deepHeight. */
   deepBand?: number;
+  /** Thickness (m) of one soil strata band. */
+  strataThickness?: number;
   /** Palette overrides. */
   palette?: Partial<TerrainPalette>;
 }
 
+/** Toon material with a scorch ring buffer that drives crater darkening. */
+export interface TerrainMaterial extends MeshToonMaterial {
+  /** Recent explosions; add on explosion events and `advance(dt)` each frame. */
+  readonly scorch: ScorchRing;
+}
+
 /** Returns material options for a quality tier. */
 export function terrainMaterialOptionsForTier(tier: QualityTier): TerrainMaterialOptions {
-  return { detail: tierProfile(tier).terrainDetail };
+  return { detail: tierProfile(tier).terrainDetail, tier };
 }
 
-/**
- * Normalised triplanar blend weights (sum to 1) from a world normal.
- * Higher `sharpness` concentrates weight on the dominant axis.
- */
-export function triplanarWeights(
-  nx: number,
-  ny: number,
-  nz: number,
-  sharpness: number,
-): [number, number, number] {
-  const x = Math.abs(nx) ** sharpness;
-  const y = Math.abs(ny) ** sharpness;
-  const z = Math.abs(nz) ** sharpness;
-  const sum = x + y + z;
-  if (sum < 1e-6) return [0, 1, 0];
-  return [x / sum, y / sum, z / sum];
-}
-
-/** Creates the world-space triplanar terrain material (PBR + shadows kept). */
-export function createTerrainMaterial(opts: TerrainMaterialOptions = {}): MeshStandardMaterial {
+/** Creates the stylised low-poly terrain material (toon bands shared with props and snails). */
+export function createTerrainMaterial(opts: TerrainMaterialOptions = {}): TerrainMaterial {
   const palette = { ...DEFAULT_TERRAIN_PALETTE, ...opts.palette };
   const detail = opts.detail ?? true;
+  const slots = detail ? TERRAIN_BLAST_SLOTS.full : TERRAIN_BLAST_SLOTS.cheap;
+  const scorch = new ScorchRing(slots);
   const uniforms = {
     uTerrainGrass: { value: new Color(palette.grass) },
+    uTerrainGrassEdge: { value: new Color(palette.grassEdge) },
     uTerrainSoil: { value: new Color(palette.soil) },
     uTerrainRock: { value: new Color(palette.rock) },
     uTerrainDeep: { value: new Color(palette.deepSoil) },
-    uTerrainSharpness: { value: opts.sharpness ?? 4 },
+    uTerrainScorch: { value: new Color(palette.scorch) },
     uTerrainDeepHeight: { value: opts.deepHeight ?? 0 },
-    uTerrainDeepBand: { value: opts.deepBand ?? 6 },
-    uTerrainScale: { value: opts.noiseScale ?? 0.6 },
+    uTerrainDeepBand: { value: opts.deepBand ?? 8 },
+    uTerrainStrata: { value: opts.strataThickness ?? 3 },
+    uTerrainBlast: { value: scorch.centres },
+    uTerrainBlastK: { value: scorch.strength },
   };
-  const material = new MeshStandardMaterial({ color: 0xffffff, roughness: 0.95, metalness: 0 });
-  if (detail) material.defines = { TERRAIN_DETAIL: '' };
+  const material = createToonMaterial({
+    color: 0xffffff,
+    flat: detail,
+    tier: opts.tier ?? (detail ? 'high' : 'mobile'),
+  }) as TerrainMaterial;
+  Object.defineProperty(material, 'scorch', { value: scorch, enumerable: true });
+  const defines: Record<string, string> = { TERRAIN_BLASTS: String(slots) };
+  defines[detail ? 'TERRAIN_FULL' : 'TERRAIN_SOFT_FACETS'] = '';
+  material.defines = defines;
   material.onBeforeCompile = (shader: WebGLProgramParametersWithUniforms): void => {
     Object.assign(shader.uniforms, uniforms);
     shader.vertexShader = shader.vertexShader
@@ -87,9 +97,10 @@ export function createTerrainMaterial(opts: TerrainMaterialOptions = {}): MeshSt
       .replace('#include <begin_vertex>', `#include <begin_vertex>\n${TERRAIN_VERTEX_MAIN}`);
     shader.fragmentShader = shader.fragmentShader
       .replace('#include <common>', `#include <common>\n${TERRAIN_FRAGMENT_PARS}`)
+      .replace('#include <normal_fragment_begin>', TERRAIN_NORMAL_BLEND)
       .replace('#include <color_fragment>', TERRAIN_FRAGMENT_COLOR);
   };
-  material.customProgramCacheKey = (): string => (detail ? 'terrain-d' : 'terrain-c');
+  material.customProgramCacheKey = (): string => (detail ? 'terrain-full' : 'terrain-cheap');
   return material;
 }
 
@@ -97,6 +108,6 @@ export function createTerrainMaterial(opts: TerrainMaterialOptions = {}): MeshSt
 export function createTerrainMaterialForTier(
   tier: QualityTier,
   overrides: TerrainMaterialOptions = {},
-): MeshStandardMaterial {
+): TerrainMaterial {
   return createTerrainMaterial({ ...terrainMaterialOptionsForTier(tier), ...overrides });
 }
