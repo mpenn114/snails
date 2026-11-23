@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { SdfGrid, carveSphere, type FallenCluster, type SimEvent } from '@snails/core';
+import {
+  SdfGrid,
+  carveSphere,
+  resolveCollapse,
+  type FallenCluster,
+  type SimEvent,
+} from '@snails/core';
 import { TerrainReplica } from './terrain-replica.js';
 
 /** 24^3 grid, 8-cell chunks, solid below y=10. */
@@ -64,11 +70,55 @@ describe('TerrainReplica', () => {
       target: { markDirty: (i) => dirty.push(i) },
       onFallen: (c) => got.push(...c),
     });
-    r.applyEvents([{ type: 'terrainCollapsed', chunks: [0], removedCells: 2, fallen: [fallen] }]);
+    r.applyEvents([
+      {
+        type: 'terrainCollapsed',
+        chunks: [0],
+        removedCells: 2,
+        fallen: [fallen],
+        cellIndices: [
+          local.index(5, 14, 5),
+          local.index(5, 15, 5),
+          local.index(5, 10, 5),
+          local.index(5, 11, 5),
+        ],
+        cellValues: [1, 1, -1, -1],
+      },
+    ]);
     expect(local.get(5, 14, 5)).toBe(1);
     expect(local.get(5, 15, 5)).toBe(1);
     expect(local.get(5, 10, 5)).toBe(-1);
     expect(got).toEqual([fallen]);
     expect(dirty).toContain(0);
+  });
+
+  it('replays a non-convex (U-shaped) collapse sample-for-sample', () => {
+    const core = makeGrid();
+    // Pillar at (12,10..13,12) holding a U-shaped slab at y=14; a ledge at x=15 catches one arm.
+    for (let y = 10; y < 14; y++) core.set(12, y, 12, -1);
+    for (let y = 10; y < 12; y++) core.set(15, y, 10, -1);
+    for (let x = 9; x <= 15; x++) core.set(x, 14, 10, -1);
+    for (let x = 9; x <= 15; x++) core.set(x, 14, 12, -1);
+    for (let z = 10; z <= 12; z++) core.set(9, 14, z, -1);
+    core.set(12, 14, 12, -1);
+    core.takeDirtyChunks();
+    const local = copy(core);
+    const centre = { x: 12, y: 12, z: 12 };
+    const carve = carveSphere(core, centre, 2);
+    const col = resolveCollapse(core, centre, 2);
+    expect(col.fallen.length).toBeGreaterThan(0);
+    const events: SimEvent[] = [
+      { type: 'terrainCarved', centre, radius: 2, chunks: carve.chunks },
+      {
+        type: 'terrainCollapsed',
+        chunks: col.chunks,
+        removedCells: col.removedCells,
+        fallen: col.fallen,
+        cellIndices: col.cellIndices,
+        cellValues: col.cellValues,
+      },
+    ];
+    new TerrainReplica({ grid: local }).applyEvents(events);
+    expect(Array.from(local.data)).toEqual(Array.from(core.data));
   });
 });

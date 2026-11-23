@@ -17,7 +17,7 @@ export interface TerrainReplicaOptions {
 }
 
 /**
- * Render-local copy of the terrain that applies server events. It never calls core's mutating
+ * Render-local copy of the terrain that applies server events (collapse writes the exact samples the event carries). It never calls core's mutating
  * terrain functions; the sphere subtraction is re-implemented to be bit-identical to core's.
  */
 export class TerrainReplica {
@@ -39,7 +39,16 @@ export class TerrainReplica {
         this.markChunks(e.chunks);
       } else if (e.type === 'terrainCollapsed') {
         this.seen.add(e);
-        for (const c of e.fallen) this.dropCluster(c);
+        const g = this.grid;
+        const plane = g.nx * g.ny;
+        e.cellIndices.forEach((i, k) => {
+          g.set(
+            i % g.nx,
+            Math.floor(i / g.nx) % g.ny,
+            Math.floor(i / plane),
+            e.cellValues[k] as number,
+          );
+        });
         this.markChunks(e.chunks);
         this.opts.onFallen?.(e.fallen);
       }
@@ -63,28 +72,6 @@ export class TerrainReplica {
         }
       }
     }
-  }
-
-  /**
-   * Moves the solid cells of a fallen cluster from its pre-fall box to its landed box. The event
-   * carries only the landed bounds and drop, so solid cells inside the pre-fall box are treated as
-   * the cluster (exact for convex clusters; attached terrain inside the box would move too).
-   */
-  private dropCluster(c: FallenCluster): void {
-    const g = this.grid;
-    const { min, max } = c.bounds;
-    const drop = c.dropCells;
-    const moved: { x: number; y: number; z: number; v: number }[] = [];
-    for (let z = min.z; z <= max.z; z++) {
-      for (let y = min.y + drop; y <= max.y + drop; y++) {
-        for (let x = min.x; x <= max.x; x++) {
-          const v = g.get(x, y, z);
-          if (v < 0) moved.push({ x, y, z, v });
-        }
-      }
-    }
-    for (const m of moved) g.set(m.x, m.y, m.z, 1);
-    for (const m of moved) g.set(m.x, m.y - drop, m.z, Math.min(g.get(m.x, m.y - drop, m.z), m.v));
   }
 
   /** Marks event chunks plus their border neighbours (halo) dirty. */
