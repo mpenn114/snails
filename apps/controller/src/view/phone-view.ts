@@ -9,11 +9,13 @@ import type { GameView, QualityTier, ViewEnvironment } from '@snails/render';
 import { decodeEventBatch, decodeSnapshot } from '@snails/protocol';
 import type { ServerMessage } from '@snails/protocol';
 import type { SimEvent } from '@snails/core';
+import type { MatchStarted } from './wire-types';
 import { BatterySaverState, watchBattery } from './battery-saver';
 import type { BatteryNavigator } from './battery-saver';
 import { QualityGovernor } from './quality-governor';
 import type { QualityLevel } from './quality-governor';
 import { buildTerrainInit } from './terrain-init';
+import { MatchOverlay } from './match-overlay';
 
 /** Subset of the WebGL renderer touched when scaling resolution. */
 interface PixelRatioTarget {
@@ -39,6 +41,8 @@ export class PhoneView {
   private readonly saver: BatterySaverState;
   private renderer: MatchRenderer | null = null;
   private mapper: WireSnapshotMapper | null = null;
+  private overlay: MatchOverlay | null = null;
+  private aiming = false;
   private canvas: HTMLCanvasElement | null = null;
   private container: HTMLElement | null = null;
   private glRenderer: PixelRatioTarget | null = null;
@@ -103,11 +107,44 @@ export class PhoneView {
         terrain: msg.terrain,
       });
       r.init(buildTerrainInit(msg.seed, msg.terrain));
+      this.startOverlay(r, msg.teams);
     } else if (msg.type === 'snapshot' && this.mapper) {
-      r.pushSnapshot(this.mapper.map(decodeSnapshot(msg)));
+      const snap = this.mapper.map(decodeSnapshot(msg));
+      r.pushSnapshot(snap);
+      this.overlay?.onSnapshot(snap);
     } else if (msg.type === 'eventBatch') {
-      r.handleEvents(decodeEventBatch(msg) as unknown as SimEvent[]);
+      const events = decodeEventBatch(msg) as unknown as SimEvent[];
+      r.handleEvents(events);
+      this.overlay?.onEvents(events);
+    } else if (msg.type === 'turnStart') {
+      this.overlay?.turnStart();
+    } else if (msg.type === 'aimPreview') {
+      this.overlay?.aimPreview(msg.snailId, msg.angle);
     }
+  }
+
+  /** The local player started/stopped aiming: the camera sits over the shoulder while true. */
+  setAiming(aiming: boolean): void {
+    this.aiming = aiming;
+    this.overlay?.camera.setAiming(aiming);
+  }
+
+  private startOverlay(r: MatchRenderer, teams: MatchStarted['teams']): void {
+    this.overlay?.dispose();
+    this.overlay = null;
+    const rig = r.cameraRig;
+    const replica = r.terrainReplica;
+    if (!rig || !replica || !this.container || !r.view) return;
+    const overlay = new MatchOverlay({
+      container: this.container,
+      rig,
+      grid: replica.grid,
+      teams,
+      now: () => this.deps.now(),
+    });
+    if (this.aiming) overlay.camera.setAiming(true);
+    r.view.addUpdater(() => overlay.update());
+    this.overlay = overlay;
   }
 
   /** Releases GPU resources, listeners and the canvas. Safe to call twice. */
@@ -118,6 +155,8 @@ export class PhoneView {
     window.removeEventListener('orientationchange', this.onResize);
     document.removeEventListener('visibilitychange', this.onVisibility);
     this.stopBattery?.();
+    this.overlay?.dispose();
+    this.overlay = null;
     this.renderer?.dispose();
     this.renderer = null;
     this.canvas?.remove();
