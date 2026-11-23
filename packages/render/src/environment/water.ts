@@ -56,8 +56,10 @@ void main() {
   float fres = pow(1.0 - max(dot(n, v), 0.0), 3.0);
   float dist = clamp(length(cameraPosition - vWorld) / 80.0, 0.0, 1.0);
   vec3 col = mix(uShallow, uDeep, dist);
-  col = mix(col, vec3(0.75, 0.88, 1.0), fres * 0.6);
+  col = mix(col, vec3(0.75, 0.88, 1.0), fres * 0.3);
   gl_FragColor = vec4(col, mix(uOpacity, 1.0, fres));
+  #include <tonemapping_fragment>
+  #include <colorspace_fragment>
   #include <fog_fragment>
 }`;
 
@@ -81,7 +83,7 @@ export function createWater(opts: WaterOptions): Water {
       uTime: { value: 0 },
       uShallow: { value: new THREE.Color(PALETTE.waterShallow) },
       uDeep: { value: new THREE.Color(PALETTE.waterDeep) },
-      uOpacity: { value: Math.max(0.94, profile.waterOpacity) },
+      uOpacity: { value: 1 },
     },
   });
   const mesh = new THREE.Mesh(geometry, material);

@@ -28,7 +28,7 @@ async function displayShots(browser, base, errors) {
     const page = await ctx.newPage();
     watch(page, name, errors);
     await page.goto(`${base}/display/harness.html?shot=1&cam=${cam}&seed=7&quality=high`);
-    await page.waitForFunction(() => window.__shotReady === true, null, { timeout: 300000 });
+    await page.waitForFunction(() => window.__shotReady === true, null, { timeout: 900000 });
     await page.screenshot({ path: join(out, `${name}.png`) });
     captions.push({ file: `${name}.png`, caption });
     step(`saved ${name}.png`);

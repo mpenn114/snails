@@ -1,5 +1,6 @@
 import type * as THREE from 'three';
 import type { GameSnapshot } from '@snails/core';
+import type { FrameRenderer } from './post/post-pipeline.js';
 
 /** What the loop reads each frame: the latest sim snapshot and interpolation alpha. */
 export interface RenderState {
@@ -63,6 +64,11 @@ export interface RenderLoop {
   addUpdater(fn: FrameUpdater): () => void;
   /** Replaces the state source. */
   setSource(source: RenderStateSource | null): void;
+  /**
+   * Routes frames through a post-processing chain instead of `renderer.render` (null restores
+   * direct rendering). The loop disposes the chain on `dispose` and when it is replaced.
+   */
+  setPost(post: FrameRenderer | null): void;
   /** Starts pulling frames (no-op if running or disposed). */
   start(): void;
   /** Halts frame scheduling. */
@@ -84,6 +90,40 @@ function recordTimings(t: LoopTimings, updateMs: number, renderMs: number): void
   t.avgRenderMs += (renderMs - t.avgRenderMs) * 0.1;
 }
 
+function fitCamera(camera: THREE.PerspectiveCamera, width: number, height: number): void {
+  camera.aspect = width / Math.max(1, height);
+  camera.updateProjectionMatrix();
+}
+
+/** Holds the optional post chain of a loop and keeps it sized. */
+class PostSlot {
+  chain: FrameRenderer | null = null;
+  private size: [number, number] | null = null;
+  private closed = false;
+
+  set(next: FrameRenderer | null): void {
+    if (this.chain && this.chain !== next) this.chain.dispose();
+    if (this.closed) {
+      next?.dispose();
+      this.chain = null;
+      return;
+    }
+    this.chain = next;
+    if (next && this.size) next.setSize(this.size[0], this.size[1]);
+  }
+
+  resize(width: number, height: number): void {
+    this.size = [width, height];
+    this.chain?.setSize(width, height);
+  }
+
+  close(): void {
+    this.closed = true;
+    this.chain?.dispose();
+    this.chain = null;
+  }
+}
+
 /** Creates a render loop; call start() to begin pulling frames. */
 export function createRenderLoop(deps: RenderLoopDeps): RenderLoop {
   const { renderer, scene, camera, scheduler, now } = deps;
@@ -92,9 +132,9 @@ export function createRenderLoop(deps: RenderLoopDeps): RenderLoop {
   let handle: number | null = null;
   let last = 0;
   let disposed = false;
+  const post = new PostSlot();
   const timings: LoopTimings = { updateMs: 0, renderMs: 0, avgUpdateMs: 0, avgRenderMs: 0 };
   renderer.setPixelRatio(deps.pixelRatio);
-
   const frame = (): void => {
     handle = scheduler.request(frame);
     const t = now();
@@ -103,38 +143,36 @@ export function createRenderLoop(deps: RenderLoopDeps): RenderLoop {
     const state = source?.getState() ?? null;
     for (const u of updaters) u(dt, state);
     const t1 = now();
-    renderer.render(scene, camera);
+    if (post.chain) post.chain.render(dt);
+    else renderer.render(scene, camera);
     const t2 = now();
     recordTimings(timings, t1 - t, t2 - t1);
   };
-
   const stop = (): void => {
     if (handle !== null) scheduler.cancel(handle);
     handle = null;
   };
-
   return {
     timings,
     addUpdater(fn) {
       updaters.add(fn);
       return () => void updaters.delete(fn);
     },
-    setSource(s) {
-      source = s;
-    },
+    setSource: (s) => void (source = s),
     start() {
       if (disposed || handle !== null) return;
       last = now();
       handle = scheduler.request(frame);
     },
     stop,
+    setPost: (next) => post.set(next),
     get running() {
       return handle !== null;
     },
     resize(width, height) {
       renderer.setSize(width, height, false);
-      camera.aspect = width / Math.max(1, height);
-      camera.updateProjectionMatrix();
+      post.resize(width, height);
+      fitCamera(camera, width, height);
     },
     dispose() {
       if (disposed) return;
@@ -142,6 +180,7 @@ export function createRenderLoop(deps: RenderLoopDeps): RenderLoop {
       stop();
       updaters.clear();
       source = null;
+      post.close();
       renderer.dispose();
     },
   };

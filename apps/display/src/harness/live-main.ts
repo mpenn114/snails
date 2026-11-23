@@ -3,6 +3,7 @@ import type { QualityTier } from '@snails/render';
 import { createFakeServer } from './fake-server';
 import { createFrameStats } from './frame-stats';
 import { createOverlay } from './overlay';
+import { TERRAIN_TEXTURES } from '../terrain-textures';
 
 /**
  * Harness entry: a local fake server runs a 16-snail bot match in the browser and feeds the
@@ -32,6 +33,7 @@ interface GlInfo {
 let glRenderer: GlInfo | null = null;
 const profile = params.get('profile') === '1';
 const renderer = new MatchRenderer({
+  terrainTextures: TERRAIN_TEXTURES,
   now: () => performance.now(),
   modelBaseUrl: `${import.meta.env.BASE_URL}models/`,
   makeView: ({ bounds, waterLevel }) =>
@@ -39,6 +41,7 @@ const renderer = new MatchRenderer({
       tier,
       terrainBounds: bounds,
       waterLevel,
+      postProcessing: params.get('post') !== '0',
       onRenderer: (r) => (glRenderer = r),
     }),
 });

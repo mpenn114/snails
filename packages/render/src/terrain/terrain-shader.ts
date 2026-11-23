@@ -1,4 +1,10 @@
-/** GLSL chunks injected into MeshToonMaterial for stylised low-poly terrain shading. */
+/**
+ * GLSL chunks injected into MeshToonMaterial for textured, palette-tinted terrain.
+ *
+ * Layers (grass, dirt, rock) are sampled in world space (triplanar on full tiers, one projected
+ * sample per layer when `TERRAIN_SINGLE_SAMPLE` is defined). The source textures are neutralised
+ * offline (mean 0.5), so `palette * texture * 2` keeps the palette hue and only adds detail.
+ */
 
 /** Declarations added to the vertex shader. */
 export const TERRAIN_VERTEX_PARS = /* glsl */ `
@@ -24,9 +30,24 @@ uniform vec3 uTerrainDeep;
 uniform vec3 uTerrainScorch;
 uniform float uTerrainDeepHeight;
 uniform float uTerrainDeepBand;
-uniform float uTerrainStrata;
+uniform vec3 uTerrainTexScale;
+uniform vec3 uTerrainTexContrast;
+uniform float uTerrainNormalStrength;
+uniform sampler2D uTerrainTexGrass;
+uniform sampler2D uTerrainTexDirt;
+uniform sampler2D uTerrainTexRock;
+#ifdef TERRAIN_NORMALS
+uniform sampler2D uTerrainNrmGrass;
+uniform sampler2D uTerrainNrmDirt;
+uniform sampler2D uTerrainNrmRock;
+#endif
 uniform vec4 uTerrainBlast[TERRAIN_BLASTS];
 uniform float uTerrainBlastK[TERRAIN_BLASTS];
+
+// Shared between the colour and normal chunks.
+vec3 gTerrainLayerW;
+vec3 gTerrainTriW;
+vec3 gTerrainN;
 
 float terrainHash(vec3 p) {
   p = fract(p * 0.3183099 + vec3(0.71, 0.113, 0.419));
@@ -57,68 +78,82 @@ vec2 terrainBlasts(vec3 p, float wob) {
   }
   return vec2(expose, burn);
 }
+// World-space texture lookup: triplanar (3 samples) or one projected sample on cheap tiers.
+vec3 terrainSample(sampler2D t, vec3 p, float s) {
+  #ifdef TERRAIN_SINGLE_SAMPLE
+    vec3 a = abs(gTerrainN);
+    vec2 uv = a.y >= max(a.x, a.z) ? p.xz : (a.x > a.z ? p.zy : p.xy);
+    return texture2D(t, uv * s).rgb;
+  #else
+    return texture2D(t, p.zy * s).rgb * gTerrainTriW.x
+      + texture2D(t, p.xz * s).rgb * gTerrainTriW.y
+      + texture2D(t, p.xy * s).rgb * gTerrainTriW.z;
+  #endif
+}
 `;
 
-/**
- * Replaces `<normal_fragment_begin>`: on the cheap tier blends the smooth normal with the facet
- * normal (hides facet aliasing). Full tiers use real flat shading and skip the blend.
- */
-export const TERRAIN_NORMAL_BLEND = /* glsl */ `
-#include <normal_fragment_begin>
-#ifdef TERRAIN_SOFT_FACETS
-  normal = normalize(mix(normal, normalize(cross(dFdx(vViewPosition), dFdy(vViewPosition))), 0.6));
-#endif
-`;
-
-/** Replaces `<color_fragment>`; `TERRAIN_FULL` enables the extra noise octave and jitter. */
+/** Replaces `<color_fragment>`: layer weights, texture detail, palette tint and scorch. */
 export const TERRAIN_FRAGMENT_COLOR = /* glsl */ `
 #include <color_fragment>
 {
   vec3 wp = vTerrainWorldPos;
-  vec3 fn = normalize(cross(dFdx(wp), dFdy(wp)));
-  #ifdef TERRAIN_SOFT_FACETS
-    vec3 tn = normalize(vTerrainWorldNormal);
-  #else
-    vec3 tn = fn;
-  #endif
+  vec3 tn = normalize(vTerrainWorldNormal);
+  gTerrainN = tn;
+  vec3 tw = pow(abs(tn), vec3(4.0));
+  gTerrainTriW = tw / (tw.x + tw.y + tw.z);
+
   float wob = terrainNoise(wp * 0.45) - 0.5;
-  float wob2 = wob;
-  #ifdef TERRAIN_FULL
-    wob2 = terrainNoise(wp * 0.3 + vec3(0.0, 4.0, 9.0)) - 0.5;
-    wob += (terrainNoise(wp * 1.3) - 0.5) * 0.3;
-  #endif
+  float wob2 = terrainNoise(wp * 0.3 + vec3(0.0, 4.0, 9.0)) - 0.5;
   vec2 bl = terrainBlasts(wp, wob);
 
-  // Strata: horizontal soil / deepSoil bands with wobbly boundaries, darker with depth.
+  vec3 dGrass = mix(vec3(1.0), terrainSample(uTerrainTexGrass, wp, uTerrainTexScale.x) * 2.0, uTerrainTexContrast.x);
+  vec3 dDirt = mix(vec3(1.0), terrainSample(uTerrainTexDirt, wp, uTerrainTexScale.y) * 2.0, uTerrainTexContrast.y);
+  vec3 dRock = mix(vec3(1.0), terrainSample(uTerrainTexRock, wp, uTerrainTexScale.z) * 2.0, uTerrainTexContrast.z);
+
   float h = wp.y + wob2 * 2.0;
-  float band = h / uTerrainStrata;
-  float f = fract(band);
-  float stripe = smoothstep(0.38, 0.5, f) * (1.0 - smoothstep(0.88, 1.0, f));
-  float bi = floor(band);
-  vec3 soil = mix(uTerrainSoil, uTerrainDeep, clamp(stripe * 0.18 + terrainHash(vec3(bi, 1.0, 2.0)) * 0.06, 0.0, 1.0));
   float depth = 1.0 - smoothstep(uTerrainDeepHeight - uTerrainDeepBand, uTerrainDeepHeight, h);
-  soil = mix(soil, uTerrainDeep, depth * 0.9);
+  float up = tn.y;
+  float rockPatch = smoothstep(0.66, 0.8, terrainNoise(wp * vec3(0.22, 0.5, 0.22) + 9.0) + wob * 0.2 + depth * 0.25);
+  float rockW = clamp((1.0 - smoothstep(0.3, 0.52, up + wob * 0.1)) + depth * 0.8 + rockPatch * 0.7, 0.0, 1.0);
+  // Soft noisy grass edge: the grass texture's own lightness roughens the boundary.
+  float edge = up + wob * 0.18 + (dGrass.g - 1.0) * 0.12;
+  float grassW = smoothstep(0.62, 0.8, edge) * (1.0 - bl.x);
 
-  // Rock: patches in deep strata and on steep walls.
-  float rn = terrainNoise(wp * vec3(0.22, 0.5, 0.22) + 9.0) + wob * 0.2;
-  float wall = 1.0 - smoothstep(0.1, 0.45, tn.y);
-  float rockM = smoothstep(0.6, 0.68, rn + depth * 0.2 + wall * 0.1);
-  vec3 col = mix(soil, uTerrainRock, rockM);
+  vec3 dirt = mix(uTerrainSoil, uTerrainDeep, depth * 0.9) * dDirt;
+  vec3 rock = mix(uTerrainRock, uTerrainDeep, depth * 0.35) * dRock;
+  vec3 grass = mix(uTerrainGrassEdge, uTerrainGrass, smoothstep(0.7, 0.92, edge)) * dGrass;
+  vec3 col = mix(mix(dirt, rock, rockW), grass, grassW);
+  gTerrainLayerW = vec3(grassW, (1.0 - grassW) * (1.0 - rockW), (1.0 - grassW) * rockW);
 
-  // Grass cap on up-facing facets, wavy edge, darker grassEdge rim.
-  float up = tn.y + wob * 0.2;
-  float grassW = smoothstep(0.56, 0.64, up) * (1.0 - bl.x);
-  vec3 grass = mix(uTerrainGrassEdge, uTerrainGrass, smoothstep(0.62, 0.86, up));
-  col = mix(col, grass, grassW);
+  // Large soft blotches break up texture repetition.
+  col *= 0.94 + 0.12 * terrainNoise(wp * 0.11 + 3.0);
 
   // Scorch around fresh craters.
-  col = mix(col, uTerrainScorch, bl.y * 0.78);
-
-  #ifdef TERRAIN_FULL
-    // Per-facet colour jitter (hand-made low-poly feel), about +-4%.
-    float j = terrainHash(floor(fn * 7.0) + floor(dot(fn, wp) * 2.0)) - 0.5;
-    col *= 1.0 + j * 0.05;
-  #endif
+  col = mix(col, uTerrainScorch * mix(vec3(1.0), dRock, 0.5), bl.y * 0.8);
   diffuseColor.rgb *= col;
 }
+`;
+
+/**
+ * Replaces `<normal_fragment_begin>`. With `TERRAIN_NORMALS` the layer normal maps are blended
+ * triplanar (whiteout) into the smooth vertex normal; otherwise the standard normal is kept.
+ */
+export const TERRAIN_NORMAL_BLEND = /* glsl */ `
+#include <normal_fragment_begin>
+#ifdef TERRAIN_NORMALS
+{
+  vec3 p = vTerrainWorldPos;
+  vec3 wn = gTerrainN;
+  vec3 lw = gTerrainLayerW;
+  vec3 s = uTerrainTexScale;
+  vec3 nX = (texture2D(uTerrainNrmGrass, p.zy * s.x).xyz * lw.x + texture2D(uTerrainNrmDirt, p.zy * s.y).xyz * lw.y + texture2D(uTerrainNrmRock, p.zy * s.z).xyz * lw.z) * 2.0 - 1.0;
+  vec3 nY = (texture2D(uTerrainNrmGrass, p.xz * s.x).xyz * lw.x + texture2D(uTerrainNrmDirt, p.xz * s.y).xyz * lw.y + texture2D(uTerrainNrmRock, p.xz * s.z).xyz * lw.z) * 2.0 - 1.0;
+  vec3 nZ = (texture2D(uTerrainNrmGrass, p.xy * s.x).xyz * lw.x + texture2D(uTerrainNrmDirt, p.xy * s.y).xyz * lw.y + texture2D(uTerrainNrmRock, p.xy * s.z).xyz * lw.z) * 2.0 - 1.0;
+  nX = vec3(nX.xy * uTerrainNormalStrength + wn.zy, abs(nX.z) * wn.x);
+  nY = vec3(nY.xy * uTerrainNormalStrength + wn.xz, abs(nY.z) * wn.y);
+  nZ = vec3(nZ.xy * uTerrainNormalStrength + wn.xy, abs(nZ.z) * wn.z);
+  vec3 bumped = normalize(nX.zyx * gTerrainTriW.x + nY.xzy * gTerrainTriW.y + nZ.xyz * gTerrainTriW.z);
+  normal = normalize((viewMatrix * vec4(bumped, 0.0)).xyz);
+}
+#endif
 `;

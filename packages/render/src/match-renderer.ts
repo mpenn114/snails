@@ -15,6 +15,7 @@ import { SnailLayer } from './snail-layer.js';
 import { snailViewsFromSnapshot } from './snail-view.js';
 import { createWorkerPool, type MeshTransport } from './terrain/mesh-transport.js';
 import { createTerrainMaterialForTier, type TerrainMaterial } from './terrain/terrain-material.js';
+import type { TerrainTextureSources } from './terrain/terrain-textures.js';
 import { TerrainMeshManager } from './terrain/terrain-mesh-manager.js';
 import { TerrainReplica } from './terrain/terrain-replica.js';
 import type { GameView } from './view.js';
@@ -56,6 +57,8 @@ export interface MatchRendererDeps {
   modelBaseUrl?: string;
   /** Model loader override (tests inject a fake; default fetches glTF with GLTFLoader). */
   modelLoader?: ModelLoader;
+  /** Terrain texture URLs (loaded async; the palette colours show until they arrive). */
+  terrainTextures?: TerrainTextureSources;
 }
 
 /** An extra per-frame layer plugged in via {@link MatchRenderer.addLayer}. */
@@ -146,6 +149,10 @@ export class MatchRenderer {
   get terrainReplica(): TerrainReplica | null {
     return this.built?.replica ?? null;
   }
+  /** Resolves true once terrain textures loaded (false if none or failed); null before `init`. */
+  get terrainTexturesReady(): Promise<boolean> | null {
+    return this.built?.material.texturesReady ?? null;
+  }
   /** Camera rig, follow mode by default (null before `init`). */
   get cameraRig(): CameraRig | null {
     return this.built?.rig ?? null;
@@ -167,7 +174,9 @@ export class MatchRenderer {
     const q = view.quality;
     const grid = cloneGrid(source);
     const transport = this.deps.makeTransport?.() ?? createWorkerPool(2);
-    const material = createTerrainMaterialForTier(view.tier);
+    const material = createTerrainMaterialForTier(view.tier, {
+      ...(this.deps.terrainTextures ? { textures: this.deps.terrainTextures } : {}),
+    });
     const terrain = new TerrainMeshManager({
       grid,
       transport,
