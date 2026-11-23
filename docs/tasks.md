@@ -98,14 +98,14 @@ loop or broadcast snapshots and events. The controller has stub net and turn-con
 | M3-03 | Protocol version handshake and mismatch error | protocol | M3-01 | ⬜ |
 | M3-04 | Server WebSocket endpoint with envelope validation and role assignment | server | M3-01 | 🚧 |
 | M3-05 | Room manager: create, join, room codes, player slots, display/controller roles | server | M3-04 | 🚧 |
-| M3-06 | LAN IP detection (skip virtual adapters, multiple NICs) and `/api/info` | server | M0-08 | 🚧 |
+| M3-06 | LAN IP detection (skip virtual adapters, multiple NICs) and `/api/info` | server | M0-08 | ✅ |
 | M3-07 | QR join code generation and join URL on the display lobby screen | server | M3-06, M3-05 | ⬜ |
 | M3-08 | Real `GameSession`: fixed-step loop running core sim, applying validated intents | server | M1-21, M3-05 | 🚧 |
 | M3-09 | Broadcast snapshots and events to all clients (display and controllers) | server | M3-02, M3-08 | ⬜ |
 | M3-10 | Turn authorisation: only the active player's controller can command | server | M3-08 | ⬜ |
 | M3-11 | Heartbeats, disconnect detection and player timeout policy | server | M3-04 | ⬜ |
 | M3-12 | Reconnect and rejoin with session token; restore turn state within 3 s | server | M3-05, M3-09, M3-11 | ⬜ |
-| M3-13 | Serve built controller bundle with caching headers and SPA fallback | server | M3-06 | ⬜ |
+| M3-13 | Serve built controller bundle with caching headers and SPA fallback | server | M3-06 | ✅ |
 | M3-14 | Controller Vite dev server proxy for `/ws` and `/api` to the server | controller | M3-04 | ✅ |
 | M3-15 | Controller net client: connect, reconnect backoff, typed messages | controller | M3-01, M3-14 | 🚧 |
 | M3-16 | Controller join screen (name, room code, QR deep link) | controller | M3-15, M3-05 | ⬜ |
