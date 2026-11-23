@@ -142,8 +142,10 @@ Upgrades add geometry (spikes) rather than regenerate the base.
 
 ## Art direction
 
-- **Style:** stylised PBR; chunky silhouettes, soft rounded shapes, exaggerated proportions
-  (shell about 60% of snail height). Hand-painted-feeling albedo, real roughness and normal.
+- **Style:** stylised low poly with soft toon lighting
+  ([ADR-0009](adr/0009-stylised-low-poly-art-direction.md)); chunky silhouettes, soft rounded
+  shapes, exaggerated proportions (shell about 60% of snail height). Colour comes from a fixed
+  palette and lighting, not painted textures. Exact values live in `art-direction.md` (MG-01).
 - **World scale:** a garden seen as a miniature. Soil banks, flowerpot shards, bottle caps,
   leaves as bridges, pebbles as boulders, grass blades as trees, dew puddles as water.
 - **Palette:** warm afternoon light with long soft shadows; saturated shells against muted
