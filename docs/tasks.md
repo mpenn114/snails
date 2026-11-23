@@ -136,7 +136,7 @@ the MG-03 harness to its PR.
 
 | ID | Task | Area | Depends on | Status |
 |---|---|---|---|---|
-| MG-01 | Art direction note (`docs/art-direction.md`): 12 to 16 colour palette, lighting values, shape language, do and don't list, reference sketch; palette and light constants in `@snails/render` | docs | M2-11 | ⬜ |
+| MG-01 | Art direction note (`docs/art-direction.md`): 12 to 16 colour palette, lighting values, shape language, do and don't list, reference sketch; palette and light constants in `@snails/render` | docs | M2-11 | ✅ |
 | MG-02 | Colour pipeline and material factory: sRGB output, AgX or ACES tone mapping and exposure, one shared stylised (flat or toon) material factory used by every mesh | render | MG-01 | ⬜ |
 | MG-03 | Visual reference harness: fixed-seed scenes and cameras, screenshots on display High and phone Mobile via Playwright (`pnpm shots`), uploaded as a CI artifact | ci | MG-01, M2-15 | ⬜ |
 | MG-04 | Sky and lighting: gradient sky dome, warm low sun, hemisphere fill, soft shadows per tier, distance haze tinted to the sky | render | MG-02 | ⬜ |
