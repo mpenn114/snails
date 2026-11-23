@@ -43,6 +43,8 @@ uniform sampler2D uTerrainNrmRock;
 #endif
 uniform vec4 uTerrainBlast[TERRAIN_BLASTS];
 uniform float uTerrainBlastK[TERRAIN_BLASTS];
+uniform sampler2D uTerrainOrigH;
+uniform vec2 uTerrainOrigScale;
 
 // Shared between the colour and normal chunks.
 vec3 gTerrainLayerW;
@@ -118,6 +120,11 @@ export const TERRAIN_FRAGMENT_COLOR = /* glsl */ `
   // Soft noisy grass edge: the grass texture's own lightness roughens the boundary.
   float edge = up + wob * 0.18 + (dGrass.g - 1.0) * 0.12;
   float grassW = smoothstep(0.62, 0.8, edge) * (1.0 - bl.x);
+  #ifdef TERRAIN_ORIGINAL_HEIGHT
+  // Carved ground (below the originally generated surface) is bare earth, never grass.
+  float origH = texture2D(uTerrainOrigH, wp.xz * uTerrainOrigScale).r;
+  grassW *= 1.0 - smoothstep(0.2, 0.45, origH - wp.y + wob * 0.15);
+  #endif
 
   vec3 dirt = mix(uTerrainSoil, uTerrainDeep, depth * 0.9) * dDirt;
   vec3 rock = mix(uTerrainRock, uTerrainDeep, depth * 0.35) * dRock;

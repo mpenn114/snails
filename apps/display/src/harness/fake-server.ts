@@ -9,6 +9,7 @@ import {
   type Simulation,
   type WeaponDefinition,
 } from '@snails/core';
+import { TEAM_COLORS, hexToCss } from '@snails/render';
 
 /** Weapon used by the harness bots: infinite-ammo lob with a big crater. */
 export const HARNESS_WEAPON: WeaponDefinition = {
@@ -21,7 +22,7 @@ export const HARNESS_WEAPON: WeaponDefinition = {
   ammo: 'infinite',
 };
 
-const TEAM_COLOURS = ['#e6483d', '#3d7be6', '#3dc46a', '#e6c63d'];
+const TEAM_COLOURS = TEAM_COLORS.map(hexToCss);
 
 const SNAIL_NAMES = ['Gary', 'Turbo', 'Slimy', 'Dash', 'Mossy', 'Pebble', 'Nacho', 'Bramble'];
 

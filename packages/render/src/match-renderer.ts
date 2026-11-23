@@ -175,6 +175,7 @@ export class MatchRenderer {
     const grid = cloneGrid(source);
     const transport = this.deps.makeTransport?.() ?? createWorkerPool(2);
     const material = createTerrainMaterialForTier(view.tier, {
+      originalGrid: source,
       ...(this.deps.terrainTextures ? { textures: this.deps.terrainTextures } : {}),
     });
     const terrain = new TerrainMeshManager({

@@ -118,6 +118,11 @@ export const HUD = {
   outlineWidth: 2,
 } as const;
 
+/** A 24-bit colour as a lower-case CSS `#rrggbb` string. */
+export function hexToCss(hex: number): string {
+  return `#${(hex & 0xffffff).toString(16).padStart(6, '0')}`;
+}
+
 /** Splits a 24-bit colour into 0..255 channels. */
 export function hexToRgb(hex: number): [number, number, number] {
   return [(hex >> 16) & 255, (hex >> 8) & 255, hex & 255];

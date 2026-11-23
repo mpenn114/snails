@@ -3,7 +3,9 @@ import type { SdfGrid } from '@snails/core';
 import type { FrameUpdater, RenderState } from '../render-loop.js';
 import { snailViewsFromSnapshot } from '../snail-view.js';
 import type { ModelAsset, ModelLoader } from './model-loader.js';
+import { getToonMaterial } from '../style/materials.js';
 import {
+  MODEL_CAP_COLORS,
   PROP_KINDS,
   hasGround,
   planProps,
@@ -121,11 +123,27 @@ export class PropLayer {
       const asset = this.assets?.[i];
       const mine = plan.filter((p) => p.kind === i);
       if (!asset || mine.length === 0) return;
-      const row = asset.parts.map((part) => this.makeBatch(part, kind, mine));
+      const variants = kind.capColors?.length ?? 1;
+      const row: Batch[] = [];
+      for (let v = 0; v < variants; v++) {
+        const group = kind.capColors ? mine.filter((p) => p.variant === v) : mine;
+        if (group.length === 0) continue;
+        for (const part of asset.parts) {
+          row.push(this.makeBatch(this.recolour(part, kind.capColors?.[v]), kind, group));
+        }
+      }
       this.batches.set(i, row);
       for (const b of row) this.group.add(b.mesh);
     });
     this.done = true;
+  }
+
+  /** Swaps a model's red/tan cap material for the variant's muted cap colour. */
+  private recolour(part: ModelAsset['parts'][number], cap: number | undefined) {
+    const colour = (part.material as THREE.MeshToonMaterial).color?.getHex();
+    if (cap === undefined || colour === undefined) return part;
+    if (!MODEL_CAP_COLORS.some((c) => sameColour(c, colour))) return part;
+    return { ...part, material: getToonMaterial({ color: cap, flat: true }) };
   }
 
   private makeBatch(part: ModelAsset['parts'][number], kind: PropKind, placed: PropPlacement[]) {
@@ -184,4 +202,10 @@ export class PropLayer {
     this.group.clear();
     this.group.removeFromParent();
   }
+}
+
+/** True when two 24-bit colours are within rounding of each other (sRGB to linear to sRGB). */
+function sameColour(a: number, b: number): boolean {
+  const d = (s: number): number => Math.abs(((a >> s) & 255) - ((b >> s) & 255));
+  return d(16) <= 2 && d(8) <= 2 && d(0) <= 2;
 }

@@ -1,7 +1,10 @@
 import { SdfGrid } from '@snails/core';
 import { describe, expect, it } from 'vitest';
+import { TEAM_COLORS, colorDistance } from '../style/palette.js';
 import {
   AVOID_RADIUS,
+  MUSHROOM_CAPS,
+  NEAR_RADIUS,
   MIN_NORMAL_Y,
   PROP_KINDS,
   hasGround,
@@ -60,6 +63,24 @@ describe('planProps', () => {
     }
   });
 
+  it('keeps tall props out of the near radius around snails', () => {
+    const g = flatGrid();
+    const avoid = [{ x: 15, y: 4, z: 15 }];
+    const plan = planProps({ grid: g, seed: 4, count: 300, waterLevel: 1, avoid });
+    expect(plan.some((p) => PROP_KINDS[p.kind]?.tall)).toBe(true);
+    for (const p of plan.filter((q) => PROP_KINDS[q.kind]?.tall)) {
+      expect(Math.hypot(p.x - 15, p.z - 15)).toBeGreaterThanOrEqual(NEAR_RADIUS);
+    }
+  });
+
+  it('is sparse for mushrooms and clustered rather than uniform', () => {
+    const plan = planProps({ grid: flatGrid(), seed: 8, count: 300, waterLevel: 1 });
+    const mushrooms = plan.filter((p) => PROP_KINDS[p.kind]?.patchy).length;
+    expect(mushrooms / plan.length).toBeLessThan(0.1);
+    const cells = new Set(plan.map((p) => `${Math.floor(p.x / 3)}:${Math.floor(p.z / 3)}`));
+    expect(cells.size).toBeLessThan(100);
+  });
+
   it('places nothing under water', () => {
     expect(planProps({ grid: flatGrid(4), seed: 1, count: 20, waterLevel: 6 })).toHaveLength(0);
   });
@@ -87,5 +108,12 @@ describe('hasGround and seedFromGrid', () => {
     const before = seedFromGrid(flatGrid());
     expect(seedFromGrid(flatGrid())).toBe(before);
     expect(seedFromGrid(flatGrid(6))).not.toBe(before);
+  });
+});
+
+describe('mushroom caps', () => {
+  it('stay far from every team colour (delta E above 25)', () => {
+    for (const cap of MUSHROOM_CAPS)
+      for (const team of TEAM_COLORS) expect(colorDistance(cap, team)).toBeGreaterThan(25);
   });
 });

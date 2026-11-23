@@ -1,19 +1,11 @@
+import { TEAM_COLORS, hexToCss } from '@snails/render';
 import type { ControlMode, ErrorCode, LobbyPlayer, MatchSettings } from '@snails/protocol';
 
 /** Selectable team ids. */
 export const TEAMS = ['A', 'B', 'C', 'D'] as const;
 
 /** Selectable colour palette (CSS hex). */
-export const PALETTE = [
-  '#e53935',
-  '#1e88e5',
-  '#43a047',
-  '#fdd835',
-  '#8e24aa',
-  '#fb8c00',
-  '#00acc1',
-  '#ec407a',
-] as const;
+export const PALETTE: readonly string[] = TEAM_COLORS.map(hexToCss);
 
 /** Allowed ranges for host settings (mirrors the protocol schema). */
 export const SETTINGS_LIMITS = {

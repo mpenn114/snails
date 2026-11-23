@@ -1,4 +1,4 @@
-import { Color, DataTexture, LinearFilter, RGBAFormat, Vector3 } from 'three';
+import { Color, DataTexture, LinearFilter, RGBAFormat, Vector2, Vector3 } from 'three';
 import type { MeshToonMaterial, Texture, WebGLProgramParametersWithUniforms } from 'three';
 import { tierProfile, type QualityTier } from '../quality.js';
 import {
@@ -8,6 +8,8 @@ import {
   toonTierVariant,
 } from '../style/materials.js';
 import { PALETTE } from '../style/palette.js';
+import type { SdfGrid } from '@snails/core';
+import { buildOriginalHeightMap, createOriginalHeightTexture } from './original-height.js';
 import { ScorchRing } from './scorch-ring.js';
 import {
   TERRAIN_FRAGMENT_COLOR,
@@ -64,6 +66,11 @@ export interface TerrainMaterialOptions {
   fetchTexture?: TextureFetch;
   /** Palette overrides. */
   palette?: Partial<TerrainPalette>;
+  /**
+   * The terrain as generated (before any carving). When given, a per-column height map is built
+   * once and ground more than 0.3 m below it (craters, tunnels) shows dirt and rock, never grass.
+   */
+  originalGrid?: SdfGrid;
 }
 
 /** Toon material with a scorch ring buffer that drives crater darkening. */
@@ -144,6 +151,8 @@ function buildUniforms(
     uTerrainNrmRock: { value: neutral.normal },
     uTerrainBlast: { value: scorch.centres },
     uTerrainBlastK: { value: scorch.strength },
+    uTerrainOrigH: { value: neutral.color },
+    uTerrainOrigScale: { value: new Vector2(0, 0) },
   };
 }
 
@@ -190,6 +199,14 @@ export function createTerrainMaterial(opts: TerrainMaterialOptions = {}): Terrai
   const scorch = new ScorchRing(slots);
   const neutral = { color: createNeutralTexture('color'), normal: createNeutralTexture('normal') };
   const uniforms = buildUniforms(opts, scorch, neutral);
+  const origTex = opts.originalGrid
+    ? createOriginalHeightTexture(buildOriginalHeightMap(opts.originalGrid))
+    : null;
+  if (origTex && opts.originalGrid) {
+    const ws = opts.originalGrid.worldSize();
+    uniforms.uTerrainOrigH.value = origTex;
+    uniforms.uTerrainOrigScale.value.set(1 / ws.x, 1 / ws.z);
+  }
   const material = createToonMaterial({ color: 0xffffff, tier }) as TerrainMaterial;
   const ramp = createSoftToonRamp(toonTierVariant(tier).bands);
   material.gradientMap = ramp;
@@ -197,6 +214,7 @@ export function createTerrainMaterial(opts: TerrainMaterialOptions = {}): Terrai
   const defines: Record<string, string> = { TERRAIN_BLASTS: String(slots) };
   defines[detail ? 'TERRAIN_FULL' : 'TERRAIN_SINGLE_SAMPLE'] = '';
   if (detail) defines.TERRAIN_NORMALS = '';
+  if (origTex) defines.TERRAIN_ORIGINAL_HEIGHT = '';
   material.defines = defines;
   const ready = loadInto(opts, detail, uniforms, (all) => {
     state.owned = all;
@@ -218,10 +236,12 @@ export function createTerrainMaterial(opts: TerrainMaterialOptions = {}): Terrai
       .replace('#include <normal_fragment_begin>', TERRAIN_NORMAL_BLEND)
       .replace('#include <color_fragment>', TERRAIN_FRAGMENT_COLOR);
   };
-  material.customProgramCacheKey = (): string => (detail ? 'terrain-full' : 'terrain-cheap');
+  material.customProgramCacheKey = (): string =>
+    (detail ? 'terrain-full' : 'terrain-cheap') + (origTex ? '-orig' : '');
   material.addEventListener('dispose', () => {
     state.disposed = true;
     for (const t of [ramp, neutral.color, neutral.normal, ...state.owned]) t.dispose();
+    origTex?.dispose();
   });
   return material;
 }
