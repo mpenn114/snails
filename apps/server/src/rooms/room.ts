@@ -22,7 +22,11 @@ export interface Member {
   teamId: string | null;
   colour: string | null;
   ready: boolean;
+  /** False while the socket is gone but the slot is held for a reconnect. */
+  connected: boolean;
   send: SendFn;
+  /** Closes the current socket; called when a newer connection takes over the slot. */
+  detach?: () => void;
 }
 
 /** Called when the host starts a match, with validated settings and the roster. */
@@ -30,8 +34,10 @@ export type MatchStartHook = (settings: MatchSettings, members: readonly Member[
 
 /** A running match attached to a room (implemented by the match runner). */
 export interface ActiveMatch {
-  /** Sends `matchStarted` and the latest snapshot to a late joiner. */
+  /** Sends `matchStarted`, a fresh snapshot and the current turn state to a (re)joining member. */
   catchUp(member: Member): void;
+  /** Called when a member connects or disconnects (turn-skip policy). */
+  membersChanged(): void;
   /** Handles a gameplay intent from a member. */
   intent(member: Member, intent: IntentMessage): void;
   /** Stops timers and the simulation. */
@@ -74,6 +80,21 @@ export class Room {
     else this.broadcastLobby();
   }
 
+  /** Marks a member as disconnected (slot kept) and tells everyone. */
+  markDisconnected(member: Member): void {
+    if (!member.connected) return;
+    member.connected = false;
+    this.broadcastLobby();
+    this.match?.membersChanged();
+  }
+
+  /** Re-attaches a member to a new transport and tells everyone. */
+  markConnected(member: Member): void {
+    member.connected = true;
+    this.broadcastLobby();
+    this.match?.membersChanged();
+  }
+
   /** Routes an intent: displays may never send one; otherwise the running match decides. */
   handleIntent(member: Member, intent: IntentMessage): void {
     if (member.role !== 'controller') {
@@ -102,7 +123,7 @@ export class Room {
       teamId: m.teamId,
       colour: m.colour,
       ready: m.ready,
-      connected: true,
+      connected: m.connected,
     }));
     return {
       type: 'lobbyState',

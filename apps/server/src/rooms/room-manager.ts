@@ -28,6 +28,18 @@ export interface RoomManagerOptions {
   runner?: MatchRunnerOptions;
   /** Delay before an empty room is deleted. Defaults to 30 s. */
   emptyRoomDelayMs?: number;
+  /** How long a disconnected lobby member is kept before removal. Defaults to 60 s. */
+  lobbyGraceMs?: number;
+  /** How long a disconnected member's slot is held while a match runs. Defaults to 120 s. */
+  matchHoldMs?: number;
+}
+
+/** Extra join parameters for reconnects and socket ownership. */
+export interface JoinOptions {
+  /** Session token of an existing member to re-attach (requires the room code). */
+  sessionToken?: string;
+  /** Closes the joining socket; invoked when a later connection takes the slot over. */
+  detach?: () => void;
 }
 
 /** Result of {@link RoomManager.join}. */
@@ -42,11 +54,14 @@ const realTimers: Timers = {
 export class RoomManager {
   private rooms = new Map<string, Room>();
   private emptyTimers = new Map<string, unknown>();
+  private dropTimers = new Map<string, unknown>();
   private nextId = 1;
   private readonly random: () => number;
   private readonly token: () => string;
   private readonly timers: Timers;
   private readonly emptyDelay: number;
+  private readonly lobbyGrace: number;
+  private readonly matchHold: number;
   private readonly runnerOptions: MatchRunnerOptions;
 
   constructor(opts: RoomManagerOptions = {}) {
@@ -55,6 +70,8 @@ export class RoomManager {
     this.timers = opts.timers ?? realTimers;
     this.runnerOptions = opts.runner ?? {};
     this.emptyDelay = opts.emptyRoomDelayMs ?? 30_000;
+    this.lobbyGrace = opts.lobbyGraceMs ?? 60_000;
+    this.matchHold = opts.matchHoldMs ?? 120_000;
   }
 
   /** Creates a room with a unique random 4-letter code. */
@@ -85,9 +102,10 @@ export class RoomManager {
   }
 
   /** Adds a client to a room. Does not broadcast; the caller sends `welcome` first. */
-  join(code: string, name: string, role: Role, send: SendFn): JoinResult {
+  join(code: string, name: string, role: Role, send: SendFn, jo: JoinOptions = {}): JoinResult {
     const room = this.getRoom(code);
-    if (!room) return { ok: false, code: 'no_room' };
+    if (!room) return { ok: false, code: jo.sessionToken ? 'bad_session' : 'no_room' };
+    if (jo.sessionToken) return this.resume(room, role, send, jo);
     if (role === 'controller') {
       if (room.phase !== 'lobby') return { ok: false, code: 'match_in_progress' };
       if (room.controllerCount() >= MAX_CONTROLLERS) return { ok: false, code: 'room_full' };
@@ -100,17 +118,54 @@ export class RoomManager {
       teamId: null,
       colour: null,
       ready: false,
+      connected: true,
       send,
+      ...(jo.detach ? { detach: jo.detach } : {}),
     };
     room.add(member);
     this.cancelEmpty(room.code);
     return { ok: true, room, member };
   }
 
+  private resume(room: Room, role: Role, send: SendFn, jo: JoinOptions): JoinResult {
+    const member = room.members.get(jo.sessionToken ?? '');
+    if (!member || member.role !== role) return { ok: false, code: 'bad_session' };
+    const stale = member.detach;
+    member.send = send;
+    if (jo.detach) member.detach = jo.detach;
+    else delete member.detach;
+    stale?.();
+    this.cancelDrop(member.token);
+    this.cancelEmpty(room.code);
+    return { ok: true, room, member };
+  }
+
+  /**
+   * Handles a socket loss: the member stays (marked disconnected) and is removed after the
+   * lobby grace, or the longer match hold while a match runs. Ignored if `detach` is no longer
+   * the member's current connection (a newer socket already took over).
+   */
+  disconnect(code: string, token: string, detach?: () => void): void {
+    const room = this.getRoom(code);
+    const member = room?.members.get(token);
+    if (!room || !member || member.detach !== detach) return;
+    room.markDisconnected(member);
+    this.cancelDrop(token);
+    const ms = room.phase === 'playing' ? this.matchHold : this.lobbyGrace;
+    this.dropTimers.set(
+      token,
+      this.timers.set(() => {
+        this.dropTimers.delete(token);
+        if (!member.connected) this.leave(code, token);
+      }, ms),
+    );
+  }
+
   /** Removes a member; an emptied room is deleted after the configured delay. */
   leave(code: string, token: string): void {
     const room = this.getRoom(code);
     if (!room) return;
+    this.cancelDrop(token);
     room.remove(token);
     if (room.members.size > 0 || this.emptyTimers.has(room.code)) return;
     this.emptyTimers.set(
@@ -126,6 +181,15 @@ export class RoomManager {
   dispose(): void {
     for (const h of this.emptyTimers.values()) this.timers.clear(h);
     this.emptyTimers.clear();
+    for (const h of this.dropTimers.values()) this.timers.clear(h);
+    this.dropTimers.clear();
+  }
+
+  private cancelDrop(token: string): void {
+    const h = this.dropTimers.get(token);
+    if (h === undefined) return;
+    this.timers.clear(h);
+    this.dropTimers.delete(token);
   }
 
   private cancelEmpty(code: string): void {

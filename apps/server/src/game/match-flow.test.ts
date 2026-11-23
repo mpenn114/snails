@@ -3,6 +3,7 @@ import WebSocket from 'ws';
 import type { FastifyInstance } from 'fastify';
 import { PROTOCOL_VERSION } from '@snails/protocol';
 import { buildServer } from '../app.js';
+import { RoomManager } from '../rooms/room-manager.js';
 
 type Msg = Record<string, unknown> & { type: string };
 
@@ -130,8 +131,12 @@ describe('match flow over websockets', () => {
     await late.next((m) => m.type === 'snapshot');
   }, 15000);
 
-  it('returns the room to the lobby when all controllers leave', async () => {
-    app = await buildServer({ staticDir: '/nonexistent', displayDir: '/nonexistent' });
+  it('returns the room to the lobby when all controllers stay gone past the hold', async () => {
+    app = await buildServer({
+      staticDir: '/nonexistent',
+      displayDir: '/nonexistent',
+      rooms: new RoomManager({ matchHoldMs: 50 }),
+    });
     await app.listen({ port: 0, host: '127.0.0.1' });
     const addr = app.server.address();
     const url = `ws://127.0.0.1:${typeof addr === 'object' && addr ? addr.port : 0}/ws`;
