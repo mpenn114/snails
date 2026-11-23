@@ -149,8 +149,8 @@ the MG-03 harness to its PR. After the first round looked poor, MG-13 to MG-15 s
 | M7-09 | Expression system (eyes and stalks reacting to events) (moved from M7) | render | M7-08, M1-17 | ⬜ |
 | MG-07 | Garden props made in code (mushrooms, pebbles, clover, leaves): seeded, instanced, purely cosmetic, cleared when the ground under them is carved | render | MG-05 | ✅ |
 | MG-08 | Stylised water: toon shading, depth-based foam edge, gentle waves, splash ring | render | MG-04 | ⬜ |
-| MG-09 | Explosion and impact VFX restyle: puffy smoke, flash, chunky debris coloured by strata, dust; pooled with tier caps | render | MG-05, M2-09 | ⬜ |
-| MG-10 | Projectile and aim visuals: pebble model, trail ribbon, dotted aim arc and landing marker in palette colours | render | MG-02 | ⬜ |
+| MG-09 | Explosion and impact VFX restyle: puffy smoke, flash, chunky debris coloured by strata, dust; pooled with tier caps | render | MG-05, M2-09 | ✅ |
+| MG-10 | Projectile and aim visuals: pebble model, trail ribbon, dotted aim arc and landing marker in palette colours | render | MG-02 | ✅ |
 | M7-13 | Post-processing on the display High tier: SSAO, bloom, colour grade, optional outline; phones keep tone mapping and FXAA only (moved from M7) | render | MG-02, MG-04 | ✅ |
 | MG-11 | Display HUD and lobby, and phone overlays, restyled to the palette and one type scale | display | MG-01, M3-20 | ✅ |
 | M7-15 | Quality tier budget verification on display and phone after the restyle (moved from M7) | render | M7-13, MG-05, MG-06, MG-07, MG-08, MG-09, M3-26 | ⬜ |
