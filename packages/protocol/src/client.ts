@@ -19,6 +19,8 @@ export const ClientHello = z.object({
 /** Lobby actions. */
 export const CreateRoom = z.object({ type: z.literal('createRoom') });
 export const SetTeam = z.object({ type: z.literal('setTeam'), teamId: TeamId });
+/** Toggles membership of a team without leaving others (hot-seat: one phone, several teams). */
+export const ToggleTeam = z.object({ type: z.literal('toggleTeam'), teamId: TeamId });
 export const SetColour = z.object({ type: z.literal('setColour'), colour: Colour });
 export const SetReady = z.object({ type: z.literal('setReady'), ready: z.boolean() });
 export const StartMatch = z.object({ type: z.literal('startMatch'), settings: MatchSettings });
@@ -50,6 +52,7 @@ export const ClientMessage = z.discriminatedUnion('type', [
   ClientHello,
   CreateRoom,
   SetTeam,
+  ToggleTeam,
   SetColour,
   SetReady,
   StartMatch,

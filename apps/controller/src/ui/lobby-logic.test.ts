@@ -12,10 +12,27 @@ import {
 } from './lobby-logic';
 
 const p = (id: string, teamId: string | null, ready: boolean, colour: string | null = null) =>
-  ({ id, name: id, role: 'controller', teamId, colour, ready, connected: true }) as LobbyPlayer;
-const ok = { turnTimeSeconds: 30, snailsPerTeam: 3, seed: 1 };
+  ({
+    id,
+    name: id,
+    role: 'controller',
+    teamId,
+    colour,
+    ready,
+    connected: true,
+    teamIds: teamId ? [teamId] : [],
+  }) as LobbyPlayer;
+const ok = { turnTimeSeconds: 30, snailsPerTeam: 3, seed: 1, controlMode: 'perPlayer' as const };
 
 describe('controller lobby logic', () => {
+  it('hot-seat lets one phone cover several teams, perPlayer does not', () => {
+    const multi = { ...p('a', 'A', true), teamIds: ['A', 'B'] } as LobbyPlayer;
+    expect(startBlocker([multi], 'hotSeat')).toBeUndefined();
+    expect(startBlocker([multi], 'perPlayer')).toMatch(/only one team/);
+    expect(canStart([multi], 'a', 'a', { ...ok, controlMode: 'hotSeat' })).toBe(true);
+    expect(canStart([multi], 'a', 'a', ok)).toBe(false);
+  });
+
   it('finds taken colours excluding mine, case-insensitively', () => {
     const t = takenColours([p('a', 'A', false, '#E53935'), p('b', 'B', false, PALETTE[1])], 'b');
     expect([...t]).toEqual(['#e53935']);

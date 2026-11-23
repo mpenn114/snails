@@ -7,7 +7,10 @@ import { lobbyErrorText } from './ui/lobby-logic';
 import { mountJoinView } from './ui/join-view';
 import { parseRoomParam } from './ui/join-logic';
 import { mountControls } from './controls/mount-controls';
+import type { ControlMode } from '@snails/protocol';
 import { weapons } from '@snails/content-base';
+import { mountPassPhone, shouldPassPhone } from './ui/pass-phone';
+import { playerTeams } from './ui/lobby-logic';
 import { registerServiceWorker } from './pwa/register-sw';
 
 if (import.meta.env.PROD) void registerServiceWorker(navigator);
@@ -36,9 +39,23 @@ const joinView = mountJoinView(screen, initial, (v) => {
     // Mounted before lobbyState arrives so the controls learn our team.
     mountControls(overlay, client, { playerId: w.playerId, weapons });
     const lobby = mountLobbyView(screen, w.playerId, (m) => client.send(m));
-    client.on('lobbyState', (s) => lobby.update(s));
+    const pass = mountPassPhone(screen);
+    let myTeams: readonly string[] = [];
+    let mode: ControlMode = 'perPlayer';
+    const teamNames = new Map<string, string>();
+    client.on('lobbyState', (s) => {
+      const me = s.players.find((p) => p.id === w.playerId);
+      myTeams = me ? playerTeams(me) : [];
+      lobby.update(s);
+    });
+    client.on('turnStart', (t) => {
+      if (shouldPassPhone(mode, myTeams, t.teamId)) pass.show(teamNames.get(t.teamId) ?? t.teamId);
+      else pass.hide();
+    });
     client.on('error', (e) => lobby.showError(lobbyErrorText(e.code, e.message)));
-    client.on('matchStarted', () => {
+    client.on('matchStarted', (m) => {
+      mode = m.settings.controlMode;
+      for (const t of m.teams) teamNames.set(t.id, t.name);
       lobby.destroy();
     });
   });

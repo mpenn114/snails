@@ -11,7 +11,12 @@ const teams: SessionTeam[] = [
   { id: 'a', name: 'A', colour: '#f00', playerIds: ['p1'] },
   { id: 'b', name: 'B', colour: '#00f', playerIds: ['p2'] },
 ];
-const settings = { turnTimeSeconds: 10, snailsPerTeam: 1, seed: 7 };
+const settings = {
+  turnTimeSeconds: 10,
+  snailsPerTeam: 1,
+  seed: 7,
+  controlMode: 'perPlayer' as const,
+};
 
 function make(extra: Partial<GameSessionOptions> = {}): GameSession {
   return new GameSession({ settings, teams, ...extra });

@@ -25,23 +25,25 @@ const FALLBACK_COLOURS = ['#e63946', '#2a9d8f', '#e9c46a', '#457b9d', '#9b5de5',
 export function buildTeams(members: readonly Member[]): SessionTeam[] {
   const teams = new Map<string, SessionTeam>();
   for (const m of members) {
-    if (m.role !== 'controller' || !m.teamId) continue;
-    let t = teams.get(m.teamId);
-    if (!t) {
-      const colour =
-        m.colour ?? FALLBACK_COLOURS[teams.size % FALLBACK_COLOURS.length] ?? '#888888';
-      t = { id: m.teamId, name: m.teamId, colour, playerIds: [] };
-      teams.set(m.teamId, t);
+    if (m.role !== 'controller') continue;
+    for (const teamId of m.teamIds) {
+      let t = teams.get(teamId);
+      if (!t) {
+        const colour =
+          m.colour ?? FALLBACK_COLOURS[teams.size % FALLBACK_COLOURS.length] ?? '#888888';
+        t = { id: teamId, name: teamId, colour, playerIds: [] };
+        teams.set(teamId, t);
+      }
+      t.playerIds.push(m.id);
     }
-    t.playerIds.push(m.id);
   }
   return [...teams.values()];
 }
 
 /**
  * Runs one match for a room: owns the {@link GameSession}, broadcasts its output to every
- * client, authorises intents (only the active team's controllers may command; hot-seat mode,
- * where one phone drives several teams, is a later task) and relays throttled aim previews.
+ * client, authorises intents (`perPlayer`: the turn's rotating commander; `hotSeat`: any phone
+ * bound to the active team) and relays throttled aim previews.
  */
 export class MatchRunner implements ActiveMatch {
   private readonly session: GameSession;
@@ -68,6 +70,7 @@ export class MatchRunner implements ActiveMatch {
       settings,
       teams,
       ...(opts.clock ? { clock: opts.clock } : {}),
+      isConnected: (id) => this.isTeamPresent([id]),
       onSnapshot: (s) => {
         this.latest = s;
         this.broadcast(s);

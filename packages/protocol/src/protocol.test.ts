@@ -71,6 +71,7 @@ describe('server messages', () => {
     expect(
       parseServerMessage({
         type: 'lobbyState',
+        phase: 'lobby',
         roomCode: 'ABCD',
         hostId: 'p1',
         settings,
@@ -112,5 +113,40 @@ describe('checkHello', () => {
   });
   it('reports malformed hellos', () => {
     expect(checkHello({ type: 'hello' })).toEqual({ ok: false, error: 'bad_message' });
+  });
+
+  it('requires lobbyState.phase and defaults controlMode and teamIds', () => {
+    const base = { type: 'lobbyState', roomCode: 'ABCD', hostId: null, settings, players: [] };
+    expect(() => parseServerMessage(base)).toThrow();
+    expect(() => parseServerMessage({ ...base, phase: 'other' })).toThrow();
+    const m = parseServerMessage({
+      ...base,
+      phase: 'match',
+      players: [
+        {
+          id: 'p',
+          name: 'n',
+          role: 'controller',
+          teamId: null,
+          colour: null,
+          ready: false,
+          connected: true,
+        },
+      ],
+    });
+    if (m.type !== 'lobbyState') throw new Error('type');
+    expect(m.phase).toBe('match');
+    expect(m.settings.controlMode).toBe('perPlayer');
+    expect(m.players[0]?.teamIds).toEqual([]);
+    expect(() =>
+      parseServerMessage({ ...base, phase: 'lobby', settings: { ...settings, controlMode: 'x' } }),
+    ).toThrow();
+  });
+
+  it('carries activePlayerId on turnStart and accepts toggleTeam', () => {
+    const t = { type: 'turnStart', teamId: 'a', snailId: 's', durationMs: 1, activePlayerId: 'p' };
+    expect(parseServerMessage(t)).toEqual(t);
+    expect(parseServerMessage({ ...t, activePlayerId: undefined }).type).toBe('turnStart');
+    expect(parseClientMessage({ type: 'toggleTeam', teamId: 'A' }).type).toBe('toggleTeam');
   });
 });

@@ -1,5 +1,5 @@
 import type { ControllerClient } from '../net/client';
-import { findMyTeam, isMyTurn } from './my-turn';
+import { findMyTeam, findMyTeams, isMyTurn, mayCommand } from './my-turn';
 import type { TimerModel } from './turn-timer';
 import { startTimer, syncTimer } from './turn-timer';
 
@@ -20,6 +20,10 @@ export interface TurnTracker {
   dispose(): void;
 }
 
+function emptyView(): TurnView {
+  return { myTeamId: null, myTurn: false, teamName: null, snailName: null, timer: null };
+}
+
 /**
  * Tracks whose turn it is from `lobbyState` (my team), `matchStarted` (names) and
  * `turnStart`/`turnTimer` (active team and clock).
@@ -31,18 +35,18 @@ export function trackTurns(
 ): TurnTracker {
   const names = new Map<string, { team: string; snails: Map<string, string> }>();
   const turn = { activeTeamId: null as string | null, activeSnailId: null as string | null };
-  const view: TurnView = {
-    myTeamId: null,
-    myTurn: false,
-    teamName: null,
-    snailName: null,
-    timer: null,
-  };
+  let myTeams: string[] = [];
+  let activePlayerId: string | undefined;
+  let hotSeat = false;
+  const view = emptyView();
   const listeners = new Set<(v: TurnView) => void>();
 
   const refresh = (): void => {
     const team = turn.activeTeamId ? names.get(turn.activeTeamId) : undefined;
-    view.myTurn = isMyTurn(view.myTeamId, turn);
+    const mine = turn.activeTeamId !== null && myTeams.includes(turn.activeTeamId);
+    if (mine) view.myTeamId = turn.activeTeamId;
+    view.myTurn =
+      isMyTurn(view.myTeamId, turn) && (hotSeat || mayCommand(activePlayerId, playerId));
     view.teamName = team?.team ?? null;
     view.snailName = (turn.activeSnailId && team?.snails.get(turn.activeSnailId)) || null;
     listeners.forEach((fn) => fn(view));
@@ -50,11 +54,13 @@ export function trackTurns(
 
   const offs = [
     client.on('lobbyState', (m) => {
+      myTeams = findMyTeams(playerId, m.players);
       view.myTeamId = findMyTeam(playerId, m.players);
       refresh();
     }),
     client.on('matchStarted', (m) => {
       names.clear();
+      hotSeat = m.settings.controlMode === 'hotSeat';
       for (const t of m.teams) {
         names.set(t.id, { team: t.name, snails: new Map(t.snails.map((s) => [s.id, s.name])) });
       }
@@ -63,6 +69,7 @@ export function trackTurns(
     client.on('turnStart', (m) => {
       turn.activeTeamId = m.teamId;
       turn.activeSnailId = m.snailId;
+      activePlayerId = m.activePlayerId;
       view.timer = startTimer(m.durationMs, now());
       refresh();
     }),
