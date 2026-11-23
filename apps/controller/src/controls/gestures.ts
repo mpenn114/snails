@@ -3,6 +3,7 @@ import { dragToAim } from './aim-mapping';
 import { clampKnob, joystickDirection, onChange } from './joystick';
 import type { MoveDirection } from './joystick';
 import { createThrottle } from './throttle';
+import { tryCapture } from '../platform/pointer';
 
 /** Joystick travel radius (px) and horizontal deadzone. */
 const STICK_RADIUS = 60;
@@ -30,32 +31,44 @@ function trackPointer(
   let id: number | null = null;
   let ox = 0;
   let oy = 0;
-  const onDown = (e: PointerEvent): void => {
-    if (id !== null) return;
-    id = e.pointerId;
-    ox = e.clientX;
-    oy = e.clientY;
-    el.setPointerCapture?.(id);
-    handlers.down?.(ox, oy);
-    handlers.move(0, 0);
-  };
+  let onWindow = false;
   const onMove = (e: PointerEvent): void => {
     if (e.pointerId === id) handlers.move(e.clientX - ox, e.clientY - oy);
   };
   const onEnd = (e: PointerEvent): void => {
     if (e.pointerId !== id) return;
     id = null;
+    if (onWindow) setWindow(false);
     handlers.up();
+  };
+  const setWindow = (on: boolean): void => {
+    onWindow = on;
+    const m = on ? 'addEventListener' : 'removeEventListener';
+    window[m]('pointermove', onMove as EventListener);
+    window[m]('pointerup', onEnd as EventListener);
+    window[m]('pointercancel', onEnd as EventListener);
+  };
+  const onDown = (e: PointerEvent): void => {
+    if (id !== null) return;
+    id = e.pointerId;
+    ox = e.clientX;
+    oy = e.clientY;
+    if (!tryCapture(el, id)) setWindow(true);
+    handlers.down?.(ox, oy);
+    handlers.move(0, 0);
   };
   el.addEventListener('pointerdown', onDown);
   el.addEventListener('pointermove', onMove);
   el.addEventListener('pointerup', onEnd);
   el.addEventListener('pointercancel', onEnd);
+  el.addEventListener('lostpointercapture', onEnd);
   return () => {
     el.removeEventListener('pointerdown', onDown);
     el.removeEventListener('pointermove', onMove);
     el.removeEventListener('pointerup', onEnd);
     el.removeEventListener('pointercancel', onEnd);
+    el.removeEventListener('lostpointercapture', onEnd);
+    if (onWindow) setWindow(false);
     if (id !== null) handlers.up();
   };
 }

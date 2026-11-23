@@ -18,7 +18,7 @@ const CSS = `
 @keyframes spec-fade{0%{opacity:0;transform:scale(.8)}20%{opacity:1;transform:scale(1.1)}100%{opacity:0;transform:scale(1)}}
 @media (prefers-reduced-motion:reduce){.spec-flash.on{animation:none;opacity:1}}
 .spec-end{position:absolute;inset:0;display:none;flex-direction:column;gap:12px;align-items:center;justify-content:center;
-  background:rgba(16,24,32,.88);pointer-events:auto;font-size:2rem;font-weight:800;text-align:center}
+  background:rgba(16,24,32,.88);pointer-events:auto;font-size:2rem;padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;font-weight:800;text-align:center}
 .spec-end.on{display:flex}
 .spec-end small{font-size:1rem;font-weight:400;opacity:.8}`;
 

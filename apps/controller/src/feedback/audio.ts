@@ -11,8 +11,10 @@ export interface MuteStorage {
 
 /** Audio engine: synthesised cues, gesture-gated, mutable. */
 export interface AudioEngine {
-  /** Creates/resumes the context; call from a user gesture. */
+  /** Creates/resumes the context and primes it with a silent buffer; call synchronously from a user gesture. */
   unlock(): void;
+  /** True once the context is running (iOS may also report `interrupted` after a call/lock). */
+  isUnlocked(): boolean;
   play(cue: Cue): void;
   isMuted(): boolean;
   setMuted(m: boolean): void;
@@ -77,6 +79,26 @@ function playTone(ctx: AudioContext, t0: number, tone: Tone): void {
   if (tone.noise) playNoise(ctx, t0, tone);
 }
 
+/** Window subset holding the (possibly prefixed) AudioContext constructor. */
+export interface AudioWindow {
+  AudioContext?: new () => AudioContext;
+  webkitAudioContext?: new () => AudioContext;
+}
+
+/** Context factory using `AudioContext` or Safari's prefixed `webkitAudioContext`; undefined when neither exists. */
+export function audioContextFactory(win: AudioWindow): (() => AudioContext) | undefined {
+  const Ctor = win.AudioContext ?? win.webkitAudioContext;
+  return Ctor ? () => new Ctor() : undefined;
+}
+
+/** Plays a one-sample silent buffer; on iOS this inside a gesture fully unlocks output. */
+function prime(ctx: AudioContext): void {
+  const src = ctx.createBufferSource();
+  src.buffer = ctx.createBuffer(1, 1, 22050);
+  src.connect(ctx.destination);
+  src.start(0);
+}
+
 /** Creates the engine; `createContext` is injectable (undefined when WebAudio is unsupported). */
 export function createAudioEngine(
   createContext: (() => AudioContext) | undefined,
@@ -87,14 +109,21 @@ export function createAudioEngine(
 
   const unlock = (): void => {
     try {
-      if (!ctx && createContext) ctx = createContext();
-      if (ctx && ctx.state === 'suspended') void ctx.resume().catch(() => undefined);
+      if (!ctx && createContext) {
+        ctx = createContext();
+        prime(ctx);
+      }
+      // iOS also reports 'interrupted' (phone call, lock, route change): resume that too.
+      if (ctx && String(ctx.state) !== 'running' && ctx.state !== 'closed') {
+        void Promise.resolve(ctx.resume()).catch(() => undefined);
+      }
     } catch {
       /* audio unavailable */
     }
   };
   const play = (cue: Cue): void => {
     if (muted || !ctx || ctx.state === 'closed') return;
+    if (String(ctx.state) !== 'running') unlock();
     try {
       let t = ctx.currentTime;
       for (const tone of TONES[cue.kind]) {
@@ -121,5 +150,6 @@ export function createAudioEngine(
     }
     ctx = undefined;
   };
-  return { unlock, play, isMuted: () => muted, setMuted, dispose };
+  const isUnlocked = (): boolean => !!ctx && String(ctx.state) === 'running';
+  return { unlock, isUnlocked, play, isMuted: () => muted, setMuted, dispose };
 }

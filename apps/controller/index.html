@@ -8,6 +8,10 @@
     />
     <meta name="theme-color" content="#101820" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Snails" />
+    <meta name="format-detection" content="telephone=no" />
     <link rel="manifest" href="/manifest.webmanifest" />
     <link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192.png" />
     <link rel="apple-touch-icon" sizes="180x180" href="/icons/apple-touch-icon-180.png" />
@@ -17,7 +21,18 @@
       body {
         margin: 0;
         height: 100%;
+        height: -webkit-fill-available;
+        height: 100vh;
+        height: 100dvh;
         overflow: hidden;
+        overscroll-behavior: none;
+        position: fixed;
+        width: 100%;
+        -webkit-user-select: none;
+        user-select: none;
+        -webkit-touch-callout: none;
+        -webkit-tap-highlight-color: transparent;
+        -webkit-text-size-adjust: 100%;
         background: #101820;
         color: #fff;
         font-family: system-ui, sans-serif;
@@ -29,6 +44,10 @@
         width: 100%;
         height: 100%;
         display: block;
+      }
+      input {
+        -webkit-user-select: text;
+        user-select: text;
       }
       #overlay {
         position: fixed;

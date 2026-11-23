@@ -3,6 +3,7 @@ import type { ErrorCode, ServerMessage } from '@snails/protocol';
 import { backoffDelay } from './url';
 import { loadSession, clearSession, saveSession } from './session-store';
 import type { StorageLike } from './session-store';
+import { safeStorage } from '../platform/ios';
 import { CommandLatency } from './command-latency';
 
 /** Connection lifecycle. `mismatch` means the app is outdated and must be refreshed. */
@@ -60,7 +61,7 @@ type Handler<T extends ServerMessage['type']> = (m: Extract<ServerMessage, { typ
 function defaultDeps(): ClientDeps {
   return {
     createSocket: (url) => new WebSocket(url) as unknown as SocketLike,
-    storage: typeof localStorage === 'undefined' ? undefined : localStorage,
+    storage: safeStorage(),
     random: Math.random,
     now: () => Date.now(),
     setTimeout: (fn, ms) => setTimeout(fn, ms),
@@ -120,6 +121,28 @@ export class ControllerClient {
   connect(): void {
     if (this.connState !== 'idle' && this.connState !== 'closed') return;
     this.open('connecting');
+  }
+
+  /**
+   * Re-checks the connection after the page returns from the background or the back/forward
+   * cache (iOS Safari silently drops sockets while suspended). Reconnects immediately, skipping
+   * any backoff wait, when the socket is gone or dead; no-op when healthy or closed for good.
+   */
+  resume(): void {
+    if (this.connState === 'idle' || this.connState === 'closed' || this.connState === 'mismatch')
+      return;
+    const rs = this.ws?.readyState;
+    if (this.ws && (rs === 0 || rs === OPEN)) return;
+    this.deps.clearTimeout(this.retry);
+    this.stopPing();
+    const stale = this.ws;
+    this.ws = undefined;
+    if (stale) {
+      stale.onclose = null;
+      stale.close();
+    }
+    this.attempt = 0;
+    this.open('reconnecting');
   }
 
   /** Validates and sends (or queues, while not open) a client message. */

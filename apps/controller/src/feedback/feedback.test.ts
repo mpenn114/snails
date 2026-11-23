@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { ServerMessage, SimEventData } from '@snails/protocol';
 import { encodeEventBatch } from '@snails/protocol';
-import { createAudioEngine, MUTE_KEY } from './audio';
+import { audioContextFactory, createAudioEngine, MUTE_KEY } from './audio';
 import { createCuePlanner } from './cues';
 import { HAPTIC_PATTERNS, playHaptic } from './haptics';
 
@@ -193,5 +193,31 @@ describe('audio engine', () => {
       throw new Error('no');
     });
     expect(() => thrower.unlock()).not.toThrow();
+  });
+});
+
+describe('iOS audio unlock', () => {
+  it('falls back to webkitAudioContext', () => {
+    const W = vi.fn();
+    expect(audioContextFactory({})).toBeUndefined();
+    expect(audioContextFactory({ webkitAudioContext: W as never })).toBeTypeOf('function');
+    audioContextFactory({ webkitAudioContext: W as never })?.();
+    expect(W).toHaveBeenCalledTimes(1);
+  });
+
+  it('primes with a silent buffer and resumes an interrupted context', () => {
+    const ctx = fakeCtx();
+    const a = createAudioEngine(() => ctx as unknown as AudioContext);
+    a.unlock();
+    expect(ctx.createBufferSource).toHaveBeenCalledTimes(1);
+    expect(a.isUnlocked()).toBe(false);
+    (ctx as { state: string }).state = 'running';
+    expect(a.isUnlocked()).toBe(true);
+    ctx.resume.mockClear();
+    a.unlock();
+    expect(ctx.resume).not.toHaveBeenCalled();
+    (ctx as { state: string }).state = 'interrupted';
+    a.unlock();
+    expect(ctx.resume).toHaveBeenCalledTimes(1);
   });
 });

@@ -36,7 +36,8 @@ export function mountPassPhone(root: HTMLElement): PassPhone {
   el.hidden = true;
   el.style.cssText =
     'position:fixed;inset:0;display:flex;align-items:center;justify-content:center;' +
-    'background:#000d;color:#fff;font:700 1.6rem system-ui;text-align:center;z-index:50;';
+    'background:#000d;color:#fff;font:700 1.6rem system-ui;text-align:center;z-index:50;' +
+    'padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;';
   const label = document.createElement('button');
   label.type = 'button';
   label.style.cssText = 'font:inherit;color:inherit;background:none;border:0;padding:2rem;';

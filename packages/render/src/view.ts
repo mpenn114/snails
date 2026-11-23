@@ -36,6 +36,8 @@ export interface GameViewOptions {
   onRenderer?: (renderer: THREE.WebGLRenderer) => void;
   /** Frame scheduler override (defaults to requestAnimationFrame), e.g. an fps-capped one. */
   scheduler?: FrameScheduler;
+  /** WebGL power preference hint (iOS Safari largely ignores it). */
+  powerPreference?: 'default' | 'high-performance' | 'low-power';
 }
 
 /** Handle to a running game view. */
@@ -135,7 +137,11 @@ export function createGameViewWith(deps: GameViewDeps): GameView {
 /** Creates a WebGL renderer on a canvas, builds the view and starts rAF rendering. */
 export function createGameView(canvas: HTMLCanvasElement, opts: GameViewOptions): GameView {
   const q = qualitySettings(opts.tier, window.devicePixelRatio);
-  const renderer = new THREE.WebGLRenderer({ canvas, antialias: q.antialias });
+  const renderer = new THREE.WebGLRenderer({
+    canvas,
+    antialias: q.antialias,
+    ...(opts.powerPreference ? { powerPreference: opts.powerPreference } : {}),
+  });
   opts.onRenderer?.(renderer);
   renderer.shadowMap.enabled = q.shadows;
   renderer.shadowMap.type = SHADOW_TYPES[q.shadowType];

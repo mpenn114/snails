@@ -19,7 +19,7 @@ export function mountPhoneView(
   toggle.type = 'button';
   toggle.textContent = 'Battery saver: off';
   toggle.style.cssText =
-    'position:fixed;top:8px;right:8px;z-index:5;padding:6px 10px;font-size:0.8rem;opacity:0.7';
+    'position:fixed;top:calc(8px + env(safe-area-inset-top));right:calc(64px + env(safe-area-inset-right));z-index:5;min-height:44px;-webkit-touch-callout:none;padding:6px 10px;font-size:0.8rem;opacity:0.7';
   let on = false;
   const handle: PhoneViewHandle = attachPhoneView(client, container);
   toggle.addEventListener('click', () => {

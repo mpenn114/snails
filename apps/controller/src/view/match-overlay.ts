@@ -1,4 +1,5 @@
 import type { GameSnapshot, SimEvent } from '@snails/core';
+import { tryCapture } from '../platform/pointer';
 import { CameraController } from './camera-controller';
 import type { RigLike } from './camera-controller';
 import { GestureTracker } from './camera-gestures';
@@ -32,8 +33,11 @@ export class MatchOverlay {
   private lastDraw = Number.NEGATIVE_INFINITY;
   private snapshot: GameSnapshot | null = null;
   private readonly offMode: () => void;
-  private readonly down = (e: PointerEvent): void =>
+  private readonly down = (e: PointerEvent): void => {
+    // Capture keeps multi-touch moves flowing off the canvas; Safari may throw, which is fine.
+    tryCapture(e.currentTarget as HTMLElement, e.pointerId);
     this.gestures.down(e.pointerId, e.clientX, e.clientY);
+  };
   private readonly move = (e: PointerEvent): void => {
     const input = this.gestures.move(e.pointerId, e.clientX, e.clientY);
     if (input) this.camera.gesture(input);
@@ -58,6 +62,7 @@ export class MatchOverlay {
     c.addEventListener('pointermove', this.move);
     c.addEventListener('pointerup', this.up);
     c.addEventListener('pointercancel', this.up);
+    c.addEventListener('lostpointercapture', this.up);
   }
 
   /** Server `turnStart`. */
@@ -98,6 +103,7 @@ export class MatchOverlay {
     c.removeEventListener('pointermove', this.move);
     c.removeEventListener('pointerup', this.up);
     c.removeEventListener('pointercancel', this.up);
+    c.removeEventListener('lostpointercapture', this.up);
     this.offMode();
     this.minimap.dispose();
     this.hud.dispose();

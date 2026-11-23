@@ -228,4 +228,45 @@ describe('ControllerClient', () => {
     t.sockets[0]!.recv({ type: 'error', code: 'not_host', message: 'x' });
     expect(t.client.state).toBe('connecting');
   });
+
+  describe('resume (bfcache / background return)', () => {
+    it('is a no-op while healthy, idle or closed', () => {
+      const t = setup();
+      t.client.resume();
+      expect(t.sockets).toHaveLength(0);
+      t.client.connect();
+      t.sockets[0]!.open();
+      t.sockets[0]!.recv(welcome());
+      t.client.resume();
+      expect(t.sockets).toHaveLength(1);
+      t.client.close();
+      t.client.resume();
+      expect(t.sockets).toHaveLength(1);
+    });
+
+    it('reconnects immediately, skipping backoff, when the socket died silently', () => {
+      const t = setup();
+      t.client.connect();
+      t.sockets[0]!.open();
+      t.sockets[0]!.recv(welcome());
+      t.sockets[0]!.readyState = 3; // dropped while suspended, no close event delivered
+      t.client.resume();
+      expect(t.sockets).toHaveLength(2);
+      expect(t.client.state).toBe('reconnecting');
+      expect(t.sockets[0]!.closed).toBe(true);
+      t.sockets[1]!.open();
+      expect(t.sockets[1]!.sent[0]).toMatchObject({ type: 'hello', sessionToken: 'tok' });
+    });
+
+    it('skips a pending backoff wait', () => {
+      const t = setup();
+      t.client.connect();
+      t.sockets[0]!.open();
+      t.sockets[0]!.recv(welcome());
+      t.sockets[0]!.drop();
+      expect(t.sockets).toHaveLength(1);
+      t.client.resume();
+      expect(t.sockets).toHaveLength(2);
+    });
+  });
 });

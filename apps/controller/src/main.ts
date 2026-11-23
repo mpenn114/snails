@@ -16,20 +16,24 @@ import { playerTeams } from './ui/lobby-logic';
 import { trackFacingSign } from './controls/facing-tracker';
 import { mountDebugOverlay } from './debug/debug-overlay';
 import { registerServiceWorker } from './pwa/register-sw';
+import { installTouchGuards, safeStorage } from './platform/ios';
+import { bindPageLifecycle } from './net/lifecycle';
 
 if (import.meta.env.PROD) void registerServiceWorker(navigator);
 
 const overlay = document.getElementById('overlay') as HTMLElement;
 const screen = document.getElementById('screen') as HTMLElement;
 
-const stored = loadSession(localStorage);
+installTouchGuards(document);
+const storage = safeStorage();
+const stored = loadSession(storage);
 const initial = {
   name: stored?.name ?? '',
   room: parseRoomParam(location.search) || stored?.roomCode || '',
 };
 
 const joinView = mountJoinView(screen, initial, (v) => {
-  saveSession(localStorage, { name: v.name, roomCode: v.room });
+  saveSession(storage, { name: v.name, roomCode: v.room });
   const client = new ControllerClient({
     url: buildWsUrl(location),
     name: v.name,
@@ -74,6 +78,7 @@ const joinView = mountJoinView(screen, initial, (v) => {
       lobby.destroy();
     });
   });
+  bindPageLifecycle(client, window, document);
   client.connect();
   joinView.update(client);
 });

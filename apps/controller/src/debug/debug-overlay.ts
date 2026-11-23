@@ -33,7 +33,7 @@ export function formatDebugLines(s: DebugStats): string[] {
 export function mountDebugOverlay(client: ControllerClient, doc: Document = document): () => void {
   const el = doc.createElement('pre');
   el.style.cssText =
-    'position:fixed;left:6px;top:6px;z-index:50;margin:0;padding:4px 6px;font:11px monospace;' +
+    'position:fixed;left:calc(6px + env(safe-area-inset-left));top:calc(6px + env(safe-area-inset-top));z-index:50;margin:0;padding:4px 6px;font:11px monospace;' +
     'color:#9f9;background:rgba(0,0,0,.6);pointer-events:none;white-space:pre';
   el.hidden = !debugRequested(location.search);
   doc.body.appendChild(el);
