@@ -101,8 +101,8 @@ loop or broadcast snapshots and events. The controller has stub net and turn-con
 | M3-06 | LAN IP detection (skip virtual adapters, multiple NICs) and `/api/info` | server | M0-08 | ✅ |
 | M3-07 | QR join code generation and join URL on the display lobby screen | server | M3-06, M3-05 | ⬜ |
 | M3-08 | Real `GameSession`: fixed-step loop running core sim, applying validated intents | server | M1-21, M3-05 | ✅ |
-| M3-09 | Broadcast snapshots and events to all clients (display and controllers) | server | M3-02, M3-08 | ⬜ |
-| M3-10 | Turn authorisation: only the active player's controller can command | server | M3-08 | ⬜ |
+| M3-09 | Broadcast snapshots and events to all clients (display and controllers) | server | M3-02, M3-08 | ✅ |
+| M3-10 | Turn authorisation: only the active player's controller can command | server | M3-08 | ✅ |
 | M3-11 | Heartbeats, disconnect detection and player timeout policy | server | M3-04 | ⬜ |
 | M3-12 | Reconnect and rejoin with session token; restore turn state within 3 s | server | M3-05, M3-09, M3-11 | ⬜ |
 | M3-13 | Serve built controller bundle with caching headers and SPA fallback | server | M3-06 | ✅ |
@@ -116,7 +116,7 @@ loop or broadcast snapshots and events. The controller has stub net and turn-con
 | M3-21 | Own-turn controls: joystick move, jump, aim drag, power, fire | controller | M3-19, M3-10 | 🚧 |
 | M3-22 | Weapon picker UI and turn timer display | controller | M3-21, M1-18 | ⬜ |
 | M3-23 | Waiting and spectating screen with other players' turn view | controller | M3-19 | ⬜ |
-| M3-24 | Aim preview mirroring to display (throttled aim deltas) | server | M3-21, M3-09 | ⬜ |
+| M3-24 | Aim preview mirroring to display (throttled aim deltas) | server | M3-21, M3-09 | ✅ |
 | M3-25 | Haptics and basic audio cues with graceful degradation | controller | M3-21 | ⬜ |
 | M3-26 | Quality auto-scaling and battery saver on phone | controller | M3-19, M2-13 | ⬜ |
 | M3-27 | PWA: generate icons, finalise manifest, add service worker for offline shell | controller | M3-13 | ✅ |
