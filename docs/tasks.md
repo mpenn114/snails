@@ -111,14 +111,14 @@ loop or broadcast snapshots and events. The controller has stub net and turn-con
 | M3-16 | Controller join screen (name, room code, QR deep link) | controller | M3-15, M3-05 | ✅ |
 | M3-17 | Controller lobby (team setup, colours, ready, host start) | controller | M3-16 | ⬜ |
 | M3-18 | Lobby and match settings handling on the display and server | display | M3-17, M3-07 | ⬜ |
-| M3-19 | Phone 3D view via `@snails/render` (lazy loaded, mobile tier) | controller | M2-13, M3-15, M2-04 | ⬜ |
+| M3-19 | Phone 3D view via `@snails/render` (lazy loaded, mobile tier) | controller | M2-13, M3-15, M2-04 | ✅ |
 | M3-20 | Phone camera modes: follow, aim, free; minimap and HUD overlays | controller | M3-19, M2-10 | ⬜ |
 | M3-21 | Own-turn controls: joystick move, jump, aim drag, power, fire | controller | M3-19, M3-10 | 🚧 |
 | M3-22 | Weapon picker UI and turn timer display | controller | M3-21, M1-18 | ⬜ |
 | M3-23 | Waiting and spectating screen with other players' turn view | controller | M3-19 | ⬜ |
 | M3-24 | Aim preview mirroring to display (throttled aim deltas) | server | M3-21, M3-09 | ✅ |
 | M3-25 | Haptics and basic audio cues with graceful degradation | controller | M3-21 | ⬜ |
-| M3-26 | Quality auto-scaling and battery saver on phone | controller | M3-19, M2-13 | ⬜ |
+| M3-26 | Quality auto-scaling and battery saver on phone | controller | M3-19, M2-13 | ✅ |
 | M3-27 | PWA: generate icons, finalise manifest, add service worker for offline shell | controller | M3-13 | ✅ |
 | M3-28 | Hot-seat and one-phone-per-player modes | controller | M3-17, M3-10 | ⬜ |
 | M3-29 | Display app consumes snapshots and events and drives the shared renderer | display | M2-02, M3-09 | ⬜ |
