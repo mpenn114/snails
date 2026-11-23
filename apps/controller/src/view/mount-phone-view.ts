@@ -4,9 +4,12 @@ import type { PhoneViewHandle } from './phone-view-loader';
 
 /**
  * Adds the full-screen 3D view container behind the UI plus a small battery-saver toggle, and
- * attaches the lazily loaded PhoneView to the client. Returns a disposer.
+ * attaches the lazily loaded PhoneView to the client. Returns a disposer carrying the PhoneViewHandle as `handle` (e.g. for `handle.setAiming`).
  */
-export function mountPhoneView(client: ControllerClient, doc: Document = document): () => void {
+export function mountPhoneView(
+  client: ControllerClient,
+  doc: Document = document,
+): (() => void) & { handle: PhoneViewHandle } {
   const container = doc.createElement('div');
   container.id = 'phone-view';
   container.style.cssText = 'position:fixed;inset:0;z-index:0';
@@ -26,9 +29,10 @@ export function mountPhoneView(client: ControllerClient, doc: Document = documen
   });
   doc.body.appendChild(toggle);
 
-  return () => {
+  const dispose = (): void => {
     handle.dispose();
     container.remove();
     toggle.remove();
   };
+  return Object.assign(dispose, { handle });
 }
