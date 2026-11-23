@@ -158,7 +158,7 @@ the MG-03 harness to its PR. After the first round looked poor, MG-13 to MG-15 s
 | MG-13 | Terrain shapes and framing: generator makes chunky islands, plateaus and cliffs instead of thin arches; cameras frame the snails; labels decluttered | core | MG-05 | ✅ |
 | MG-14 | Asset pipeline: `content-base` glTF assets with licence credits, cached loader, mobile variants; CC0 low-poly nature props and a snail model replace code-built ones where better (covers MG-07) | render | MG-02 | ✅ |
 | MG-15 | Textured terrain: CC0 stylised grass, dirt and rock textures blended by slope and depth (triplanar), replacing procedural stripes; cheap mobile path | render | MG-05 | ✅ |
-| MG-16 | Scene polish: prop density and colour variety (no team-colour clashes), bare crater floors, harness team colours from the palette | render | MG-14, MG-15 | ⬜ |
+| MG-16 | Scene polish: prop density and colour variety (no team-colour clashes), bare crater floors, harness team colours from the palette | render | MG-14, MG-15 | ✅ |
 
 ## M4: Weapons and content packs
 
