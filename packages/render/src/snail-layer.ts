@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import type { FrameUpdater, RenderState } from './render-loop.js';
 import { SnailAssets, canvasLabelFactory, type LabelTextureFactory } from './snail-assets.js';
+import { declutterLabels, type LabelBox } from './label-declutter.js';
 import { SnailMesh } from './snail-mesh.js';
 import { snailViewsFromSnapshot, type SnailView } from './snail-view.js';
 
@@ -40,7 +41,7 @@ export class SnailLayer {
   private camera: THREE.Camera | null;
 
   /** Creates an empty layer. */
-  private readonly shadows: boolean;
+  private shadows: boolean;
 
   constructor(opts: SnailLayerOptions = {}) {
     this.labelFactory = opts.labelFactory ?? canvasLabelFactory;
@@ -51,6 +52,12 @@ export class SnailLayer {
     this.updater = (_dt, state) => {
       if (state) this.sync(select(state));
     };
+  }
+
+  /** Enables or disables shadow casting on all existing and future snail meshes. */
+  setShadows(on: boolean): void {
+    this.shadows = on;
+    for (const mesh of this.meshes.values()) mesh.setCastShadow(on);
   }
 
   /** Sets the camera that health bars billboard towards. */
@@ -91,6 +98,33 @@ export class SnailLayer {
       if (seen.has(id)) continue;
       mesh.dispose();
       this.meshes.delete(id);
+    }
+    this.declutter();
+  }
+
+  /** Hides or lifts name tags that would overlap on screen; nearer snails win. */
+  private declutter(): void {
+    const cam = this.camera;
+    if (!(cam instanceof THREE.PerspectiveCamera)) return;
+    cam.updateMatrixWorld();
+    const tanHalf = Math.tan(THREE.MathUtils.degToRad(cam.fov) / 2);
+    const boxes: LabelBox[] = [];
+    const tmp = new THREE.Vector3();
+    for (const [id, mesh] of this.meshes) {
+      if (!mesh.nameTag.visible) continue;
+      mesh.nameTag.getWorldPosition(tmp);
+      const d = cam.position.distanceTo(tmp);
+      const ndc = tmp.project(cam);
+      const unit = 1 / (d * tanHalf); // world metres -> NDC height
+      const s = mesh.nameTag.scale;
+      const width = (s.x * unit) / cam.aspect;
+      boxes.push({ id, x: ndc.x, y: ndc.y, width, height: s.y * unit, distance: d });
+    }
+    for (const p of declutterLabels(boxes)) {
+      const mesh = this.meshes.get(p.id)!;
+      const d = boxes.find((b) => b.id === p.id)!.distance;
+      mesh.nameTag.visible = !p.hidden;
+      mesh.nameTag.position.y += p.offsetY * d * tanHalf;
     }
   }
 

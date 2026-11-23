@@ -102,6 +102,26 @@ describe('MatchRenderer', () => {
     expect(r.projectileLayer?.size).toBe(0);
   });
 
+  it('propagates tier shadow flags to existing terrain and snail meshes', () => {
+    const { r, tick } = setup();
+    r.init({ grid: makeGrid(), waterLevel: 2 });
+    r.pushSnapshot(snap(1, 2, 0));
+    tick(16);
+    tick(16);
+    const chunk = (): THREE.Object3D => r.terrainMeshes!.group.children[0]!;
+    const body = (): THREE.Object3D => r.snailLayer!.get('s0')!.bodyGroup.children[0]!;
+    expect(chunk().castShadow).toBe(true);
+    expect(body().castShadow).toBe(true);
+    r.setTier('mobile');
+    expect(chunk().castShadow).toBe(false);
+    expect(chunk().receiveShadow).toBe(false);
+    expect(body().castShadow).toBe(false);
+    r.setTier('high');
+    expect(chunk().castShadow).toBe(true);
+    expect(chunk().receiveShadow).toBe(true);
+    expect(body().castShadow).toBe(true);
+  });
+
   it('applies carve events to the replica and spawns explosions', () => {
     const { r } = setup();
     const grid = makeGrid();
