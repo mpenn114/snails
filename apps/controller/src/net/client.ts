@@ -3,6 +3,7 @@ import type { ErrorCode, ServerMessage } from '@snails/protocol';
 import { backoffDelay } from './url';
 import { loadSession, clearSession, saveSession } from './session-store';
 import type { StorageLike } from './session-store';
+import { CommandLatency } from './command-latency';
 
 /** Connection lifecycle. `mismatch` means the app is outdated and must be refreshed. */
 export type ConnectionState =
@@ -43,6 +44,15 @@ export interface ClientOptions {
 const OPEN = 1;
 const INTENT_MAX_AGE_MS = 1000;
 const PING_MS = 3000;
+const INTENT_TYPES = new Set([
+  'move',
+  'jump',
+  'aim',
+  'selectWeapon',
+  'fire',
+  'endTurn',
+  'queueResearch',
+]);
 const LOBBY_TYPES = new Set(['createRoom', 'setTeam', 'setColour', 'setReady', 'startMatch']);
 
 type Handler<T extends ServerMessage['type']> = (m: Extract<ServerMessage, { type: T }>) => void;
@@ -67,6 +77,9 @@ export class ControllerClient {
   rttMs: number | undefined;
   /** Last protocol error code received, if any. */
   lastError: ErrorCode | undefined;
+  /** Command-to-effect latency stats (intents are stamped with a `seq`; see `ack`). */
+  readonly latency = new CommandLatency();
+  private seq = 0;
   private connState: ConnectionState = 'idle';
   private readonly deps: ClientDeps;
   private ws: SocketLike | undefined;
@@ -116,12 +129,20 @@ export class ControllerClient {
       this.deps.log('dropping invalid outbound message', parsed.error.message);
       return;
     }
+    const data = this.stamp(parsed.data);
     if (this.ws && this.ws.readyState === OPEN && this.connState === 'open') {
-      this.ws.send(JSON.stringify(parsed.data));
+      this.ws.send(JSON.stringify(data));
+      if ('seq' in data && data.seq !== undefined) this.latency.sent(data.seq, this.deps.now());
     } else if (parsed.data.type !== 'ping' && parsed.data.type !== 'hello') {
       if (this.connState === 'reconnecting' || this.connState === 'connecting')
-        this.queue.push({ msg: parsed.data, at: this.deps.now() });
+        this.queue.push({ msg: data, at: this.deps.now() });
     }
+  }
+
+  /** Adds a client sequence number to intents that lack one. */
+  private stamp(msg: ClientMessage): ClientMessage {
+    if (!INTENT_TYPES.has(msg.type) || ('seq' in msg && msg.seq !== undefined)) return msg;
+    return { ...msg, seq: this.seq++ } as ClientMessage;
   }
 
   /** Closes for good and releases timers and the socket. */
@@ -182,6 +203,8 @@ export class ControllerClient {
     if (msg.type === 'welcome') this.handleWelcome(msg.sessionToken, msg.roomCode);
     else if (msg.type === 'pong') this.rttMs = Math.max(0, this.deps.now() - msg.t);
     else if (msg.type === 'error') this.handleError(msg.code);
+    else if (msg.type === 'ack') this.latency.acked(msg.seq, msg.serverTick);
+    else if (msg.type === 'snapshot') this.latency.snapshot(msg.tick, this.deps.now());
     for (const h of this.handlers.get(msg.type) ?? []) (h as (m: ServerMessage) => void)(msg);
   }
 

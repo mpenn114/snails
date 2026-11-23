@@ -23,23 +23,36 @@ export const SetColour = z.object({ type: z.literal('setColour'), colour: Colour
 export const SetReady = z.object({ type: z.literal('setReady'), ready: z.boolean() });
 export const StartMatch = z.object({ type: z.literal('startMatch'), settings: MatchSettings });
 
+/**
+ * Optional client sequence number on every intent (latency instrumentation, M3-30). When present the
+ * server answers with `ack {seq, serverTick}` after applying the intent. Absent = no ack.
+ */
+export const IntentSeq = z.number().int().nonnegative().optional();
+
 /** Controller intents. Angles are radians. */
 export const Move = z.object({
   type: z.literal('move'),
   direction: z.enum(['left', 'right', 'stop']),
+  seq: IntentSeq,
 });
-export const Jump = z.object({ type: z.literal('jump') });
+export const Jump = z.object({ type: z.literal('jump'), seq: IntentSeq });
 export const Aim = z.object({
   type: z.literal('aim'),
   angle: z.number().min(-Math.PI).max(Math.PI),
   power: z.number().min(0).max(1),
+  seq: IntentSeq,
 });
-export const SelectWeapon = z.object({ type: z.literal('selectWeapon'), weaponId: z.string() });
-export const Fire = z.object({ type: z.literal('fire') });
-export const EndTurn = z.object({ type: z.literal('endTurn') });
+export const SelectWeapon = z.object({
+  type: z.literal('selectWeapon'),
+  weaponId: z.string(),
+  seq: IntentSeq,
+});
+export const Fire = z.object({ type: z.literal('fire'), seq: IntentSeq });
+export const EndTurn = z.object({ type: z.literal('endTurn'), seq: IntentSeq });
 export const QueueResearch = z.object({
   type: z.literal('queueResearch'),
   technologyId: z.string(),
+  seq: IntentSeq,
 });
 
 /** Heartbeat; `t` is an opaque client timestamp echoed by `pong`. */

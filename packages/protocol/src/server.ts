@@ -81,6 +81,18 @@ export const AimPreview = z.object({
 /** Heartbeat reply echoing `ping.t`. */
 export const Pong = z.object({ type: z.literal('pong'), t: z.number() });
 
+/**
+ * Sent only to the sender of an intent that carried `seq`, right after the server applied it.
+ * `serverTick` is the simulation tick at which it was applied; the effect is visible in the first
+ * snapshot with `tick > serverTick`. Chosen over per-player `lastAppliedSeq` in snapshots so the
+ * shared snapshot stays identical for every client.
+ */
+export const Ack = z.object({
+  type: z.literal('ack'),
+  seq: z.number().int().nonnegative(),
+  serverTick: z.number().int().nonnegative(),
+});
+
 /** Error report. */
 export const ErrorMessage = z.object({
   type: z.literal('error'),
@@ -100,6 +112,7 @@ export const ServerMessage = z.discriminatedUnion('type', [
   TurnTimer,
   AimPreview,
   Pong,
+  Ack,
   Snapshot,
   EventBatch,
   ErrorMessage,

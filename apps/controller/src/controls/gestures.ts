@@ -97,6 +97,7 @@ export function bindAim(
   marker: HTMLElement,
   client: ControllerClient,
   facingSign: () => 1 | -1,
+  onAiming?: (aiming: boolean) => void,
 ): Gestures {
   const throttle = createThrottle<{ angle: number; power: number }>(
     (a) => client.send({ type: 'aim', ...a }),
@@ -111,6 +112,7 @@ export function bindAim(
     down(x, y) {
       const r = zone.getBoundingClientRect();
       marker.style.cssText = `display:block;left:${x - r.left}px;top:${y - r.top}px`;
+      onAiming?.(true);
     },
     move(dx, dy) {
       const a = dragToAim(dx, dy, facingSign(), AIM_MAX_DRAG);
@@ -118,10 +120,12 @@ export function bindAim(
     },
     up() {
       marker.style.display = 'none';
+      onAiming?.(false);
     },
   });
   const release = (): void => {
     marker.style.display = 'none';
+    onAiming?.(false);
   };
   return {
     release,

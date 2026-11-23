@@ -91,4 +91,44 @@ describe('/ws integration', () => {
     expect(await c1.next((m) => m.type === 'pong')).toEqual({ type: 'pong', t: 3 });
     for (const c of [tv, c1, c2]) c.ws.close();
   });
+
+  it('acks seq-stamped intents and exposes /api/debug/latency', async () => {
+    app = await buildServer({ staticDir: '/nonexistent', displayDir: '/nonexistent' });
+    await app.listen({ port: 0, host: '127.0.0.1' });
+    const addr = app.server.address();
+    const port = typeof addr === 'object' && addr ? addr.port : 0;
+    const url = `ws://127.0.0.1:${port}/ws`;
+    const hello = (role: string, roomCode?: string) => ({
+      type: 'hello',
+      role,
+      name: role,
+      protocolVersion: PROTOCOL_VERSION,
+      ...(roomCode ? { roomCode } : {}),
+    });
+    const tv = await Client.open(url);
+    tv.send(hello('display'));
+    const code = (await tv.next((m) => m.type === 'welcome'))['roomCode'] as string;
+    const c1 = await Client.open(url);
+    c1.send(hello('controller', code));
+    await c1.next((m) => m.type === 'welcome');
+    const c2 = await Client.open(url);
+    c2.send(hello('controller', code));
+    await c2.next((m) => m.type === 'welcome');
+    c1.send({ type: 'setTeam', teamId: 'red' });
+    c2.send({ type: 'setTeam', teamId: 'blue' });
+    c1.send({ type: 'setReady', ready: true });
+    c2.send({ type: 'setReady', ready: true });
+    await tv.next((m) => m.type === 'lobbyState' && readyCount(m) === 2);
+    c1.send({ type: 'startMatch', settings: { turnTimeSeconds: 20, snailsPerTeam: 1, seed: 5 } });
+    await c1.next((m) => m.type === 'matchStarted');
+    c1.send({ type: 'move', direction: 'stop', seq: 7 });
+    const ack = await c1.next((m) => m.type === 'ack');
+    expect(ack['seq']).toBe(7);
+    expect(typeof ack['serverTick']).toBe('number');
+    const res = await app.inject({ method: 'GET', url: '/api/debug/latency' });
+    const body = res.json() as { rooms: { roomCode: string; intents: number }[] };
+    expect(body.rooms[0]?.roomCode).toBe(code);
+    expect(body.rooms[0]?.intents).toBe(1);
+    for (const c of [tv, c1, c2]) c.ws.close();
+  });
 });

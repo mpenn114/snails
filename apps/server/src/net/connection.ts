@@ -51,6 +51,8 @@ export interface ConnectionOptions {
   maxStrikes?: number;
   /** Enables ping/timeout liveness checks; omitted means none (unit tests). */
   heartbeat?: HeartbeatOptions;
+  /** Observes every message sent to an authenticated client (latency instrumentation). */
+  onSend?: (ctx: ClientContext, m: ServerMessage) => void;
 }
 
 /** Websocket close code for policy violations. */
@@ -113,7 +115,9 @@ export class Connection {
   }
 
   private send(m: ServerMessage): void {
-    if (!this.closed) this.socket.send(serialise(m));
+    if (this.closed) return;
+    this.socket.send(serialise(m));
+    if (this.ctx) this.opts.onSend?.(this.ctx, m);
   }
 
   /** Token bucket: returns false (drop) when the connection exceeds its intent rate. */

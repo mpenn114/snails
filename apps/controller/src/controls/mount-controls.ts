@@ -16,6 +16,8 @@ export interface ControlsOptions {
   weapons: readonly WeaponLike[];
   /** +1 if the active snail faces screen-right, -1 if screen-left (default +1). */
   facingSign?: () => 1 | -1;
+  /** Called with true when an aim drag starts and false when it ends or is released. */
+  onAimingChange?: (aiming: boolean) => void;
 }
 
 const OWN_HTML = `
@@ -122,6 +124,7 @@ export function mountControls(
     q(root, '.ctl-aimvis'),
     client,
     opts.facingSign ?? (() => 1),
+    opts.onAimingChange,
   );
   const gestures = [stick, aim];
   const release = (): void => gestures.forEach((g) => g.release());

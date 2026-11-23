@@ -13,6 +13,7 @@ import type { LobbyModel } from './lobby/lobby-view';
 import { MatchAdapter } from './match/match-adapter';
 import { mountHud } from './match/hud-view';
 import { buildTerrainInit } from './match/terrain-init';
+import { mountDebugOverlay } from './debug/debug-overlay';
 
 const canvas = document.getElementById('view') as HTMLCanvasElement;
 const params = new URLSearchParams(location.search);
@@ -51,7 +52,9 @@ const adapter = new MatchAdapter({
 });
 const info = fetchInfo((u) => fetch(u));
 const client = new DisplayClient(relativeWsUrl(location), params.get('room') ?? undefined);
+const debug = mountDebugOverlay(location.search);
 client.onMessage = (m) => {
+  if (m.type === 'snapshot') debug.onSnapshot(m.tick);
   adapter.handle(m);
   if (m.type === 'lobbyState') {
     void info.then((i) => {

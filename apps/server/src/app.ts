@@ -3,6 +3,7 @@ import Fastify, { type FastifyInstance } from 'fastify';
 import websocket from '@fastify/websocket';
 import { PROTOCOL_VERSION } from '@snails/protocol';
 import { registerWsEndpoint } from './net/ws-endpoint.js';
+import { LatencyRegistry } from './metrics/latency-registry.js';
 import { RoomManager } from './rooms/room-manager.js';
 import { buildServerInfo, type ServerInfo } from './info.js';
 import { installSpaFallback, registerStaticRoots } from './static.js';
@@ -58,6 +59,8 @@ export async function buildServer(opts: ServerOptions = {}): Promise<FastifyInst
   await registerStaticRoots(app, roots);
   installSpaFallback(app, roots);
 
-  registerWsEndpoint(app, rooms, undefined, opts.heartbeat);
+  const latency = new LatencyRegistry();
+  app.get('/api/debug/latency', async () => ({ rooms: latency.reportAll() }));
+  registerWsEndpoint(app, rooms, undefined, opts.heartbeat, latency);
   return app;
 }
