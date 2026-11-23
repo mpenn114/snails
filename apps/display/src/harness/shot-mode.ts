@@ -1,10 +1,23 @@
-import { FIXED_DT, createMatch, createScriptedBot, type SimEvent, type Vec3 } from '@snails/core';
-import { MatchRenderer, QUALITY_TIERS, createGameView, type QualityTier } from '@snails/render';
+import {
+  FIXED_DT,
+  createMatch,
+  createScriptedBot,
+  predictTrajectory,
+  type SimEvent,
+  type Vec3,
+} from '@snails/core';
+import {
+  MatchRenderer,
+  QUALITY_TIERS,
+  createAimHint,
+  createGameView,
+  type QualityTier,
+} from '@snails/render';
 import { HARNESS_WEAPON, harnessMatchOptions } from './fake-server';
 import { TERRAIN_TEXTURES } from '../terrain-textures';
 
 /** Fixed camera framings for reference screenshots. */
-export const SHOT_CAMS = ['close', 'wide', 'crater'] as const;
+export const SHOT_CAMS = ['close', 'wide', 'crater', 'flight', 'aim'] as const;
 /** A framing name. */
 export type ShotCam = (typeof SHOT_CAMS)[number];
 
@@ -54,6 +67,9 @@ export function shotPose(
       look: { x: snail.x, y: snail.y + 0.55, z: snail.z },
     };
   }
+  if (cam === 'flight' && blast) {
+    return { eye: { x: blast.x + 5, y: blast.y + 2.5, z: blast.z + 6 }, look: blast };
+  }
   if (cam === 'crater' && blast) {
     return { eye: { x: blast.x + 7, y: blast.y + 6, z: blast.z + 9 }, look: blast };
   }
@@ -63,10 +79,33 @@ export function shotPose(
   };
 }
 
+/** Side-on pose for the aim shot: looks at the middle of the predicted arc from its flank. */
+export function aimPose(path: readonly Vec3[]): ShotPose {
+  const first = path[0] ?? { x: 0, y: 0, z: 0 };
+  const last = path[path.length - 1] ?? first;
+  const mid = path[Math.floor(path.length / 2)] ?? first;
+  const dx = last.x - first.x;
+  const dz = last.z - first.z;
+  const len = Math.hypot(dx, dz) || 1;
+  const px = -dz / len;
+  const pz = dx / len;
+  const d = Math.max(7, len * 0.55);
+  return {
+    eye: { x: mid.x + px * d, y: mid.y + 4, z: mid.z + pz * d },
+    look: { x: mid.x, y: mid.y - 1, z: mid.z },
+  };
+}
+
 interface ShotWindow {
   __shotReady?: boolean;
   __shotInfo?: unknown;
 }
+
+/** Ticks of flight (after the first launch) before the flight shot is captured. */
+const FLIGHT_TICKS = 30;
+
+/** Aim shown in the aim shot. */
+const AIM = { angle: 0.7, power: 0.75 };
 
 /** Steps the sim (bots only for the crater shot); returns all events and the first blast. */
 function stepScene(
@@ -89,6 +128,28 @@ function stepScene(
     }
   }
   return { events, blast };
+}
+
+/**
+ * Steps with bots until a projectile exists, then `FLIGHT_TICKS` more; returns the projectile
+ * lists of those ticks (to replay into the trail) and the last projectile position.
+ */
+function stepFlight(
+  sim: ReturnType<typeof createMatch>['sim'],
+  bots: ((s: typeof sim) => void)[],
+): { flight: ReturnType<typeof sim.snapshot>['projectiles'][]; at: Vec3 | null } {
+  const flight: ReturnType<typeof sim.snapshot>['projectiles'][] = [];
+  let at: Vec3 | null = null;
+  for (let i = 0; i < MAX_BLAST_TICKS; i++) {
+    for (const bot of bots) bot(sim);
+    sim.step(FIXED_DT);
+    const ps = sim.snapshot().projectiles;
+    if (ps.length === 0 && flight.length === 0) continue;
+    if (ps.length === 0 || flight.length >= FLIGHT_TICKS) break;
+    flight.push(ps);
+    at = ps[0]?.position ?? at;
+  }
+  return { flight, at };
 }
 
 /** Builds a renderer on a manual scheduler and simulated clock; `frame(dtMs)` renders one frame. */
@@ -129,8 +190,37 @@ function makeShotRenderer(
   return { renderer, frame };
 }
 
+/** Pose for `cam` from the settled sim (the aim shot frames the predicted arc). */
+function poseFor(
+  cam: ShotCam,
+  sim: ReturnType<typeof createMatch>['sim'],
+  blast: Vec3 | null,
+): ShotPose {
+  const active = sim.state.teams[0]?.snails[0];
+  const snail = active?.position ?? { x: 0, y: 0, z: 0 };
+  if (cam === 'aim' && active) {
+    const wind = sim.snapshot().wind;
+    return aimPose(predictTrajectory(snail, active.facing, AIM, HARNESS_WEAPON.launch, wind, 28));
+  }
+  return shotPose(cam, snail, blast, sim.terrain.worldSize(), active?.facing ?? 0);
+}
+
+/** Pins the camera to `pose` every frame. */
+function installShotCamera(renderer: MatchRenderer, pose: ShotPose): void {
+  renderer.cameraRig?.setTarget(pose.look);
+  renderer.addLayer({
+    name: 'shot-camera',
+    updater: () => {
+      const c = renderer.view?.camera;
+      if (!c) return;
+      c.position.set(pose.eye.x, pose.eye.y, pose.eye.z);
+      c.lookAt(pose.look.x, pose.look.y, pose.look.z);
+    },
+  });
+}
+
 /**
- * Deterministic capture mode (`?shot=1&cam=close|wide|crater&seed=&quality=`). Time is
+ * Deterministic capture mode (`?shot=1&cam=close|wide|crater|flight|aim&seed=&quality=`). Time is
  * simulated (fixed dt per frame, manual scheduler), randomness is seeded, so repeated loads
  * render identical frames. Sets `window.__shotReady` once terrain meshing is done and frames
  * have rendered.
@@ -149,21 +239,17 @@ export async function runShot(canvas: HTMLCanvasElement, params: URLSearchParams
   renderer.init({ grid: sim.terrain, waterLevel: sim.state.terrain.waterLevel });
   await Promise.all([renderer.terrainTexturesReady, renderer.view?.postReady]);
   const bots = options.teams.map((t) => createScriptedBot(t.id, HARNESS_WEAPON));
-  const { events, blast } = stepScene(sim, cam, bots);
+  const fl = cam === 'flight' ? stepFlight(sim, bots) : null;
+  const { events, blast: sceneBlast } = fl
+    ? { events: [], blast: fl.at }
+    : stepScene(sim, cam, bots);
+  const blast = sceneBlast;
 
   const active = sim.state.teams[0]?.snails[0];
   const snail = active?.position ?? { x: 0, y: 0, z: 0 };
-  const pose = shotPose(cam, snail, blast, sim.terrain.worldSize(), active?.facing ?? 0);
-  renderer.cameraRig?.setTarget(pose.look);
-  renderer.addLayer({
-    name: 'shot-camera',
-    updater: () => {
-      const c = renderer.view?.camera;
-      if (!c) return;
-      c.position.set(pose.eye.x, pose.eye.y, pose.eye.z);
-      c.lookAt(pose.look.x, pose.look.y, pose.look.z);
-    },
-  });
+  const aimInput = { snailId: active?.id ?? '', launch: HARNESS_WEAPON.launch, ...AIM };
+  const pose = poseFor(cam, sim, blast);
+  installShotCamera(renderer, pose);
 
   const propsSettled = (): boolean => renderer.propLayer?.settled ?? true;
   // Zero-dt frames: waiting on worker meshing must not advance simulated time.
@@ -172,6 +258,13 @@ export async function runShot(canvas: HTMLCanvasElement, params: URLSearchParams
       await frame(0);
   };
 
+  if (cam === 'aim') {
+    const hint = createAimHint({
+      isSolid: (p) => renderer.terrainReplica?.grid.isSolid(p) ?? false,
+    });
+    renderer.addLayer(hint.layer);
+    hint.set(aimInput);
+  }
   renderer.pushSnapshot(sim.snapshot());
   await settle();
   if (cam === 'crater') {
@@ -180,7 +273,11 @@ export async function runShot(canvas: HTMLCanvasElement, params: URLSearchParams
     renderer.explosionEffects?.handleEvents(events);
     for (let i = 0; i < EXPLOSION_FRAMES; i++) await frame(FRAME_MS);
   }
-  for (let i = 0; i < SETTLE_FRAMES; i++) await frame(FRAME_MS);
+  if (fl) {
+    // Replay the flight into the trail, then render without advancing time so puffs stay fresh.
+    for (const ps of fl.flight) renderer.projectileLayer?.sync(ps, FIXED_DT);
+    for (let i = 0; i < 3; i++) await frame(0);
+  } else for (let i = 0; i < SETTLE_FRAMES; i++) await frame(FRAME_MS);
   await settle();
   await frame(0);
   const w = window as unknown as ShotWindow;

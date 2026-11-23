@@ -15,7 +15,15 @@ const DISPLAY_SHOTS = [
   ['display-close', 'close', 'Display 1920x1080, High: close-up of one snail'],
   ['display-wide', 'wide', 'Display 1920x1080, High: wide overview of the island'],
   ['display-crater', 'crater', 'Display 1920x1080, High: fresh explosion crater'],
+  [
+    'display-flight',
+    'flight',
+    'Display 1920x1080, High: projectile mid-flight with its puff trail',
+  ],
+  ['display-aim', 'aim', 'Display 1920x1080, High: dotted aim arc and landing ring'],
 ];
+// SHOTS_ONLY=display-flight,display-aim limits the run (and skips the phone shot) while iterating.
+const only = process.env.SHOTS_ONLY?.split(',');
 const captions = [];
 
 async function displayShots(browser, base, errors) {
@@ -25,6 +33,7 @@ async function displayShots(browser, base, errors) {
     reducedMotion: 'reduce',
   });
   for (const [name, cam, caption] of DISPLAY_SHOTS) {
+    if (only && !only.includes(name)) continue;
     const page = await ctx.newPage();
     watch(page, name, errors);
     await page.goto(`${base}/display/harness.html?shot=1&cam=${cam}&seed=7&quality=high`);
@@ -132,7 +141,7 @@ const errors = [];
 try {
   browser = await chromium.launch({ args: GL_ARGS });
   await displayShots(browser, base, errors);
-  await phoneShot(browser, base, errors);
+  if (!only) await phoneShot(browser, base, errors);
   sheet();
   if (errors.length) fail(`uncaught page errors:\n${errors.join('\n')}`);
   step(`done: ${out} (${readdirSync(out).length} files)`);
