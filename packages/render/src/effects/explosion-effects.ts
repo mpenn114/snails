@@ -9,6 +9,7 @@ import {
   type ParticleData,
   type ParticlePhysics,
 } from './particles.js';
+import { createSoftSpriteTexture, fireballOpacity, fireballScale } from './soft-sprite.js';
 
 /** Options for {@link ExplosionEffects}. */
 export interface ExplosionEffectsOptions {
@@ -23,7 +24,7 @@ export interface ExplosionEffectsOptions {
 }
 
 /** Seconds the flash light and fireball last. */
-const FLASH_LIFE = 0.45;
+const FLASH_LIFE = 0.4;
 const DEBRIS: ParticlePhysics = { gravity: 12, drag: 0.1 };
 const DUST: ParticlePhysics = { gravity: 0.6, drag: 1.8 };
 
@@ -53,6 +54,8 @@ class ParticlePool {
     capacity: number,
     size: number,
     readonly physics: ParticlePhysics,
+    map: THREE.Texture,
+    additive: boolean,
   ) {
     this.data = createParticleData(capacity);
     this.posAttr = new THREE.BufferAttribute(this.data.positions, 3);
@@ -63,7 +66,11 @@ class ParticlePool {
       size,
       vertexColors: true,
       transparent: true,
-      blending: THREE.AdditiveBlending,
+      map,
+      sizeAttenuation: true,
+      alphaTest: 0.02,
+      opacity: additive ? 1 : 0.8,
+      blending: additive ? THREE.AdditiveBlending : THREE.NormalBlending,
       depthWrite: false,
     });
     this.points = new THREE.Points(this.geometry, this.material);
@@ -92,6 +99,7 @@ export class ExplosionEffects {
   private readonly slots: FlashSlot[] = [];
   private readonly debris: ParticlePool;
   private readonly dust: ParticlePool;
+  private readonly sprite = createSoftSpriteTexture(32);
   private readonly fireGeo = new THREE.SphereGeometry(1, 14, 10);
   private readonly quality: number;
   private readonly random: () => number;
@@ -103,8 +111,8 @@ export class ExplosionEffects {
     this.random = opts.random ?? Math.random;
     const cap = Math.max(1, Math.floor((opts.poolCapacity ?? 600) * Math.max(0.1, this.quality)));
     this.group.name = 'explosions';
-    this.debris = new ParticlePool(cap, 0.28, DEBRIS);
-    this.dust = new ParticlePool(cap, 0.7, DUST);
+    this.debris = new ParticlePool(cap, 0.3, DEBRIS, this.sprite, true);
+    this.dust = new ParticlePool(cap, 0.9, DUST, this.sprite, false);
     this.group.add(this.debris.points, this.dust.points);
     const lights = Math.max(1, Math.floor(opts.maxLights ?? 4));
     for (let i = 0; i < lights; i++) this.slots.push(this.makeSlot());
@@ -204,6 +212,7 @@ export class ExplosionEffects {
     }
     this.slots.length = 0;
     this.fireGeo.dispose();
+    this.sprite.dispose();
     this.debris.dispose();
     this.dust.dispose();
     this.group.removeFromParent();
@@ -213,9 +222,9 @@ export class ExplosionEffects {
     const light = new THREE.PointLight(0xffb060, 0, 1, 2);
     light.visible = false;
     const mat = new THREE.MeshBasicMaterial({
-      color: 0xffa040,
+      color: 0xff9a3c,
       transparent: true,
-      blending: THREE.AdditiveBlending,
+      blending: THREE.NormalBlending,
       depthWrite: false,
     });
     const ball = new THREE.Mesh(this.fireGeo, mat);
@@ -228,8 +237,8 @@ export class ExplosionEffects {
     const t = s.age / FLASH_LIFE;
     const fade = 1 - t;
     s.light.intensity = s.radius * 40 * fade * fade;
-    const size = s.radius * (0.35 + 0.65 * Math.sqrt(t));
+    const size = s.radius * fireballScale(t);
     s.ball.scale.set(size, size, size);
-    (s.ball.material as THREE.MeshBasicMaterial).opacity = 0.9 * fade;
+    (s.ball.material as THREE.MeshBasicMaterial).opacity = fireballOpacity(t);
   }
 }

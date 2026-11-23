@@ -1,5 +1,6 @@
 import { DEFAULT_WIND_CONFIG } from '@snails/core';
 import * as THREE from 'three';
+import { createSoftSpriteTexture } from '../effects/soft-sprite.js';
 import type { FrameUpdater } from '../render-loop.js';
 import type { Bounds3 } from './lighting.js';
 
@@ -166,7 +167,10 @@ export interface WindParticles {
 function createMoteMaterial(maxStrength: number): THREE.PointsMaterial {
   return new THREE.PointsMaterial({
     color: 0xf2e6c9,
-    size: 0.12,
+    size: 0.2,
+    map: createSoftSpriteTexture(16),
+    sizeAttenuation: true,
+    alphaTest: 0.02,
     transparent: true,
     opacity: windOpacity(0, maxStrength),
     depthWrite: false,
@@ -234,6 +238,7 @@ export function createWindParticles(opts: WindParticlesOptions): WindParticles {
     dispose() {
       points.removeFromParent();
       geometry.dispose();
+      material.map?.dispose();
       material.dispose();
     },
   };
