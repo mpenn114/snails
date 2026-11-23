@@ -34,6 +34,8 @@ export interface GameViewOptions {
   waterLevel?: number;
   /** Called once with the WebGL renderer (for `info` stats overlays). */
   onRenderer?: (renderer: THREE.WebGLRenderer) => void;
+  /** Frame scheduler override (defaults to requestAnimationFrame), e.g. an fps-capped one. */
+  scheduler?: FrameScheduler;
 }
 
 /** Handle to a running game view. */
@@ -141,7 +143,7 @@ export function createGameView(canvas: HTMLCanvasElement, opts: GameViewOptions)
     tier: opts.tier,
     devicePixelRatio: window.devicePixelRatio,
     renderer,
-    scheduler: {
+    scheduler: opts.scheduler ?? {
       request: (cb) => window.requestAnimationFrame(cb),
       cancel: (h) => window.cancelAnimationFrame(h),
     },
