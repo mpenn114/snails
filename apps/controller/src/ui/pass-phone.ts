@@ -33,10 +33,9 @@ export function mountPassPhone(root: HTMLElement): PassPhone {
   const el = document.createElement('div');
   el.className = 'pass-phone';
   el.setAttribute('role', 'dialog');
-  el.hidden = true;
   el.style.cssText =
-    'position:fixed;inset:0;display:flex;align-items:center;justify-content:center;' +
-    'background:#000d;color:#fff;font:700 1.6rem system-ui;text-align:center;z-index:50;' +
+    'position:fixed;inset:0;display:none;align-items:center;justify-content:center;' +
+    'background:#000d;color:#fff;font:700 1.6rem system-ui;text-align:center;' +
     'padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;';
   const label = document.createElement('button');
   label.type = 'button';
@@ -44,8 +43,9 @@ export function mountPassPhone(root: HTMLElement): PassPhone {
   el.appendChild(label);
   root.appendChild(el);
   let cont: (() => void) | undefined;
+  // An inline `display:flex` would defeat the `hidden` attribute, so toggle `display` itself.
   const hide = (): void => {
-    el.hidden = true;
+    el.style.display = 'none';
   };
   label.addEventListener('click', () => {
     hide();
@@ -57,7 +57,7 @@ export function mountPassPhone(root: HTMLElement): PassPhone {
     show(teamName, onContinue) {
       label.textContent = `${passPhoneText(teamName)} (tap to continue)`;
       cont = onContinue;
-      el.hidden = false;
+      el.style.display = 'flex';
     },
     hide,
     destroy: () => el.remove(),

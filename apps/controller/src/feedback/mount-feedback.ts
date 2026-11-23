@@ -3,6 +3,7 @@ import { safeStorage } from '../platform/ios';
 import { audioContextFactory, createAudioEngine } from './audio';
 import type { AudioWindow } from './audio';
 import { createCuePlanner } from './cues';
+import { BTN_CLASS, SLOT_RIGHT } from '../shell/layers';
 import { browserHapticsEnv, playHaptic } from './haptics';
 
 /**
@@ -47,9 +48,7 @@ export function mountFeedback(
   window.addEventListener('pageshow', onVisible);
   const btn = document.createElement('button');
   btn.type = 'button';
-  btn.style.cssText =
-    'position:fixed;top:calc(8px + env(safe-area-inset-top));right:calc(8px + env(safe-area-inset-right));' +
-    'pointer-events:auto;min-width:44px;min-height:44px;border-radius:50%;-webkit-touch-callout:none;border:0;background:rgba(16,24,32,.75);color:#fff;font-size:1.2rem';
+  btn.className = BTN_CLASS;
   const label = (): void => {
     btn.textContent = audio.isMuted() ? '\u{1F507}' : '\u{1F50A}';
     btn.setAttribute('aria-label', audio.isMuted() ? 'Unmute' : 'Mute');
@@ -59,7 +58,7 @@ export function mountFeedback(
     label();
   });
   label();
-  parent.append(btn);
+  (document.getElementById(SLOT_RIGHT) ?? parent).append(btn);
 
   return () => {
     offs.forEach((off) => off());

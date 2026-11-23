@@ -4,7 +4,8 @@ import { bindAim, bindJoystick } from './gestures';
 import type { Gestures } from './gestures';
 import { trackTurns } from './turn-tracker';
 import type { TurnTracker } from './turn-tracker';
-import { formatTimer, isWarning, remainingAt, turnLabel } from './turn-timer';
+import { formatTimer, isWarning, remainingAt } from './turn-timer';
+import { SLOT_TOP } from '../shell/layers';
 import { buildWeaponTiles } from './weapon-list';
 import type { WeaponLike } from './weapon-list';
 
@@ -56,12 +57,12 @@ function renderTiles(
 }
 
 /** Updates the HUD (timer + whose turn) and the own-turn visibility from the tracker. */
-function updateHud(root: HTMLElement, tracker: TurnTracker): void {
+function updateHud(root: HTMLElement, hud: HTMLElement, tracker: TurnTracker): void {
   const v = tracker.view;
   root.classList.toggle('mine', v.myTurn);
-  q(root, '.ctl-who').textContent = turnLabel(v.teamName, v.snailName, v.myTurn);
   const ms = v.timer ? remainingAt(v.timer, Date.now()) : 0;
-  const t = q(root, '.ctl-time');
+  hud.style.display = v.timer ? '' : 'none';
+  const t = q(hud, '.ctl-time');
   t.textContent = v.timer ? formatTimer(ms) : '--';
   t.classList.toggle('warn', v.timer !== null && isWarning(ms));
 }
@@ -103,9 +104,12 @@ export function mountControls(
   style.textContent = CONTROLS_CSS;
   const root = document.createElement('div');
   root.className = 'ctl';
-  root.innerHTML = `<div class="ctl-hud"><span class="ctl-who"></span><span class="ctl-time">--</span></div>
+  root.innerHTML = `<div class="ctl-hud"><span class="ctl-time">--</span></div>
     <div class="ctl-own">${OWN_HTML}</div>`;
   parent.append(style, root);
+  // Single top bar: the countdown joins the turn banner when the shell provides the slot.
+  const hud = q(root, '.ctl-hud');
+  document.getElementById(SLOT_TOP)?.append(hud);
 
   const tracker = trackTurns(client, opts.playerId);
   const sheet = q(root, '.ctl-sheet');
@@ -131,16 +135,16 @@ export function mountControls(
   const release = (): void => gestures.forEach((g) => g.release());
   const wired = wireButtons(root, client, sheet, gestures);
 
-  const tick = setInterval(() => updateHud(root, tracker), 250);
+  const tick = setInterval(() => updateHud(root, hud, tracker), 250);
   const off = tracker.onChange(() => {
     if (!tracker.view.myTurn) {
       release();
       sheet.classList.remove('open');
     }
-    updateHud(root, tracker);
+    updateHud(root, hud, tracker);
     rebuild();
   });
-  updateHud(root, tracker);
+  updateHud(root, hud, tracker);
   rebuild();
 
   return () => {
@@ -148,6 +152,7 @@ export function mountControls(
     off();
     tracker.dispose();
     wired();
+    hud.remove();
     root.remove();
     style.remove();
   };
