@@ -1,0 +1,34 @@
+import { describe, expect, it } from 'vitest';
+import { hudHtml } from './hud-view';
+import { EMPTY_HUD } from './hud-model';
+
+describe('hudHtml', () => {
+  it('renders turn, bars and escapes names', () => {
+    const html = hudHtml({
+      ...EMPTY_HUD,
+      turnTeam: '<b>R</b>',
+      turnColour: '#f00',
+      turnSnail: 'Sid',
+      timerSeconds: 9,
+      bars: [
+        {
+          teamId: 'a',
+          name: 'R',
+          colour: 'bad',
+          health: 1,
+          maxHealth: 2,
+          fraction: 0.5,
+          active: true,
+        },
+      ],
+      winner: { name: null, colour: null },
+    });
+    expect(html).toContain('&lt;b&gt;R');
+    expect(html).toContain('width:50%');
+    expect(html).toContain('#888');
+    expect(html).toContain('Draw!');
+  });
+  it('has no turn banner without a match', () => {
+    expect(hudHtml(EMPTY_HUD)).not.toContain('class="turn"');
+  });
+});

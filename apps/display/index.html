@@ -69,6 +69,71 @@
         margin-right: 0.4em;
         vertical-align: middle;
       }
+      .hud {
+        position: fixed;
+        inset: 0;
+        pointer-events: none;
+        font-family: system-ui, sans-serif;
+        color: #fff;
+        text-shadow: 0 1px 4px #000;
+      }
+      .hud[hidden] {
+        display: none;
+      }
+      .hud .turn {
+        position: absolute;
+        top: 2vh;
+        left: 50%;
+        transform: translateX(-50%);
+        padding: 0.5vw 2vw;
+        font-size: 2.4vw;
+        background: rgba(0, 0, 0, 0.5);
+        border: 0.3vw solid;
+        border-radius: 1vw;
+      }
+      .hud .timer {
+        margin-left: 1.5vw;
+        font-weight: 800;
+      }
+      .hud .bars {
+        position: absolute;
+        left: 2vw;
+        bottom: 2vh;
+        width: 24vw;
+        font-size: 1.4vw;
+      }
+      .hud .bar {
+        position: relative;
+        margin-top: 0.5vw;
+        background: rgba(0, 0, 0, 0.5);
+        height: 2.2vw;
+        overflow: hidden;
+        border-radius: 0.5vw;
+        opacity: 0.8;
+      }
+      .hud .bar.active {
+        opacity: 1;
+        outline: 0.2vw solid #fff;
+      }
+      .hud .bar i {
+        position: absolute;
+        inset: 0 auto 0 0;
+        opacity: 0.7;
+      }
+      .hud .bar span {
+        position: relative;
+        z-index: 1;
+        padding-left: 0.6vw;
+        line-height: 2.2vw;
+      }
+      .hud .winner {
+        position: absolute;
+        top: 40%;
+        width: 100%;
+        text-align: center;
+        font-size: 8vw;
+        font-weight: 800;
+      }
     </style>
   </head>
   <body>
