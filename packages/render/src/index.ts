@@ -29,3 +29,4 @@ export * from './match-renderer.js';
 export * from './wire-snapshot.js';
 export * from './frame-cap.js';
 export * from './effects/aim-hint.js';
+export * from './style/index.js';

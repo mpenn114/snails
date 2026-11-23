@@ -10,6 +10,7 @@ Snails is a turn-based 3D artillery game (Worms-like) with snails, a technology/
 | [game-design.md](game-design.md) | Turn structure, movement, weapons, terrain, wind, damage, win conditions, modes. |
 | [technology-research.md](technology-research.md) | Research/tech tree: resources, tiers, branches, example techs, balance levers. |
 | [snail-visuals.md](snail-visuals.md) | Shell visual system: materials, upgrades, team colours, damage cracks, animation. |
+| [art-direction.md](art-direction.md) | Art direction: palette, team colours, lighting, toon shading, shape language, per-element guidance, mobile notes. |
 | [controller-ux.md](controller-ux.md) | Phone UI flows: join, lobby, team setup, turn controls, spectating. |
 | [ai.md](ai.md) | CPU player design: aiming solver, target selection, research strategy, difficulty. |
 | [roadmap.md](roadmap.md) | Phased milestones with exit criteria. |
@@ -38,6 +39,7 @@ See [adr/README.md](adr/README.md) for the index and template.
 | [0006](adr/0006-data-driven-extensibility.md) | Data-driven content and event bus |
 | [0007](adr/0007-electron-desktop-distribution.md) | Electron desktop distribution |
 | [0008](adr/0008-phone-renders-game-view.md) | Phones render the 3D game view (`@snails/render`) |
+| [0009](adr/0009-stylised-low-poly-art-direction.md) | Stylised low-poly art direction |
 | [0009](adr/0009-stylised-low-poly-art-direction.md) | Stylised low-poly art direction |
 
 ## Development
