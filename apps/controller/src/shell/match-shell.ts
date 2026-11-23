@@ -2,6 +2,7 @@ import type { ControlMode } from '@snails/protocol';
 import { weapons } from '@snails/content-base';
 import { mountControls } from '../controls/mount-controls';
 import { trackFacingSign } from '../controls/facing-tracker';
+import { cameraRightYaw } from '../controls/aim-mapping';
 import { mountDebugOverlay } from '../debug/debug-overlay';
 import { mountFeedback } from '../feedback/mount-feedback';
 import type { ControllerClient } from '../net/client';
@@ -43,7 +44,7 @@ function mountSession(client: ControllerClient, screen: HTMLElement, playerId: s
 
   const phone = mountPhoneView(client);
   const disposeDebug = mountDebugOverlay(client);
-  const facing = trackFacingSign(client);
+  const facing = trackFacingSign(client, () => cameraRightYaw(phone.handle.cameraYaw()));
   // Mounted before lobbyState arrives so the controls learn our team.
   const disposeControls = mountControls(controls, client, {
     playerId,
