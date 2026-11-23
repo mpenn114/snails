@@ -22,7 +22,8 @@ export interface SceneGraph {
 /** Creates an empty scene containing the four named root groups. */
 export function createSceneGraph(): SceneGraph {
   const scene = new THREE.Scene();
-  scene.background = new THREE.Color(PALETTE.skyTop);
+  // Fallback only; the environment's sky dome covers the background.
+  scene.background = new THREE.Color(PALETTE.skyHorizon);
   const make = (name: string): THREE.Group => {
     const g = new THREE.Group();
     g.name = name;

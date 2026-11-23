@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import type { QualityTier } from '../quality.js';
 import type { FrameUpdater } from '../render-loop.js';
 import { createLighting, type Bounds3, type Lighting } from './lighting.js';
+import { createSky, type Sky } from './sky.js';
 import { createWater, type Water } from './water.js';
 
 /** Environment options; bounds and water level default to the core default arena. */
@@ -10,13 +11,14 @@ export interface EnvironmentOptions {
   tier: QualityTier;
   bounds?: Bounds3;
   waterLevel?: number;
-  skyColor?: number;
+  fogColor?: number;
 }
 
 /** Owns lighting and water, attached to a root group. */
 export interface Environment {
   lighting: Lighting;
   water: Water;
+  sky: Sky;
   /** Frame updater advancing animation. */
   update: FrameUpdater;
   /** Applies sky background and fog to the scene. */
@@ -39,21 +41,27 @@ export function createEnvironment(root: THREE.Group, opts: EnvironmentOptions): 
   const lighting = createLighting({
     tier: opts.tier,
     bounds,
-    ...(opts.skyColor !== undefined ? { skyColor: opts.skyColor } : {}),
+    ...(opts.fogColor !== undefined ? { fogColor: opts.fogColor } : {}),
   });
   const water = createWater({
     tier: opts.tier,
     bounds,
     level: opts.waterLevel ?? DEFAULT_TERRAIN_CONFIG.waterLevel,
   });
-  root.add(lighting.group, water.mesh);
+  const sky = createSky({ tier: opts.tier });
+  root.add(lighting.group, water.mesh, sky.group);
   return {
     lighting,
     water,
-    update: (dt) => water.update(dt),
+    sky,
+    update: (dt) => {
+      water.update(dt);
+      sky.update(dt);
+    },
     applyTo: (scene) => lighting.applyTo(scene),
     dispose() {
-      root.remove(lighting.group, water.mesh);
+      root.remove(lighting.group, water.mesh, sky.group);
+      sky.dispose();
       lighting.dispose();
       water.dispose();
     },

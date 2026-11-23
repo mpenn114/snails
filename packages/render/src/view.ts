@@ -1,3 +1,4 @@
+import { LIGHTING } from './style/palette.js';
 import { configureRenderer } from './style/renderer-setup.js';
 import * as THREE from 'three';
 import {
@@ -90,8 +91,8 @@ export function createGameViewWith(deps: GameViewDeps): GameView {
   const fitFog = (): void => {
     // Fade distant terrain/water into the sky before the far plane so no edge shows.
     if (scene.fog instanceof THREE.Fog) {
-      scene.fog.near = camera.far * 0.35;
-      scene.fog.far = camera.far * 0.95;
+      scene.fog.near = camera.far * LIGHTING.fogStartFraction;
+      scene.fog.far = camera.far * LIGHTING.fogEndFraction;
     }
   };
   fitFog();
