@@ -6,6 +6,9 @@ import { RoomManager } from '../rooms/room-manager.js';
 class FakeSocket implements SocketLike {
   sent: Record<string, unknown>[] = [];
   closed: number | undefined;
+  pings = 0;
+  terminated = false;
+  private pongCb: (() => void) | undefined;
   private msg: ((d: unknown) => void) | undefined;
   private cls: (() => void) | undefined;
   send(d: string): void {
@@ -16,9 +19,20 @@ class FakeSocket implements SocketLike {
   }
   on(event: 'message', cb: (d: unknown) => void): void;
   on(event: 'close', cb: () => void): void;
+  on(event: 'pong', cb: () => void): void;
   on(event: string, cb: (d?: unknown) => void): void {
     if (event === 'message') this.msg = cb;
+    else if (event === 'pong') this.pongCb = cb;
     else this.cls = cb;
+  }
+  ping(): void {
+    this.pings++;
+  }
+  terminate(): void {
+    this.terminated = true;
+  }
+  pong(): void {
+    this.pongCb?.();
   }
   recv(v: unknown): void {
     this.msg?.(typeof v === 'string' ? v : JSON.stringify(v));
@@ -106,12 +120,14 @@ describe('Connection', () => {
     expect(calls).toEqual([]);
   });
 
-  it('removes the member on close', () => {
+  it('keeps the member, marked disconnected, on close', () => {
     const { sock, rooms } = setup();
     sock.recv(hello());
     const code = sock.sent[0]!['roomCode'] as string;
     sock.hangUp();
-    expect(rooms.getRoom(code)?.members.size).toBe(0);
+    const room = rooms.getRoom(code)!;
+    expect(room.members.size).toBe(1);
+    expect([...room.members.values()][0]?.connected).toBe(false);
   });
 });
 

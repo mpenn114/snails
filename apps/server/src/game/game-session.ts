@@ -162,6 +162,29 @@ export class GameSession {
     return this.match.sim.state.turn.activeSnailId ?? null;
   }
 
+  /** Id of the team whose turn it is, or null. */
+  get activeTeamId(): string | null {
+    return this.match.sim.state.turn.activeTeamId ?? null;
+  }
+
+  /**
+   * The turn currently in progress for late joiners: the `turnStart` info plus the remaining
+   * action time in ms (null outside the action phase). Null when no turn is active.
+   */
+  currentTurn(): { info: TurnStartInfo; remainingMs: number | null } | null {
+    const { turn } = this.match.sim.state;
+    if (!turn.activeTeamId || !turn.activeSnailId || this.ended) return null;
+    return {
+      info: {
+        teamId: turn.activeTeamId,
+        snailId: turn.activeSnailId,
+        durationMs: this.opts.settings.turnTimeSeconds * 1000,
+      },
+      remainingMs:
+        turn.phase === 'action' ? Math.max(0, Math.round(turn.timeRemaining * 1000)) : null,
+    };
+  }
+
   /** Starts the real-time loop on the injected clock. */
   start(): void {
     if (this.handle !== null) return;

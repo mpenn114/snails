@@ -1,7 +1,7 @@
 import { ClientMessage, PROTOCOL_VERSION, parseServerMessage } from '@snails/protocol';
 import type { ErrorCode, ServerMessage } from '@snails/protocol';
 import { backoffDelay } from './url';
-import { loadSession, saveSession } from './session-store';
+import { loadSession, clearSession, saveSession } from './session-store';
 import type { StorageLike } from './session-store';
 
 /** Connection lifecycle. `mismatch` means the app is outdated and must be refreshed. */
@@ -209,7 +209,10 @@ export class ControllerClient {
       this.teardown();
       this.setState('mismatch');
     } else if (code === 'no_room' || code === 'room_full' || code === 'bad_session') {
-      if (code === 'bad_session') this.token = undefined;
+      if (code === 'bad_session') {
+        this.token = undefined;
+        clearSession(this.deps.storage);
+      }
       this.close();
     }
   }

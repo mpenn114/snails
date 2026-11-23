@@ -15,6 +15,8 @@ export interface MatchRunnerOptions {
   aimIntervalMs?: number;
   /** Minimum gap between `not_your_turn` errors per player in ms. Default 1000. */
   rejectIntervalMs?: number;
+  /** Grace before auto-ending the turn of a team with nobody connected. Default 10000. */
+  absentTurnGraceMs?: number;
 }
 
 const FALLBACK_COLOURS = ['#e63946', '#2a9d8f', '#e9c46a', '#457b9d', '#9b5de5', '#f4a261'];
@@ -49,6 +51,8 @@ export class MatchRunner implements ActiveMatch {
   private aimTimer: unknown = null;
   private lastAimAt = Number.NEGATIVE_INFINITY;
   private stopped = false;
+  private skipTimer: unknown = null;
+  private readonly teamPlayers = new Map<string, string[]>();
   private readonly now: () => number;
 
   constructor(
@@ -58,16 +62,21 @@ export class MatchRunner implements ActiveMatch {
     private readonly opts: MatchRunnerOptions = {},
   ) {
     this.now = opts.now ?? Date.now;
+    const teams = buildTeams(members);
+    for (const t of teams) this.teamPlayers.set(t.id, t.playerIds);
     this.session = new GameSession({
       settings,
-      teams: buildTeams(members),
+      teams,
       ...(opts.clock ? { clock: opts.clock } : {}),
       onSnapshot: (s) => {
         this.latest = s;
         this.broadcast(s);
       },
       onEvents: (b) => this.broadcast(b),
-      onTurnStart: (i) => this.broadcast({ type: 'turnStart', ...i }),
+      onTurnStart: (i) => {
+        this.broadcast({ type: 'turnStart', ...i });
+        this.membersChanged();
+      },
       onTurnTimer: (remainingMs) => this.broadcast({ type: 'turnTimer', remainingMs }),
       onMatchEnd: () => this.room.endMatch(),
     });
@@ -77,10 +86,50 @@ export class MatchRunner implements ActiveMatch {
     this.session.start();
   }
 
-  /** Sends `matchStarted` and the latest snapshot to a late joiner. */
+  /** Sends `matchStarted`, a fresh snapshot and the current turn state to a (re)joining member. */
   catchUp(member: Member): void {
     member.send(this.session.matchStartedMessage());
-    if (this.latest) member.send(this.latest);
+    member.send(this.session.snapshot());
+    const turn = this.session.currentTurn();
+    if (!turn) return;
+    member.send({ type: 'turnStart', ...turn.info });
+    if (turn.remainingMs !== null)
+      member.send({ type: 'turnTimer', remainingMs: turn.remainingMs });
+  }
+
+  /**
+   * Turn-skip policy: when nobody on the active team is connected, end that turn after the
+   * grace period (the turn timer may end it sooner). Re-evaluated on every connect/disconnect
+   * and turn start.
+   */
+  membersChanged(): void {
+    this.clearSkip();
+    const teamId = this.session.activeTeamId;
+    if (this.stopped || !teamId) return;
+    const ids = this.teamPlayers.get(teamId) ?? [];
+    if (this.isTeamPresent(ids)) return;
+    this.armSkip(teamId, ids[0], this.opts.absentTurnGraceMs ?? 10_000);
+  }
+
+  private isTeamPresent(ids: readonly string[]): boolean {
+    for (const m of this.room.members.values()) if (ids.includes(m.id) && m.connected) return true;
+    return false;
+  }
+
+  private armSkip(teamId: string, playerId: string | undefined, ms: number): void {
+    if (playerId === undefined) return;
+    this.skipTimer = (this.opts.setTimeout ?? setTimeout)(() => {
+      this.skipTimer = null;
+      if (this.stopped || this.session.activeTeamId !== teamId) return;
+      const res = this.session.applyIntent(playerId, { type: 'endTurn' });
+      // Intro/other phases refuse the end; retry shortly until the action phase.
+      if (!res.ok && res.reason === 'wrong_phase') this.armSkip(teamId, playerId, 1000);
+    }, ms);
+  }
+
+  private clearSkip(): void {
+    if (this.skipTimer !== null) (this.opts.clearTimeout ?? clearTimeout)(this.skipTimer as never);
+    this.skipTimer = null;
   }
 
   /** Authorises and applies an intent; relays aim previews. */
@@ -98,6 +147,7 @@ export class MatchRunner implements ActiveMatch {
   stop(): void {
     this.stopped = true;
     this.session.stop();
+    this.clearSkip();
     if (this.aimTimer !== null) (this.opts.clearTimeout ?? clearTimeout)(this.aimTimer as never);
     this.aimTimer = null;
     this.pendingAim = null;

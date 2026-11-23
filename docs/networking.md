@@ -69,15 +69,16 @@ Versioning: `PROTOCOL_VERSION` is an integer incremented on any breaking schema 
 
 ## Reconnection
 
-- On `welcome`, the server issues a `sessionToken` (128-bit random) bound to the player slot(s). The client stores it in `sessionStorage`/`localStorage` along with the room code.
-- On disconnect, the slot is held for 120 s (configurable). The client reconnects with exponential back-off (250 ms to 5 s, jitter) and sends `hello{room, sessionToken}`; the server rebinds the slot and sends a fresh `playerView`.
-- If the disconnect happens during that player's turn, the turn timer keeps running; after the grace period the turn is skipped (or handed to AI if "AI takeover" is enabled in the lobby).
-- The display reconnects the same way and receives a full `snapshot` plus terrain edit list.
-- Tokens are invalidated when the player is kicked, leaves, or the room closes.
+- On `welcome`, the server issues a `sessionToken` (128-bit random) bound to the player slot. The client stores it with the room code (`localStorage`).
+- On socket loss the member is kept and marked `connected: false` in `lobbyState` (host is not reassigned on a blip). The client reconnects with exponential back-off (250 ms to 5 s, jitter) and sends `hello{roomCode, sessionToken}`.
+- A `hello` with a known token and matching role/room re-attaches the same member (same `playerId`, team, colour, ready), closes any stale socket still holding that token (close code 1000, no disconnect handling), replies `welcome`, then sends `lobbyState` and, if a match is running, `matchStarted`, a fresh `snapshot`, `turnStart` and (during the action phase) `turnTimer` with the remaining time. An unknown or expired token, or a role mismatch, yields `error{bad_session}`; the controller client then clears its stored session and shows the join screen.
+- Slot retention policy: a disconnected controller or display is removed after 60 s in the lobby, or 120 s while a match runs. Removal reassigns the host (if needed) and, when no controller remains in a running match, returns the room to the lobby.
+- Turn policy: during a match a disconnected player keeps their slot and the turn timer keeps running. If it is a team's turn and none of its players is connected, the server ends that turn after a 10 s grace (retrying every second until the action phase); the normal turn timer may end it sooner. Reconnecting within the grace cancels the skip.
+- Tokens are invalidated when the member is removed or the room closes.
 
 ## Heartbeats
 
-WebSocket protocol-level ping every 10 s from the server; a connection with no pong in 25 s is closed. Controllers additionally send application `ping{ts}` every 5 s during active turns, and the server replies `pong{ts, serverTime}` so the phone can display ping and estimate clock offset. Browsers cannot send protocol pings, hence the application-level ping.
+The server sends a WebSocket protocol-level ping every 5 s; a connection with no inbound traffic (any message or pong) for 15 s is terminated, which marks the member disconnected as above. Browsers answer protocol pings automatically. Controllers additionally send application `ping{t}` and the server replies `pong{t}` so the phone can display RTT. Intervals are injectable (`HeartbeatOptions`) for tests.
 
 ## Bandwidth
 

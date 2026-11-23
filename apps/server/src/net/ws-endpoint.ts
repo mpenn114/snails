@@ -1,4 +1,5 @@
 import type { FastifyInstance } from 'fastify';
+import type { HeartbeatOptions } from './heartbeat.js';
 import { Connection } from './connection.js';
 import type { ClientContext, ConnectionHandler, IntentMessage } from './connection.js';
 import type { RoomManager, LobbyAction } from '../rooms/room-manager.js';
@@ -35,13 +36,15 @@ export function createRoomHandler(rooms: RoomManager, onIntent?: IntentSink): Co
  * @param app Fastify instance with @fastify/websocket registered
  * @param rooms the room registry
  * @param handler optional handler override (defaults to {@link createRoomHandler})
+ * @param heartbeat heartbeat overrides (defaults: ping 5 s, timeout 15 s)
  */
 export function registerWsEndpoint(
   app: FastifyInstance,
   rooms: RoomManager,
   handler: ConnectionHandler = createRoomHandler(rooms),
+  heartbeat: HeartbeatOptions = {},
 ): void {
   app.get('/ws', { websocket: true }, (socket) => {
-    new Connection(socket, { rooms, handler });
+    new Connection(socket, { rooms, handler, heartbeat });
   });
 }

@@ -6,6 +6,7 @@ import { registerWsEndpoint } from './net/ws-endpoint.js';
 import { RoomManager } from './rooms/room-manager.js';
 import { buildServerInfo, type ServerInfo } from './info.js';
 import { installSpaFallback, registerStaticRoots } from './static.js';
+import type { HeartbeatOptions } from './net/heartbeat.js';
 import type { LanInterfaces } from './net/lan.js';
 
 /** Options for buildServer. */
@@ -21,6 +22,8 @@ export interface ServerOptions {
   /** Injectable interface source for LAN detection. */
   networkInterfaces?: () => LanInterfaces;
   rooms?: RoomManager;
+  /** Heartbeat overrides for websocket connections (tests). */
+  heartbeat?: HeartbeatOptions;
 }
 
 const defaultStatic = fileURLToPath(new URL('../../controller/dist', import.meta.url));
@@ -55,6 +58,6 @@ export async function buildServer(opts: ServerOptions = {}): Promise<FastifyInst
   await registerStaticRoots(app, roots);
   installSpaFallback(app, roots);
 
-  registerWsEndpoint(app, rooms);
+  registerWsEndpoint(app, rooms, undefined, opts.heartbeat);
   return app;
 }
