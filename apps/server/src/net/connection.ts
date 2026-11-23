@@ -37,6 +37,10 @@ export interface ConnectionHandler {
 export interface ConnectionOptions {
   rooms: RoomManager;
   handler: ConnectionHandler;
+  /** Intents per second allowed per connection (token bucket). Default 60. */
+  intentsPerSecond?: number;
+  /** Clock in ms for rate limiting. Default `Date.now`. */
+  now?: () => number;
   /** Invalid messages tolerated before the socket is closed. Default 5. */
   maxStrikes?: number;
 }
@@ -54,12 +58,26 @@ const INTENT_TYPES = new Set([
   'queueResearch',
 ]);
 
+const serialised = new WeakMap<object, string>();
+
+/** JSON-encodes a message once per message object, so broadcasts do not re-serialise per client. */
+function serialise(m: ServerMessage): string {
+  let s = serialised.get(m);
+  if (s === undefined) {
+    s = JSON.stringify(m);
+    serialised.set(m, s);
+  }
+  return s;
+}
+
 /** One client connection: handshake, validation, strike counting and dispatch. */
 export class Connection {
   private ctx: ClientContext | undefined;
   private member: Member | undefined;
   private strikes = 0;
   private closed = false;
+  private tokens: number;
+  private tokenAt: number;
   private readonly maxStrikes: number;
 
   constructor(
@@ -67,12 +85,25 @@ export class Connection {
     private readonly opts: ConnectionOptions,
   ) {
     this.maxStrikes = opts.maxStrikes ?? 5;
+    this.tokens = opts.intentsPerSecond ?? 60;
+    this.tokenAt = (opts.now ?? Date.now)();
     socket.on('message', (data) => this.onMessage(data));
     socket.on('close', () => this.onClose());
   }
 
   private send(m: ServerMessage): void {
-    if (!this.closed) this.socket.send(JSON.stringify(m));
+    if (!this.closed) this.socket.send(serialise(m));
+  }
+
+  /** Token bucket: returns false (drop) when the connection exceeds its intent rate. */
+  private allowIntent(): boolean {
+    const rate = this.opts.intentsPerSecond ?? 60;
+    const now = (this.opts.now ?? Date.now)();
+    this.tokens = Math.min(rate, this.tokens + ((now - this.tokenAt) / 1000) * rate);
+    this.tokenAt = now;
+    if (this.tokens < 1) return false;
+    this.tokens -= 1;
+    return true;
   }
 
   private fail(code: ErrorCode): void {
@@ -111,7 +142,7 @@ export class Connection {
     } else if (LOBBY_TYPES.has(msg.type)) {
       handler.onLobbyAction(ctx, msg as LobbyAction);
     } else if (INTENT_TYPES.has(msg.type)) {
-      handler.onIntent(ctx, msg as IntentMessage);
+      if (this.allowIntent()) handler.onIntent(ctx, msg as IntentMessage);
     } else {
       this.strike();
     }
@@ -151,6 +182,7 @@ export class Connection {
       protocolVersion: PROTOCOL_VERSION,
     });
     res.room.broadcastLobby();
+    res.room.match?.catchUp(res.member);
   }
 
   private onClose(): void {

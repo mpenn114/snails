@@ -1,5 +1,6 @@
 import { randomBytes } from 'node:crypto';
 import type { ErrorCode, Role } from '@snails/protocol';
+import { MatchRunner, type MatchRunnerOptions } from '../game/match-runner.js';
 import { Room, type Member, type SendFn } from './room.js';
 
 export { Room } from './room.js';
@@ -23,6 +24,8 @@ export interface RoomManagerOptions {
   /** Source of session tokens. Defaults to 16 random bytes as hex. */
   token?: () => string;
   timers?: Timers;
+  /** Overrides for match runners (tests). */
+  runner?: MatchRunnerOptions;
   /** Delay before an empty room is deleted. Defaults to 30 s. */
   emptyRoomDelayMs?: number;
 }
@@ -44,11 +47,13 @@ export class RoomManager {
   private readonly token: () => string;
   private readonly timers: Timers;
   private readonly emptyDelay: number;
+  private readonly runnerOptions: MatchRunnerOptions;
 
   constructor(opts: RoomManagerOptions = {}) {
     this.random = opts.random ?? Math.random;
     this.token = opts.token ?? ((): string => randomBytes(16).toString('hex'));
     this.timers = opts.timers ?? realTimers;
+    this.runnerOptions = opts.runner ?? {};
     this.emptyDelay = opts.emptyRoomDelayMs ?? 30_000;
   }
 
@@ -62,6 +67,9 @@ export class RoomManager {
       ).join('');
     } while (this.rooms.has(code));
     const room = new Room(code);
+    room.onMatchStart = (settings, members) => {
+      room.match = new MatchRunner(room, settings, members, this.runnerOptions);
+    };
     this.rooms.set(code, room);
     return room;
   }

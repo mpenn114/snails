@@ -21,6 +21,9 @@ export function createRoomHandler(rooms: RoomManager, onIntent?: IntentSink): Co
       if (room && member) room.handleLobbyAction(member, action);
     },
     onIntent(ctx, intent) {
+      const room = rooms.getRoom(ctx.roomCode);
+      const member = room?.members.get(ctx.sessionToken);
+      if (room && member) room.handleIntent(member, intent);
       onIntent?.(ctx.roomCode, ctx, intent);
     },
     onPing() {},

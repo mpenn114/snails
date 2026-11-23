@@ -114,3 +114,26 @@ describe('Connection', () => {
     expect(rooms.getRoom(code)?.members.size).toBe(0);
   });
 });
+
+describe('intent rate limiting', () => {
+  it('drops intents beyond the token bucket and refills over time', () => {
+    let t = 0;
+    let received = 0;
+    const handler: ConnectionHandler = {
+      onLobbyAction() {},
+      onIntent() {
+        received++;
+      },
+      onPing() {},
+    };
+    const rooms = new RoomManager();
+    const sock = new FakeSocket();
+    new Connection(sock, { rooms, handler, intentsPerSecond: 10, now: () => t });
+    sock.recv(hello());
+    for (let i = 0; i < 25; i++) sock.recv({ type: 'jump' });
+    expect(received).toBe(10);
+    t = 500;
+    for (let i = 0; i < 25; i++) sock.recv({ type: 'jump' });
+    expect(received).toBe(15);
+  });
+});

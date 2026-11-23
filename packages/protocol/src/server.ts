@@ -70,6 +70,14 @@ export const TurnTimer = z.object({
   remainingMs: z.number().nonnegative(),
 });
 
+/** Live aim of the active snail, relayed (throttled) to the other clients for mirroring. */
+export const AimPreview = z.object({
+  type: z.literal('aimPreview'),
+  snailId: z.string(),
+  angle: z.number().min(-Math.PI).max(Math.PI),
+  power: z.number().min(0).max(1),
+});
+
 /** Heartbeat reply echoing `ping.t`. */
 export const Pong = z.object({ type: z.literal('pong'), t: z.number() });
 
@@ -90,6 +98,7 @@ export const ServerMessage = z.discriminatedUnion('type', [
   MatchStarted,
   TurnStart,
   TurnTimer,
+  AimPreview,
   Pong,
   Snapshot,
   EventBatch,

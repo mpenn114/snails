@@ -157,6 +157,11 @@ export class GameSession {
     return this.match.sim.state.tick;
   }
 
+  /** Id of the snail whose turn it is, or null. */
+  get activeSnailId(): string | null {
+    return this.match.sim.state.turn.activeSnailId ?? null;
+  }
+
   /** Starts the real-time loop on the injected clock. */
   start(): void {
     if (this.handle !== null) return;

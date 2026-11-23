@@ -1,4 +1,5 @@
 import { MatchSettings } from '@snails/protocol';
+import type { IntentMessage } from '../net/connection.js';
 import type { ErrorCode, LobbyPlayer, Role, ServerMessage } from '@snails/protocol';
 
 /** Delivers one server message to a client (transport-agnostic). */
@@ -27,6 +28,16 @@ export interface Member {
 /** Called when the host starts a match, with validated settings and the roster. */
 export type MatchStartHook = (settings: MatchSettings, members: readonly Member[]) => void;
 
+/** A running match attached to a room (implemented by the match runner). */
+export interface ActiveMatch {
+  /** Sends `matchStarted` and the latest snapshot to a late joiner. */
+  catchUp(member: Member): void;
+  /** Handles a gameplay intent from a member. */
+  intent(member: Member, intent: IntentMessage): void;
+  /** Stops timers and the simulation. */
+  stop(): void;
+}
+
 /** Default match settings for a fresh lobby. */
 export const DEFAULT_SETTINGS: MatchSettings = { turnTimeSeconds: 30, snailsPerTeam: 3, seed: 1 };
 
@@ -44,6 +55,8 @@ export class Room {
   phase: 'lobby' | 'playing' = 'lobby';
   /** Plug-in point for the game session; no-op by default. */
   onMatchStart: MatchStartHook = () => {};
+  /** The running match while `phase === 'playing'`. */
+  match: ActiveMatch | null = null;
 
   constructor(readonly code: string) {}
 
@@ -57,7 +70,15 @@ export class Room {
   remove(token: string): void {
     if (!this.members.delete(token)) return;
     this.assignHost();
-    this.broadcastLobby();
+    if (this.phase === 'playing' && this.controllerCount() === 0) this.endMatch();
+    else this.broadcastLobby();
+  }
+
+  /** Routes an intent: displays may never send one; otherwise the running match decides. */
+  handleIntent(member: Member, intent: IntentMessage): void {
+    if (member.role !== 'controller') {
+      member.send({ type: 'error', code: 'bad_message', message: 'Displays cannot send intents' });
+    } else if (this.match) this.match.intent(member, intent);
   }
 
   /** Host is the first controller in join order; null if there is none. */
@@ -100,6 +121,8 @@ export class Room {
 
   /** Returns the match to the lobby (ready flags cleared) and broadcasts. */
   endMatch(): void {
+    this.match?.stop();
+    this.match = null;
     this.phase = 'lobby';
     for (const m of this.members.values()) m.ready = false;
     this.broadcastLobby();
