@@ -1,18 +1,18 @@
 import { describe, expect, it } from 'vitest';
-import { activeFacingSign } from './facing-tracker';
+import { activeScreenFacing } from './facing-tracker';
 
-describe('activeFacingSign', () => {
+describe('activeScreenFacing', () => {
   const snails = [
     ['a', 0, 0, 0, 0, 0, 0, 0],
     ['b', 0, 0, 0, 0, 0, 0, 3142],
   ] as const;
-  it('maps world facing to a screen sign', () => {
-    expect(activeFacingSign(snails, 'a')).toBe(1);
-    expect(activeFacingSign(snails, 'b')).toBe(-1);
-    expect(activeFacingSign(snails, 'b', Math.PI)).toBe(1);
+  it('projects the world facing for the camera', () => {
+    expect(activeScreenFacing(snails, 'a').x).toBeCloseTo(1);
+    expect(activeScreenFacing(snails, 'b').x).toBeCloseTo(-1);
+    expect(activeScreenFacing(snails, 'a', 0).y).toBeCloseTo(1);
   });
-  it('defaults to +1 without an active snail', () => {
-    expect(activeFacingSign(snails, null)).toBe(1);
-    expect(activeFacingSign(snails, 'zzz')).toBe(1);
+  it('defaults to side view facing right without an active snail', () => {
+    expect(activeScreenFacing(snails, null)).toEqual({ x: 1, y: 0 });
+    expect(activeScreenFacing(snails, 'zzz')).toEqual({ x: 1, y: 0 });
   });
 });

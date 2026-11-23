@@ -187,13 +187,11 @@ try {
       },
       [sel, dx, dy],
     );
-  await drag('.ctl-stick', 40, 0);
-  // The aim mapping is relative to the camera (follow view: the snail faces into the screen, so
-  // the facing sign is ambiguous) and wind can blow a steep shot off-map. Aim a low lob; if the
-  // drag landed "behind" the facing (clamped to straight up), drag the other way.
+  await drag('.ctl-stick', 0, -40);
+  // Aim mapping is camera-relative: in the follow view (camera behind the snail) dragging up is
+  // steeper, so a short upward drag is a mid-power lob regardless of facing.
   const lastAim = () => active.sent.filter((m) => m.type === 'aim').at(-1);
-  await drag('.ctl-aim', 90, -25);
-  if (!lastAim() || lastAim().angle > 1.2) await drag('.ctl-aim', -90, -25);
+  await drag('.ctl-aim', 0, -60);
   step(`aim sent: ${JSON.stringify(lastAim())}`);
   await pg.evaluate(() => document.querySelector('.ctl-fire').click());
   step('moved, aimed, fired');

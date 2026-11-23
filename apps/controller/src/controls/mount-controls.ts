@@ -1,5 +1,7 @@
 import type { ControllerClient } from '../net/client';
 import { CONTROLS_CSS } from './controls.css';
+import { DEFAULT_SCREEN_FACING } from './aim-mapping';
+import type { ScreenFacing } from './aim-mapping';
 import { bindAim, bindJoystick } from './gestures';
 import type { Gestures } from './gestures';
 import { trackTurns } from './turn-tracker';
@@ -15,8 +17,8 @@ export interface ControlsOptions {
   playerId: string | null;
   /** Weapons offered by the picker. */
   weapons: readonly WeaponLike[];
-  /** +1 if the active snail faces screen-right, -1 if screen-left (default +1). */
-  facingSign?: () => 1 | -1;
+  /** On-screen facing of the active snail (default: side view, facing right). */
+  screenFacing?: () => ScreenFacing;
   /** Called with true when an aim drag starts and false when it ends or is released. */
   onAimingChange?: (aiming: boolean) => void;
 }
@@ -122,13 +124,13 @@ export function mountControls(
       rebuild();
     });
 
-  const facingSign = opts.facingSign ?? (() => 1);
-  const stick = bindJoystick(q(root, '.ctl-stick'), q(root, '.ctl-knob'), client, facingSign);
+  const facing = opts.screenFacing ?? (() => DEFAULT_SCREEN_FACING);
+  const stick = bindJoystick(q(root, '.ctl-stick'), q(root, '.ctl-knob'), client, facing);
   const aim = bindAim(
     q(root, '.ctl-aim'),
     q(root, '.ctl-aimvis'),
     client,
-    facingSign,
+    facing,
     opts.onAimingChange,
   );
   const gestures = [stick, aim];

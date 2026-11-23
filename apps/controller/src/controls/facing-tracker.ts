@@ -1,28 +1,30 @@
 import type { ControllerClient } from '../net/client';
-import { facingSignFromYaw } from './aim-mapping';
+import { DEFAULT_SCREEN_FACING, screenFacing } from './aim-mapping';
+import type { ScreenFacing } from './aim-mapping';
 
-/** Picks the screen facing sign of the active snail from a snapshot (+1 when it is absent). */
-export function activeFacingSign(
+/** Screen facing of the active snail from a snapshot (side-view default when it is absent). */
+export function activeScreenFacing(
   snails: readonly (readonly [string, ...unknown[]])[],
   activeSnailId: string | null,
-  cameraRightYaw = 0,
-): 1 | -1 {
+  cameraYaw = Math.PI / 2,
+): ScreenFacing {
   const s = snails.find((n) => n[0] === activeSnailId);
   const facingMrad = s?.[7];
-  return typeof facingMrad === 'number' ? facingSignFromYaw(facingMrad / 1000, cameraRightYaw) : 1;
+  return typeof facingMrad === 'number'
+    ? screenFacing(facingMrad / 1000, cameraYaw)
+    : DEFAULT_SCREEN_FACING;
 }
 
 /**
- * Tracks the active snail's facing from snapshots and exposes it as the controls' `facingSign`.
- * `cameraRightYaw` is read on every call (the camera orbits between snapshots); pass
- * `() => cameraRightYaw(handle.cameraYaw())` from the phone view handle. Defaults to the
- * side-on view (right = world +x).
+ * Tracks the active snail's facing from snapshots and exposes its on-screen direction.
+ * `cameraYaw` is read on every call (the camera orbits between snapshots); pass
+ * `() => phone.handle.cameraYaw()`. Defaults to the side-on view (yaw PI/2).
  */
-export function trackFacingSign(
+export function trackScreenFacing(
   client: ControllerClient,
-  cameraRight: () => number = () => 0,
+  cameraYaw: () => number = () => Math.PI / 2,
 ): {
-  facingSign: () => 1 | -1;
+  screenFacing: () => ScreenFacing;
   dispose: () => void;
 } {
   let snails: readonly (readonly [string, ...unknown[]])[] = [];
@@ -31,5 +33,5 @@ export function trackFacingSign(
     snails = s.snails;
     active = s.turn[1];
   });
-  return { facingSign: () => activeFacingSign(snails, active, cameraRight()), dispose: off };
+  return { screenFacing: () => activeScreenFacing(snails, active, cameraYaw()), dispose: off };
 }

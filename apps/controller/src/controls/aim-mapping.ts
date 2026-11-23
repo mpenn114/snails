@@ -4,53 +4,70 @@ export interface AimValue {
   power: number;
 }
 
+/**
+ * Unit vector of the active snail's facing projected onto the screen (x right, y down, like
+ * pointer coordinates). Side view facing right is `(1, 0)`; a camera behind the snail gives
+ * `(0, -1)` (forward is screen-up).
+ */
+export interface ScreenFacing {
+  x: number;
+  y: number;
+}
+
 /** Drag distance (px) below which no aim update is produced. */
 export const AIM_MIN_DRAG = 8;
 
+/** Facing used until a snapshot names the active snail: side view, facing screen-right. */
+export const DEFAULT_SCREEN_FACING: ScreenFacing = { x: 1, y: 0 };
+
 /**
- * Maps a drag vector (screen px, y down) from the drag origin to an aim. The angle is elevation
- * above the horizontal in the snail's facing direction, matching core (`sin` = up, `cos` =
- * forward). `facingSign` is +1 when the snail faces screen-right (given the camera), -1 when it
- * faces screen-left. Angles are clamped to +-PI/2 like core. Power is the drag
- * length over `maxRadius`, clamped to 0..1. Returns null inside the minimum-drag dead area.
+ * Projects the snail's facing (core yaw `f`, direction `(cos f, -sin f)` in x/z) into screen
+ * space for the render rig's camera yaw `c` (camera offset `(cos c, sin c)` from its target,
+ * looking at it, so screen-right is `(sin c, -cos c)` and screen-up is `-(cos c, sin c)`).
+ * Result: `(sin(f + c), cos(f + c))` in screen coordinates (y down).
+ */
+export function screenFacing(facingYaw: number, cameraYaw: number): ScreenFacing {
+  const a = facingYaw + cameraYaw;
+  return { x: Math.sin(a), y: Math.cos(a) };
+}
+
+/**
+ * Maps a drag vector (screen px, y down) from the drag origin to an aim. Scheme: the drag's
+ * component along the snail's on-screen horizontal facing (`dx * facing.x`) is the forward
+ * reach, and its vertical component (`-dy`) the lift. Side view therefore aims in the dragged
+ * direction. Behind the snail (`facing.x` ~ 0) a constant forward reach of `maxRadius *
+ * |facing.y|` is added, so dragging up is steeper and down is flatter. Angles are clamped to
+ * +-PI/2 like core; power is drag length over `maxRadius` (0..1). Null inside the dead area.
  */
 export function dragToAim(
   dx: number,
   dy: number,
-  facingSign: 1 | -1,
+  facing: ScreenFacing,
   maxRadius: number,
 ): AimValue | null {
   const len = Math.hypot(dx, dy);
   if (len < AIM_MIN_DRAG || maxRadius <= 0) return null;
-  const raw = Math.atan2(-dy, dx * facingSign);
-  // Core only aims within +-PI/2 of the facing; dragging behind aims straight up (same as server).
+  const forward = dx * facing.x + maxRadius * Math.abs(facing.y);
+  const raw = Math.atan2(-dy, forward);
   const angle = Math.min(Math.PI / 2, Math.max(-Math.PI / 2, raw));
   return { angle, power: Math.min(1, len / maxRadius) };
 }
 
-/** Derives the screen facing sign from the snail's world yaw and the camera's right-vector yaw. */
-export function facingSignFromYaw(yaw: number, cameraRightYaw = 0): 1 | -1 {
-  return Math.cos(yaw - cameraRightYaw) >= 0 ? 1 : -1;
-}
-
 /**
- * Yaw (core facing convention, direction `(cos y, -sin y)` in x/z) of the camera's screen-right
- * vector, from the render rig's camera yaw (camera offset `(cos yaw, sin yaw)` from its target,
- * looking at it). Rig yaw PI/2 (camera on +z, side-on) gives 0: right is world +x.
+ * Joystick move from a thumb offset (px): its component along the snail's on-screen facing
+ * decides forward (`right` on the wire, core move is facing-relative), back (`left`) or stop.
+ * Hysteresis: engaging needs `deadzone` px, releasing needs the projection below 60% of it.
+ * Perpendicular deflection is ignored (core has no turn intent).
  */
-export function cameraRightYaw(cameraYaw: number): number {
-  return Math.PI / 2 - cameraYaw;
-}
-
-/**
- * Converts a screen-space move (`left`/`right` on screen) into the wire direction. Core's `move`
- * is relative to the snail's facing (`right` = forward, `left` = backward, no turning), so when
- * the snail faces screen-left the two are swapped.
- */
-export function screenToWireMove(
-  screen: 'left' | 'right' | 'stop',
-  facingSign: 1 | -1,
+export function stickToWireMove(
+  dx: number,
+  dy: number,
+  facing: ScreenFacing,
+  deadzone: number,
+  previous: 'left' | 'right' | 'stop' = 'stop',
 ): 'left' | 'right' | 'stop' {
-  if (screen === 'stop' || facingSign === 1) return screen;
-  return screen === 'left' ? 'right' : 'left';
+  const along = dx * facing.x + dy * facing.y;
+  const threshold = previous === 'stop' ? deadzone : deadzone * 0.6;
+  if (Math.abs(along) < threshold) return 'stop';
+  return along > 0 ? 'right' : 'left';
 }

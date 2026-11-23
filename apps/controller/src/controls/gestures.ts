@@ -1,11 +1,12 @@
 import type { ControllerClient } from '../net/client';
-import { dragToAim, screenToWireMove } from './aim-mapping';
-import { clampKnob, joystickDirection, onChange } from './joystick';
+import { DEFAULT_SCREEN_FACING, dragToAim, stickToWireMove } from './aim-mapping';
+import type { ScreenFacing } from './aim-mapping';
+import { clampKnob, onChange } from './joystick';
 import type { MoveDirection } from './joystick';
 import { createThrottle } from './throttle';
 import { tryCapture } from '../platform/pointer';
 
-/** Joystick travel radius (px) and horizontal deadzone. */
+/** Joystick travel radius (px) and deadzone along the snail's screen facing. */
 const STICK_RADIUS = 60;
 const STICK_DEADZONE = 18;
 /** Aim sends at ~20 Hz. */
@@ -78,18 +79,15 @@ export function bindJoystick(
   stick: HTMLElement,
   knob: HTMLElement,
   client: ControllerClient,
-  facingSign: () => 1 | -1 = () => 1,
+  facing: () => ScreenFacing = () => DEFAULT_SCREEN_FACING,
 ): Gestures {
   let dir: MoveDirection = 'stop';
-  const send = onChange<MoveDirection>(
-    (d) => client.send({ type: 'move', direction: screenToWireMove(d, facingSign()) }),
-    'stop',
-  );
+  const send = onChange<MoveDirection>((d) => client.send({ type: 'move', direction: d }), 'stop');
   const off = trackPointer(stick, {
     move(dx, dy) {
       const k = clampKnob(dx, dy, STICK_RADIUS);
       knob.style.transform = `translate(${k.x}px,${k.y}px)`;
-      dir = joystickDirection(dx, STICK_DEADZONE, dir);
+      dir = stickToWireMove(dx, dy, facing(), STICK_DEADZONE, dir);
       send(dir);
     },
     up() {
@@ -113,7 +111,7 @@ export function bindAim(
   zone: HTMLElement,
   marker: HTMLElement,
   client: ControllerClient,
-  facingSign: () => 1 | -1,
+  facing: () => ScreenFacing,
   onAiming?: (aiming: boolean) => void,
 ): Gestures {
   const throttle = createThrottle<{ angle: number; power: number }>(
@@ -132,7 +130,7 @@ export function bindAim(
       onAiming?.(true);
     },
     move(dx, dy) {
-      const a = dragToAim(dx, dy, facingSign(), AIM_MAX_DRAG);
+      const a = dragToAim(dx, dy, facing(), AIM_MAX_DRAG);
       if (a) throttle.push(a);
     },
     up() {
