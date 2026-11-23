@@ -1,4 +1,3 @@
-import { createToonMaterial } from './style/materials.js';
 import * as THREE from 'three';
 import {
   BAR_WIDTH,
@@ -6,14 +5,31 @@ import {
   canvasLabelFactory,
   type LabelTextureFactory,
 } from './snail-assets.js';
+import { EYE_OFFSETS, PUPIL_REST, STALK_ROOTS, shellSeat } from './snail/body-geometry.js';
+import { DAMAGE_STEPS } from './snail/shell-material.js';
+import { shellPatternForTeam } from './snail/shell-pattern.js';
 import type { SnailView } from './snail-view.js';
 
-/** Shell height in metres (normalised shell height is 1). */
-const SHELL_SCALE = 0.9;
-/** Where the shell aperture sits on the body. */
-const SHELL_ANCHOR: readonly [number, number, number] = [0.1, 0.12, 0];
+/** Where the health bar and name tag start above the sole (just over the shell top). */
+const LABEL_BASE_Y = 1.38;
 
-/** Placeholder snail built from primitives, with team tint, health bar and name tag. */
+/** Named animation hooks of a snail (stalk pivots, pupils, squash); see M7-08/M7-09. */
+export interface SnailRig {
+  /** Scaled for squash and stretch; origin on the sole, holds body, shell and stalks. */
+  squash: THREE.Group;
+  /** Stalk pivots (rotate to droop, tilt or retract); index 0 is +Z, 1 is -Z. */
+  stalks: [THREE.Group, THREE.Group];
+  /** Eye pivots at the eyeball centres (rotate to look). */
+  eyes: [THREE.Group, THREE.Group];
+  /** Pupil meshes; move `position` (eye space) to look around. */
+  pupils: [THREE.Mesh, THREE.Mesh];
+  /** Shell mesh. */
+  shell: THREE.Mesh;
+  /** Body mesh. */
+  body: THREE.Mesh;
+}
+
+/** Chunky snail with a patterned team-coloured shell, health bar and name tag. */
 export class SnailMesh {
   /** Root group, positioned at the snail. */
   readonly group = new THREE.Group();
@@ -26,13 +42,17 @@ export class SnailMesh {
    * camera at its final pose for the frame (set by SnailLayer).
    */
   billboard: (() => void) | null = null;
+  /** Animation hooks (named child objects of the rig). */
+  readonly rig: SnailRig;
   readonly barFill: THREE.Mesh;
   readonly highlight: THREE.Mesh;
   readonly grave: THREE.Mesh;
   readonly nameTag: THREE.Sprite;
-  private readonly shellMaterial = createToonMaterial({ color: 0xc98b4a, rim: 0.35, flat: true });
   private readonly nameMaterial = new THREE.SpriteMaterial({ depthTest: false });
+  private readonly assets: SnailAssets;
   private shellRoughness = 0.5;
+  private damageStep = 0;
+  private pattern: number;
   private baseColour = 0xc98b4a;
   private labelText: string | null = null;
   private labelTexture: THREE.Texture | null = null;
@@ -42,18 +62,20 @@ export class SnailMesh {
    * @param assets - Shared geometries/materials (a private set is made when omitted).
    * @param labelFactory - Name-tag texture factory.
    * @param shellSeed - Seed of the procedural shell shape.
+   * @param pattern - Shell pattern id (team slot; wrapped into range).
    */
   constructor(
     shellColour = 0xc98b4a,
     assets: SnailAssets = new SnailAssets(),
     private readonly labelFactory: LabelTextureFactory = canvasLabelFactory,
     shellSeed = 0,
+    pattern = 0,
   ) {
-    const body = new THREE.Mesh(assets.body, assets.bodyMat);
-    const shell = new THREE.Mesh(assets.shellGeometry(shellSeed), this.shellMaterial);
-    shell.scale.setScalar(SHELL_SCALE);
-    shell.position.set(...SHELL_ANCHOR);
-    this.bodyGroup.add(body, shell);
+    this.assets = assets;
+    this.baseColour = shellColour;
+    this.pattern = shellPatternForTeam(pattern);
+    this.rig = this.buildRig(shellSeed);
+    this.bodyGroup.add(this.rig.squash);
     this.highlight = new THREE.Mesh(assets.ring, assets.ringMat);
     this.highlight.rotation.x = -Math.PI / 2;
     this.highlight.position.y = 0.02;
@@ -76,12 +98,64 @@ export class SnailMesh {
     this.nameTag.renderOrder = 1002;
     this.setLabelScale(1);
     this.group.add(this.bodyGroup, this.highlight, this.grave, this.barGroup, this.nameTag);
-    this.setColour(shellColour);
+  }
+
+  private buildRig(shellSeed: number): SnailRig {
+    const a = this.assets;
+    const squash = new THREE.Group();
+    squash.name = 'squash';
+    const body = new THREE.Mesh(a.body, a.bodyMat);
+    body.name = 'snail-body';
+    const shell = new THREE.Mesh(a.shellGeometry(shellSeed), this.shellMaterialNow());
+    shell.name = 'snail-shell';
+    const seat = shellSeat(a.shellGeometry(shellSeed).boundingBox as THREE.Box3);
+    shell.scale.set(seat.scale, seat.scale, seat.scale * 1.25);
+    shell.position.set(...seat.position);
+    squash.add(body, shell);
+    const stalks: THREE.Group[] = [];
+    const eyes: THREE.Group[] = [];
+    const pupils: THREE.Mesh[] = [];
+    for (const side of [0, 1] as const) {
+      const pivot = new THREE.Group();
+      pivot.name = side === 0 ? 'stalk-left' : 'stalk-right';
+      pivot.position.set(...(STALK_ROOTS[side] as readonly [number, number, number]));
+      pivot.add(new THREE.Mesh(a.parts.stalks[side], a.eyeMat));
+      const eye = new THREE.Group();
+      eye.name = side === 0 ? 'eye-left' : 'eye-right';
+      eye.position.set(...(EYE_OFFSETS[side] as readonly [number, number, number]));
+      const pupil = new THREE.Mesh(a.parts.pupil, a.eyeMat);
+      pupil.name = side === 0 ? 'pupil-left' : 'pupil-right';
+      pupil.position.set(...PUPIL_REST);
+      eye.add(pupil);
+      pivot.add(eye);
+      squash.add(pivot);
+      stalks.push(pivot);
+      eyes.push(eye);
+      pupils.push(pupil);
+    }
+    return {
+      squash,
+      stalks: stalks as SnailRig['stalks'],
+      eyes: eyes as SnailRig['eyes'],
+      pupils: pupils as SnailRig['pupils'],
+      shell,
+      body,
+    };
+  }
+
+  private shellMaterialNow(): THREE.MeshToonMaterial {
+    return this.assets.shellMaterial(this.baseColour, this.pattern, this.damageStep);
+  }
+
+  private refreshShellMaterial(): void {
+    this.rig.shell.material = this.shellMaterialNow();
   }
 
   /** Enables or disables shadow casting on the body and shell (not labels or bars). */
   setCastShadow(on: boolean): void {
-    for (const child of this.bodyGroup.children) child.castShadow = on;
+    this.rig.squash.traverse((o) => {
+      if (o instanceof THREE.Mesh) o.castShadow = on;
+    });
   }
 
   /**
@@ -90,7 +164,7 @@ export class SnailMesh {
    */
   setLabelScale(factor: number): void {
     this.barGroup.scale.setScalar(factor);
-    this.barGroup.position.y = 1.25 + 0.1 * factor;
+    this.barGroup.position.y = LABEL_BASE_Y + 0.1 * factor;
     this.nameTag.scale.set(2.4 * factor, 0.6 * factor, 1);
     this.nameTag.position.y = this.barGroup.position.y + 0.35 * factor;
   }
@@ -98,7 +172,20 @@ export class SnailMesh {
   /** Sets the shell tint as a hex number. */
   setColour(hex: number): void {
     this.baseColour = hex;
-    this.shellMaterial.color.setHex(hex);
+    if (this.rig) this.refreshShellMaterial();
+  }
+
+  /** Sets the shell pattern (team slot, wrapped into range). */
+  setPattern(pattern: number): void {
+    const p = shellPatternForTeam(pattern);
+    if (p === this.pattern) return;
+    this.pattern = p;
+    this.refreshShellMaterial();
+  }
+
+  /** Current shell pattern id. */
+  get patternId(): number {
+    return this.pattern;
   }
 
   /** Current shell tint as a hex number (damage darkening excluded). */
@@ -106,11 +193,12 @@ export class SnailMesh {
     return this.baseColour;
   }
 
-  /** Placeholder: darkens the shell as damage (0 = intact, 1 = destroyed). */
+  /** Darkens the shell as damage (0 = intact, 1 = destroyed) in shared, quantised steps. */
   setShellDamage(damage: number): void {
     const d = Math.min(1, Math.max(0, damage));
     this.shellRoughness = 0.5 + d * 0.5;
-    this.shellMaterial.color.setHex(this.baseColour).multiplyScalar(1 - d * 0.5);
+    this.damageStep = Math.round(d * DAMAGE_STEPS);
+    this.refreshShellMaterial();
   }
 
   /** Current shell roughness (exposed for tests). */
@@ -123,6 +211,7 @@ export class SnailMesh {
     this.group.position.set(v.position.x, v.position.y, v.position.z);
     this.bodyGroup.rotation.y = v.facing;
     if (v.colour !== this.baseColour) this.setColour(v.colour);
+    this.setPattern(v.teamIndex);
     this.bodyGroup.visible = v.alive;
     this.grave.visible = !v.alive;
     this.barGroup.visible = v.alive;
@@ -150,7 +239,6 @@ export class SnailMesh {
 
   /** Frees per-snail resources; shared assets are freed by their owner. */
   dispose(): void {
-    this.shellMaterial.dispose();
     this.nameMaterial.dispose();
     this.labelTexture?.dispose();
     this.labelTexture = null;

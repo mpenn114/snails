@@ -111,7 +111,7 @@ describe('MatchRenderer', () => {
     tick(16);
     tick(16);
     const chunk = (): THREE.Object3D => r.terrainMeshes!.group.children[0]!;
-    const body = (): THREE.Object3D => r.snailLayer!.get('s0')!.bodyGroup.children[0]!;
+    const body = (): THREE.Object3D => r.snailLayer!.get('s0')!.rig.body;
     expect(chunk().castShadow).toBe(true);
     expect(body().castShadow).toBe(true);
     r.setTier('mobile');
