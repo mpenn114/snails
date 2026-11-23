@@ -29,19 +29,19 @@ export class HudView {
       return e;
     };
     this.root = el(
-      `position:absolute;inset:0;z-index:2;pointer-events:none;color:#fff;font:600 13px system-ui,sans-serif;` +
-        `text-shadow:0 1px 2px rgba(0,0,0,.8);padding:${SAFE} max(8px, env(safe-area-inset-right)) ` +
+      `position:absolute;inset:0;z-index:2;pointer-events:none;color:var(--snl-paper);font:700 var(--snl-text-s) var(--snl-font);` +
+        `text-shadow:0 1px 2px rgba(var(--snl-ink-rgb),.8);padding:${SAFE} max(8px, env(safe-area-inset-right)) ` +
         `max(8px, env(safe-area-inset-bottom)) max(8px, env(safe-area-inset-left))`,
     );
     this.left = el(
       `position:absolute;top:${SAFE};left:max(8px, env(safe-area-inset-left));display:flex;flex-direction:column;gap:6px`,
     );
     this.bars = el('display:flex;flex-direction:column;gap:3px;width:112px');
-    this.wind = el('opacity:.85;font-size:12px');
+    this.wind = el('opacity:.85;font-size:var(--snl-text-s)');
     // Kill feed sits in the free centre column, below the single top bar.
     this.feed = el(
       `position:absolute;top:calc(${SAFE} + 60px);left:calc(max(8px, env(safe-area-inset-left)) + 120px);` +
-        `right:calc(max(8px, env(safe-area-inset-right)) + 112px);text-align:center;font-size:12px`,
+        `right:calc(max(8px, env(safe-area-inset-right)) + 112px);text-align:center;font-size:var(--snl-text-s)`,
     );
     this.modeButton = el(
       `position:absolute;top:calc(${SAFE} + 60px);right:max(8px, env(safe-area-inset-right));pointer-events:auto`,
@@ -101,11 +101,12 @@ export class HudView {
   private bar(h: TeamHealth): HTMLElement {
     const d = this.root.ownerDocument;
     const row = d.createElement('div');
-    row.style.cssText = `background:rgba(0,0,0,.45);border-radius:4px;height:14px;position:relative;${h.active ? 'outline:2px solid #fff;' : ''}`;
+    row.style.cssText = `background:rgba(var(--snl-ink-rgb),.6);border-radius:var(--snl-outline);height:16px;position:relative;${h.active ? 'outline:var(--snl-outline) solid var(--snl-paper);' : ''}`;
     const fill = d.createElement('div');
-    fill.style.cssText = `background:${h.colour};height:100%;border-radius:4px;width:${(h.fraction * 100).toFixed(1)}%`;
+    fill.style.cssText = `background:${h.colour};height:100%;border-radius:var(--snl-outline);width:${(h.fraction * 100).toFixed(1)}%`;
     const label = d.createElement('span');
-    label.style.cssText = 'position:absolute;left:4px;top:-1px;font-size:11px';
+    label.style.cssText =
+      'position:absolute;left:4px;top:-1px;font-size:var(--snl-text-s);font-weight:800';
     label.textContent = `${h.name} ${h.hp}`;
     row.append(fill, label);
     return row;

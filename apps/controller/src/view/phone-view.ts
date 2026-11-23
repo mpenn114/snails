@@ -246,7 +246,7 @@ export class PhoneView {
     const n = document.createElement('div');
     n.style.cssText =
       'position:absolute;inset:0;z-index:20;display:flex;flex-direction:column;gap:12px;align-items:center;' +
-      'justify-content:center;background:rgba(16,24,32,.85);color:#fff;font:600 1rem system-ui';
+      'justify-content:center;background:rgba(var(--snl-ink-rgb),.92);color:var(--snl-paper);font:700 var(--snl-text-m) var(--snl-font)';
     const t = document.createElement('span');
     t.textContent = 'Graphics interrupted...';
     const b = document.createElement('button');

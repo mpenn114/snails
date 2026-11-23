@@ -34,7 +34,7 @@ const SKELETON = `<h1>Lobby <span class="room"></span></h1>
       <option value="perPlayer">One phone per player</option>
       <option value="hotSeat">Hot-seat (shared phone)</option></select></label>
     <button class="random" type="button">Random seed</button></fieldset>
-  <button class="start" type="button">Start match</button>
+  <button class="start primary" type="button">Start match</button>
   <p class="status" role="status"></p>`;
 
 /** Reads host settings from the three inputs (NaN when blank or invalid). */
