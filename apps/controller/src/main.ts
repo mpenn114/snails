@@ -4,7 +4,8 @@ import { loadSession, saveSession } from './net/session-store';
 import { buildWsUrl } from './net/url';
 import { mountJoinView } from './ui/join-view';
 import { parseRoomParam } from './ui/join-logic';
-import { mountTurnControls } from './ui/turn-controls';
+import { mountControls } from './controls/mount-controls';
+import { weapons } from '@snails/content-base';
 import { registerServiceWorker } from './pwa/register-sw';
 
 if (import.meta.env.PROD) void registerServiceWorker(navigator);
@@ -19,11 +20,11 @@ const initial = {
 };
 
 /** Placeholder until the lobby task lands: shows a joined notice plus the game view. */
-function showLobbyPlaceholder(client: ControllerClient): void {
+function showLobbyPlaceholder(client: ControllerClient, playerId: string): void {
   screen.innerHTML =
     '<div class="join"><h1>Lobby</h1><p class="status">Joined. Waiting...</p></div>';
   mountPhoneView(client);
-  mountTurnControls(overlay, client);
+  mountControls(overlay, client, { playerId, weapons });
 }
 
 const joinView = mountJoinView(screen, initial, (v) => {
@@ -35,9 +36,9 @@ const joinView = mountJoinView(screen, initial, (v) => {
   });
   client.onState(() => joinView.update(client));
   client.on('error', () => joinView.update(client));
-  client.on('welcome', () => {
+  client.on('welcome', (w) => {
     joinView.destroy();
-    showLobbyPlaceholder(client);
+    showLobbyPlaceholder(client, w.playerId);
   });
   client.connect();
   joinView.update(client);
