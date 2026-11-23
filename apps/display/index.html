@@ -17,10 +17,63 @@
         height: 100%;
         display: block;
       }
+      .lobby {
+        position: fixed;
+        inset: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: #101820;
+        color: #fff;
+        font-family: system-ui, sans-serif;
+      }
+      .lobby[hidden] {
+        display: none;
+      }
+      .lobby-card {
+        display: flex;
+        gap: 6vw;
+        align-items: center;
+      }
+      .lobby .code {
+        font-size: 12vw;
+        font-weight: 800;
+        letter-spacing: 0.15em;
+      }
+      .lobby .url {
+        font-size: 2vw;
+      }
+      .lobby .qr svg {
+        width: 22vw;
+        height: 22vw;
+      }
+      .lobby .teams {
+        display: flex;
+        gap: 2vw;
+        flex-wrap: wrap;
+        font-size: 2vw;
+      }
+      .lobby ul {
+        list-style: none;
+        padding: 0;
+      }
+      .lobby em {
+        opacity: 0.6;
+        font-size: 0.7em;
+      }
+      .lobby .dot {
+        display: inline-block;
+        width: 1em;
+        height: 1em;
+        border-radius: 50%;
+        margin-right: 0.4em;
+        vertical-align: middle;
+      }
     </style>
   </head>
   <body>
     <canvas id="view"></canvas>
+    <div id="lobby-root"></div>
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>

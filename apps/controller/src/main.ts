@@ -2,6 +2,8 @@ import { createGameView } from '@snails/render';
 import { ControllerClient } from './net/client';
 import { loadSession, saveSession } from './net/session-store';
 import { buildWsUrl } from './net/url';
+import { mountLobbyView } from './ui/lobby-view';
+import { lobbyErrorText } from './ui/lobby-logic';
 import { mountJoinView } from './ui/join-view';
 import { parseRoomParam } from './ui/join-logic';
 import { mountTurnControls } from './ui/turn-controls';
@@ -19,10 +21,8 @@ const initial = {
   room: parseRoomParam(location.search) || stored?.roomCode || '',
 };
 
-/** Placeholder until the lobby task lands: shows a joined notice plus the game view. */
-function showLobbyPlaceholder(client: ControllerClient): void {
-  screen.innerHTML =
-    '<div class="join"><h1>Lobby</h1><p class="status">Joined. Waiting...</p></div>';
+/** Shows the in-match game view and turn controls. */
+function showGame(client: ControllerClient): void {
   const view = createGameView(canvas, { tier: 'mobile' });
   const resize = (): void => view.resize(window.innerWidth, window.innerHeight);
   window.addEventListener('resize', resize);
@@ -39,9 +39,15 @@ const joinView = mountJoinView(screen, initial, (v) => {
   });
   client.onState(() => joinView.update(client));
   client.on('error', () => joinView.update(client));
-  client.on('welcome', () => {
+  client.on('welcome', (w) => {
     joinView.destroy();
-    showLobbyPlaceholder(client);
+    const lobby = mountLobbyView(screen, w.playerId, (m) => client.send(m));
+    client.on('lobbyState', (s) => lobby.update(s));
+    client.on('error', (e) => lobby.showError(lobbyErrorText(e.code, e.message)));
+    client.on('matchStarted', () => {
+      lobby.destroy();
+      showGame(client);
+    });
   });
   client.connect();
   joinView.update(client);
