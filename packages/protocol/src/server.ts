@@ -80,6 +80,16 @@ export const TurnTimer = z.object({
 export const AimPreview = z.object({
   type: z.literal('aimPreview'),
   snailId: z.string(),
+  /** Weapon the active team currently has selected. */
+  weaponId: z.string(),
+  /** That weapon's launch parameters (so displays can preview the arc without content data). */
+  launch: z.object({
+    minSpeed: z.number(),
+    maxSpeed: z.number(),
+    gravityScale: z.number(),
+    windScale: z.number(),
+    projectileRadius: z.number(),
+  }),
   angle: z.number().min(-Math.PI).max(Math.PI),
   power: z.number().min(0).max(1),
 });

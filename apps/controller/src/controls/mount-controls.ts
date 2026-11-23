@@ -118,12 +118,13 @@ export function mountControls(
       rebuild();
     });
 
-  const stick = bindJoystick(q(root, '.ctl-stick'), q(root, '.ctl-knob'), client);
+  const facingSign = opts.facingSign ?? (() => 1);
+  const stick = bindJoystick(q(root, '.ctl-stick'), q(root, '.ctl-knob'), client, facingSign);
   const aim = bindAim(
     q(root, '.ctl-aim'),
     q(root, '.ctl-aimvis'),
     client,
-    opts.facingSign ?? (() => 1),
+    facingSign,
     opts.onAimingChange,
   );
   const gestures = [stick, aim];

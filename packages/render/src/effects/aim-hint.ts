@@ -1,24 +1,24 @@
 import * as THREE from 'three';
+import { predictTrajectory, type WeaponLaunchSpec } from '@snails/core';
 import type { ExtraLayer } from '../match-renderer.js';
 
 /** Live aim relayed by the server for the active snail. */
 export interface AimHintInput {
   snailId: string;
+  /** Launch parameters of the snail's selected weapon, as relayed by the server. */
+  launch?: WeaponLaunchSpec;
   /** Pitch in radians. */
   angle: number;
   /** Power 0..1. */
   power: number;
 }
 
-/** Tuning of the hint trajectory (approximate; the server stays authoritative). */
+/** Tuning of the hint trajectory. */
 export interface AimHintOptions {
-  minSpeed?: number;
-  maxSpeed?: number;
-  gravity?: number;
   /** Number of trajectory samples (default 24). */
   samples?: number;
-  /** Time step between samples in seconds (default 0.08). */
-  step?: number;
+  /** Simulation steps (core's fixed timestep) between samples (default 5, ~0.083 s). */
+  stepsPerSample?: number;
   /** Line colour (default white). */
   colour?: number;
 }
@@ -28,34 +28,6 @@ export interface HintPoint {
   x: number;
   y: number;
   z: number;
-}
-
-/**
- * Samples the ballistic arc a shot with this aim would follow from `origin`, facing `facing`
- * (radians, as in core: direction `(cos f, 0, -sin f)`). Pure; used for the aim hint line.
- */
-export function aimTrajectory(
-  origin: HintPoint,
-  facing: number,
-  aim: Pick<AimHintInput, 'angle' | 'power'>,
-  opts: AimHintOptions = {},
-): HintPoint[] {
-  const { minSpeed = 6, maxSpeed = 24, gravity = 9.81, samples = 24, step = 0.08 } = opts;
-  const speed = minSpeed + (maxSpeed - minSpeed) * Math.min(1, Math.max(0, aim.power));
-  const h = Math.cos(aim.angle) * speed;
-  const vx = Math.cos(facing) * h;
-  const vz = -Math.sin(facing) * h;
-  const vy = Math.sin(aim.angle) * speed;
-  const out: HintPoint[] = [];
-  for (let i = 0; i < samples; i++) {
-    const t = i * step;
-    out.push({
-      x: origin.x + vx * t,
-      y: origin.y + vy * t - 0.5 * gravity * t * t,
-      z: origin.z + vz * t,
-    });
-  }
-  return out;
 }
 
 /** Controller of the aim hint layer. */
@@ -94,12 +66,20 @@ export function createAimHint(opts: AimHintOptions = {}): AimHint {
       const snail = aim
         ? state?.snapshot.teams.flatMap((t) => t.snails).find((s) => s.id === aim?.snailId)
         : undefined;
-      if (!aim || !snail || !snail.alive) {
+      const launch = aim?.launch;
+      if (!aim || !state || !snail || !snail.alive || !launch) {
         line.visible = false;
         return;
       }
-      const o = { x: snail.position.x, y: snail.position.y + 0.4, z: snail.position.z };
-      const pts = aimTrajectory(o, snail.facing, aim, opts);
+      const pts = predictTrajectory(
+        snail.position,
+        snail.facing,
+        aim,
+        launch,
+        state.snapshot.wind,
+        samples,
+        opts.stepsPerSample,
+      );
       pts.forEach((p, i) => attr.setXYZ(i, p.x, p.y, p.z));
       attr.needsUpdate = true;
       geometry.setDrawRange(0, pts.length);

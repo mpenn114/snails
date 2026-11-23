@@ -6,6 +6,8 @@ import {
   type SimEvent,
   type Snail,
   type WeaponDefinition,
+  type WeaponLaunchSpec,
+  getAim,
 } from '@snails/core';
 import { weapons as baseWeapons } from '@snails/content-base';
 import {
@@ -168,6 +170,24 @@ export class GameSession {
   /** Id of the snail whose turn it is, or null. */
   get activeSnailId(): string | null {
     return this.match.sim.state.turn.activeSnailId ?? null;
+  }
+
+  /** Weapon id the active team has selected, or null. */
+  get activeWeaponId(): string | null {
+    const t = this.activeTeamId;
+    return t ? (this.control.get(t)?.weaponId ?? null) : null;
+  }
+
+  /** Launch spec of the active team's selected weapon, or null. */
+  get activeLaunch(): WeaponLaunchSpec | null {
+    const id = this.activeWeaponId;
+    return (id ? this.match.weapons.get(id)?.launch : undefined) ?? null;
+  }
+
+  /** Current aim (angle, power) of the active snail, or null. */
+  get activeAim(): { angle: number; power: number } | null {
+    const s = this.activeSnail();
+    return s ? getAim(s) : null;
   }
 
   /** Id of the team whose turn it is, or null. */

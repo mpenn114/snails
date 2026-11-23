@@ -14,16 +14,22 @@ export function activeFacingSign(
 
 /**
  * Tracks the active snail's facing from snapshots and exposes it as the controls' `facingSign`.
- * TODO: the phone view does not expose its camera yaw yet, so the camera's right vector is
- * assumed to be world +x (yaw 0, the side-on view). Pass the real yaw once available.
+ * `cameraRightYaw` is read on every call (the camera orbits between snapshots); pass
+ * `() => cameraRightYaw(handle.cameraYaw())` from the phone view handle. Defaults to the
+ * side-on view (right = world +x).
  */
-export function trackFacingSign(client: ControllerClient): {
+export function trackFacingSign(
+  client: ControllerClient,
+  cameraRight: () => number = () => 0,
+): {
   facingSign: () => 1 | -1;
   dispose: () => void;
 } {
-  let sign: 1 | -1 = 1;
+  let snails: readonly (readonly [string, ...unknown[]])[] = [];
+  let active: string | null = null;
   const off = client.on('snapshot', (s) => {
-    sign = activeFacingSign(s.snails, s.turn[1]);
+    snails = s.snails;
+    active = s.turn[1];
   });
-  return { facingSign: () => sign, dispose: off };
+  return { facingSign: () => activeFacingSign(snails, active, cameraRight()), dispose: off };
 }

@@ -16,7 +16,7 @@ export interface TeamControlState {
   weaponId: string;
 }
 
-const HALF_PI = Math.PI / 2;
+export const HALF_PI = Math.PI / 2;
 
 /** Clamps a number into `[lo, hi]`; non-finite values become `lo`. */
 export function clamp(v: number, lo: number, hi: number): number {

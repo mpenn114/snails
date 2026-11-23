@@ -8,6 +8,8 @@ export interface PhoneViewLike {
   dispose(): void;
   setBatterySaver?(on: boolean): void;
   setAiming?(aiming: boolean): void;
+  /** Current camera yaw of the render rig (radians), if a rig exists. */
+  cameraYaw?(): number | null;
 }
 
 /** Loads the view module; the default is a dynamic import so three.js stays out of the entry chunk. */
@@ -19,6 +21,11 @@ export interface PhoneViewHandle {
   setBatterySaver(on: boolean): void;
   /** Tells the camera the local player is (not) aiming: aim mode while true (remembered until loaded). */
   setAiming(aiming: boolean): void;
+  /**
+   * Camera yaw of the render rig in radians (offset `(cos yaw, sin yaw)` from the target), or
+   * PI/2 (side-on view) until the view and rig exist. Feed to `cameraRightYaw` in aim-mapping.
+   */
+  cameraYaw(): number;
   /** Unsubscribes and disposes the view (also if it is still loading). */
   dispose(): void;
 }
@@ -73,6 +80,7 @@ export function attachPhoneView(
       aiming = a;
       view?.setAiming?.(a);
     },
+    cameraYaw: () => view?.cameraYaw?.() ?? Math.PI / 2,
     dispose() {
       disposed = true;
       for (const off of offs) off();

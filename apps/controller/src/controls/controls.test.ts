@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { dragToAim, facingSignFromYaw } from './aim-mapping';
+import { cameraRightYaw, dragToAim, facingSignFromYaw, screenToWireMove } from './aim-mapping';
 import { clampKnob, joystickDirection, onChange } from './joystick';
 import { findMyTeam, isMyTurn } from './my-turn';
 import { createThrottle } from './throttle';
@@ -65,7 +65,7 @@ describe('aim mapping', () => {
   });
   it('mirrors for a left-facing snail and handles backward drags', () => {
     expect(dragToAim(-100, -100, -1, 200)?.angle).toBeCloseTo(Math.PI / 4);
-    expect(Math.abs(dragToAim(-100, 0, 1, 200)?.angle ?? 0)).toBeCloseTo(Math.PI);
+    expect(Math.abs(dragToAim(-100, 0, 1, 200)?.angle ?? 0)).toBeCloseTo(Math.PI / 2);
     expect(dragToAim(10, 10, 1, 0)).toBeNull();
   });
   it('derives facing sign', () => {
@@ -151,5 +151,37 @@ describe('weapon tiles', () => {
     expect(on[0]).toMatchObject({ icon: 'A', ammoLabel: '∞', selected: true });
     expect(on[2]?.ammoLabel).toBe('3');
     expect(buildWeaponTiles(ws, null, false).every((t) => t.disabled)).toBe(true);
+  });
+});
+
+describe('camera-relative mapping', () => {
+  const H = Math.PI / 2;
+  // Core facing f points along (cos f, -sin f); rig yaw y puts the camera at offset (cos y, sin y).
+  it.each([
+    [H, 0, 1],
+    [H, Math.PI, -1],
+    [0, H, 1],
+    [0, -H, -1],
+    [Math.PI, -H, 1],
+    [Math.PI, H, -1],
+    [-H, 0, -1],
+    [-H, Math.PI, 1],
+  ])('camera yaw %f, facing %f -> screen sign %i', (camYaw, facing, expected) => {
+    expect(facingSignFromYaw(facing, cameraRightYaw(camYaw))).toBe(expected);
+  });
+  it('side-on rig yaw has right = +x', () => {
+    expect(cameraRightYaw(H)).toBeCloseTo(0);
+  });
+  it('swaps screen moves only when facing screen-left', () => {
+    expect(screenToWireMove('right', 1)).toBe('right');
+    expect(screenToWireMove('left', 1)).toBe('left');
+    expect(screenToWireMove('right', -1)).toBe('left');
+    expect(screenToWireMove('left', -1)).toBe('right');
+    expect(screenToWireMove('stop', -1)).toBe('stop');
+  });
+  it('a drag toward the screen-forward side aims along the facing for either facing', () => {
+    expect(dragToAim(50, 0, 1, 100)?.angle).toBeCloseTo(0);
+    expect(dragToAim(-50, 0, -1, 100)?.angle).toBeCloseTo(0);
+    expect(Math.abs(dragToAim(50, 0, -1, 100)?.angle ?? 0)).toBeCloseTo(H);
   });
 });

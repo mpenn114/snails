@@ -1,5 +1,5 @@
 import type { ControllerClient } from '../net/client';
-import { dragToAim } from './aim-mapping';
+import { dragToAim, screenToWireMove } from './aim-mapping';
 import { clampKnob, joystickDirection, onChange } from './joystick';
 import type { MoveDirection } from './joystick';
 import { createThrottle } from './throttle';
@@ -78,9 +78,13 @@ export function bindJoystick(
   stick: HTMLElement,
   knob: HTMLElement,
   client: ControllerClient,
+  facingSign: () => 1 | -1 = () => 1,
 ): Gestures {
   let dir: MoveDirection = 'stop';
-  const send = onChange<MoveDirection>((d) => client.send({ type: 'move', direction: d }), 'stop');
+  const send = onChange<MoveDirection>(
+    (d) => client.send({ type: 'move', direction: screenToWireMove(d, facingSign()) }),
+    'stop',
+  );
   const off = trackPointer(stick, {
     move(dx, dy) {
       const k = clampKnob(dx, dy, STICK_RADIUS);

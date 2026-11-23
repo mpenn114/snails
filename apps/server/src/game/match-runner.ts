@@ -2,6 +2,7 @@ import type { MatchSettings, ServerMessage } from '@snails/protocol';
 import type { IntentMessage } from '../net/connection.js';
 import type { ActiveMatch, Member, Room } from '../rooms/room.js';
 import { GameSession, type SessionClock, type SessionTeam } from './game-session.js';
+import { clamp, HALF_PI } from './intent.js';
 
 /** Options for {@link MatchRunner} (all optional; tests inject fakes). */
 export interface MatchRunnerOptions {
@@ -143,7 +144,12 @@ export class MatchRunner implements ActiveMatch {
       if (res.reason === 'not_your_turn') this.rejectNotYourTurn(member);
       return;
     }
-    if (intent.type === 'aim') this.queueAim(member, intent.angle, intent.power);
+    if (intent.type === 'aim') {
+      this.queueAim(member, clamp(intent.angle, -HALF_PI, HALF_PI), clamp(intent.power, 0, 1));
+    } else if (intent.type === 'selectWeapon') {
+      const aim = this.session.activeAim;
+      if (aim) this.queueAim(member, aim.angle, aim.power);
+    }
   }
 
   /** Current simulation tick. */
@@ -175,8 +181,13 @@ export class MatchRunner implements ActiveMatch {
 
   private queueAim(member: Member, angle: number, power: number): void {
     const snailId = this.session.activeSnailId;
-    if (!snailId) return;
-    this.pendingAim = { msg: { type: 'aimPreview', snailId, angle, power }, from: member.id };
+    const weaponId = this.session.activeWeaponId;
+    const launch = this.session.activeLaunch;
+    if (!snailId || !weaponId || !launch) return;
+    this.pendingAim = {
+      msg: { type: 'aimPreview', snailId, weaponId, launch, angle, power },
+      from: member.id,
+    };
     const wait = this.lastAimAt + (this.opts.aimIntervalMs ?? 66) - this.now();
     if (wait <= 0) this.flushAim();
     else if (this.aimTimer === null) {

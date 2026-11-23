@@ -1,4 +1,4 @@
-import type { GameSnapshot, SimEvent } from '@snails/core';
+import type { GameSnapshot, SimEvent, WeaponLaunchSpec } from '@snails/core';
 import type { MatchInit } from '@snails/render';
 import { WireSnapshotMapper } from '@snails/render';
 import { decodeEventBatch, decodeSnapshot } from '@snails/protocol';
@@ -18,7 +18,9 @@ export interface RendererPort {
 
 /** Aim hint surface. */
 export interface AimPort {
-  set(aim: { snailId: string; angle: number; power: number } | null): void;
+  set(
+    aim: { snailId: string; launch?: WeaponLaunchSpec; angle: number; power: number } | null,
+  ): void;
 }
 
 /** Everything the adapter talks to. */

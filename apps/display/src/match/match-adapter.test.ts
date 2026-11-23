@@ -95,7 +95,14 @@ describe('MatchAdapter', () => {
     t.a.handle(encodeSnapshot(snap));
     t.a.handle({ type: 'turnTimer', remainingMs: 4000 });
     expect(t.huds.at(-1)!.timerSeconds).toBe(4);
-    t.a.handle({ type: 'aimPreview', snailId: 's1', angle: 0.5, power: 0.4 });
+    t.a.handle({
+      type: 'aimPreview',
+      snailId: 's1',
+      weaponId: 'w',
+      launch: { minSpeed: 1, maxSpeed: 2, gravityScale: 1, windScale: 1, projectileRadius: 0.2 },
+      angle: 0.5,
+      power: 0.4,
+    });
     expect(t.aim.set).toHaveBeenLastCalledWith(expect.objectContaining({ power: 0.4 }));
     const ev = { type: 'windChanged', strength: 1, direction: 2 } as const;
     t.a.handle(encodeEventBatch(8, [ev]));

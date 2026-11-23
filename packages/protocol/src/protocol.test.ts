@@ -53,7 +53,14 @@ describe('client messages', () => {
 
 describe('server messages', () => {
   it('parses aimPreview and rejects bad power', () => {
-    const m = { type: 'aimPreview', snailId: 's1', angle: 0.5, power: 0.3 };
+    const m = {
+      type: 'aimPreview',
+      snailId: 's1',
+      weaponId: 'base:x',
+      launch: { minSpeed: 1, maxSpeed: 2, gravityScale: 1, windScale: 1, projectileRadius: 0.2 },
+      angle: 0.5,
+      power: 0.3,
+    };
     expect(parseServerMessage(m)).toEqual(m);
     expect(() => parseServerMessage({ ...m, power: 2 })).toThrow();
   });

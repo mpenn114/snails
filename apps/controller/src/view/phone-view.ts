@@ -149,6 +149,11 @@ export class PhoneView {
     this.overlay?.camera.setAiming(aiming);
   }
 
+  /** Camera yaw of the render rig (radians), or null before the rig exists. */
+  cameraYaw(): number | null {
+    return this.renderer?.cameraRig?.pose().yaw ?? null;
+  }
+
   private startOverlay(r: MatchRenderer, teams: MatchStarted['teams']): void {
     this.overlay?.dispose();
     this.overlay = null;
