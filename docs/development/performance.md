@@ -57,6 +57,36 @@ projectile geometries/materials. No mesh sets `castShadow`/`receiveShadow` yet, 
 currently draws nothing; revisit shadow cost (tight shadow camera, `autoUpdate = false` with
 `needsUpdate` on terrain change) when shadows are actually enabled.
 
+## F4: terrain meshing backlog and triangle count
+
+Harness `seed=3&tier=high`, 8 s in, headless SwiftShader (about 2-3 fps, so frame-limited):
+
+| Metric                              | Before            | After                    |
+| ----------------------------------- | ----------------- | ------------------------ |
+| Chunk backlog at 8 s (overlay)      | 123-131           | 0                        |
+| Chunks applied at 8 s               | ~190              | ~210 (incl. LOD remeshes) |
+| Whole-island triangles, seed 3      | 453k (full grid)  | 236k (-48%)              |
+| Initial build, in-process (frames)  | 34 frames         | 10 frames (~0.2 s at 60) |
+
+Notes: overlay triangle counts are view-dependent (frustum culling, camera follows a different
+snail each run, and `before` had only ~94 of ~130 chunk meshes built), so the whole-island figure
+is the like-for-like one: the real mesher over every chunk of the seed-3 initial grid, LOD focus at
+snail 1. Vertex welding alone removes only ~0.1% (the per-edge vertex cache already welds), so the
+reduction comes from LOD.
+
+What changed:
+
+- Chunks whose samples (cells plus the +1 border) share one sign are never dispatched
+  (`isChunkTrivial`, no allocation, early exit); an existing mesh is removed. 170 of 300 chunks.
+- Dirty chunks are dispatched nearest-to-camera first. The initial full build uses up to 16 jobs in
+  flight and a `max(16, 3 x budget)` ms frame budget until it drains; steady state keeps the tier
+  budget and 4 in flight.
+- Coarse LOD (every 2nd cell, `step: 2`) beyond `terrainLodDistance` from the camera target
+  (high 24 m, medium 20, low 16, mobile 12), with skirts along chunk-face open edges to hide
+  seams, 10% hysteresis, and background re-meshing (4 chunks/frame, only when nothing else is
+  queued) when the camera moves 8 m. `weldMesh` drops coincident vertices and collapsed triangles.
+- Screenshots (`scratchpad/f4/{before,after}`) show no holes or cracks at LOD boundaries.
+
 ## Follow-ups
 
 - Terrain triangle budget: tetrahedral meshing yields about 2x the triangles of marching cubes;

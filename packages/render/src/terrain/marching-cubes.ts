@@ -7,6 +7,8 @@
  * shared faces so the mesh is crack-free.
  */
 import type { SdfGrid } from '@snails/core';
+import { addSkirts } from './chunk-lod.js';
+import { weldMesh } from './mesh-weld.js';
 
 /** Samples of one chunk, with a halo so normals match across chunk borders. */
 export interface ChunkMeshInput {
@@ -23,6 +25,8 @@ export interface ChunkMeshInput {
   readonly cellSize: number;
   /** World position of the chunk's first sample. */
   readonly origin: readonly [number, number, number];
+  /** LOD step: 1 (default) meshes every cell, 2 every second cell (coarse, with skirts). */
+  readonly step?: number;
 }
 
 /** Mesh buffers (transferable). Normals point out of the solid. */
@@ -166,26 +170,30 @@ class Builder {
   }
 }
 
-/** Extracts a triangle mesh of the iso-0 surface of one chunk. */
+/** Extracts a welded triangle mesh of the iso-0 surface of one chunk (coarse LOD gets skirts). */
 export function meshChunk(input: ChunkMeshInput): ChunkMesh {
   const [cx, cy, cz] = input.cells;
   if (cx <= 0 || cy <= 0 || cz <= 0) return EMPTY;
+  const s = Math.max(1, Math.floor(input.step ?? 1));
   const b = new Builder(input);
-  for (let k = 0; k < cz; k++) {
-    for (let j = 0; j < cy; j++) {
-      for (let i = 0; i < cx; i++) {
+  for (let k = 0; k < cz; k += s) {
+    for (let j = 0; j < cy; j += s) {
+      for (let i = 0; i < cx; i += s) {
         for (const tet of TETS) {
-          b.tet(tet.map((o) => [i + o[0], j + o[1], k + o[2]] as const));
+          b.tet(tet.map((o) => [i + o[0] * s, j + o[1] * s, k + o[2] * s] as const));
         }
       }
     }
   }
   if (b.idx.length === 0) return EMPTY;
-  return {
+  const raw: ChunkMesh = {
     positions: Float32Array.from(b.pos),
     normals: Float32Array.from(b.nrm),
     indices: Uint32Array.from(b.idx),
   };
+  const welded = weldMesh(raw, input.cellSize * 1e-3);
+  if (welded.indices.length === 0) return EMPTY;
+  return s > 1 ? addSkirts(welded, input, s * input.cellSize * 0.75) : welded;
 }
 
 /**
@@ -197,6 +205,7 @@ export function extractChunkInput(
   cx: number,
   cy: number,
   cz: number,
+  step = 1,
 ): ChunkMeshInput {
   const id = grid.chunkIdAt(cx, cy, cz);
   if (id < 0) throw new RangeError(`chunk (${cx},${cy},${cz}) out of range`);
@@ -214,5 +223,5 @@ export function extractChunkInput(
     }
   }
   const h = grid.cellSize;
-  return { samples, cells, halo, cellSize: h, origin: [min.x * h, min.y * h, min.z * h] };
+  return { samples, cells, halo, cellSize: h, origin: [min.x * h, min.y * h, min.z * h], step };
 }

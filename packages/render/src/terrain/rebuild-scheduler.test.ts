@@ -42,6 +42,8 @@ function setup(budgetMs: number, costMs: number) {
     budgetMs,
     now: clock.now,
     maxInFlight: 100,
+    initialMaxInFlight: 100,
+    initialBudgetMs: budgetMs,
   });
   const replyAll = (): void => {
     for (const r of sent.splice(0)) cb?.(handleMeshRequest(r));

@@ -31,7 +31,7 @@ export interface RebuildStats {
 /** Tracks time spent per frame and decides when to stop starting new work. */
 export class RebuildScheduler {
   /** Budget per frame in ms. */
-  readonly budgetMs: number;
+  budgetMs: number;
   private readonly now: NowFn;
   private start = 0;
   private done = 0;
@@ -53,6 +53,11 @@ export class RebuildScheduler {
     this.now = now;
   }
 
+  /** Changes the per-frame budget (takes effect from the next `canStart`). */
+  setBudget(ms: number): void {
+    this.budgetMs = ms;
+  }
+
   /** Starts a frame's accounting. */
   beginFrame(): void {
     this.start = this.now();
@@ -67,10 +72,10 @@ export class RebuildScheduler {
   }
 
   /** Records a finished unit of work of the given kind. */
-  record(kind: 'apply' | 'dispatch'): void {
+  record(kind: 'apply' | 'dispatch' | 'skip'): void {
     this.done++;
     if (kind === 'apply') this.applied++;
-    else this.dispatched++;
+    else if (kind === 'dispatch') this.dispatched++;
   }
 
   /** Ends the frame, updating stats; `backlog` is the work still queued. */

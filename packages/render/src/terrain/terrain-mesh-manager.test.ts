@@ -130,6 +130,9 @@ describe('TerrainMeshManager', () => {
 
   it('hands buffers over and respects maxInFlight with focus priority', () => {
     const g = makeGrid();
+    for (const c of [0, 8])
+      for (const d of [0, 8]) for (const e of [0, 8]) g.set(c + 6, d + 6, e + 6, -1);
+    g.takeDirtyChunks();
     const seen: ArrayBuffer[][] = [];
     const base = createInProcessTransport({ onPost: (_m, tr) => seen.push(tr) });
     const sent: number[] = [];
@@ -143,12 +146,86 @@ describe('TerrainMeshManager', () => {
         },
       },
       maxInFlight: 2,
+      initialMaxInFlight: 2,
     });
     m.setFocus(new THREE.Vector3(15, 2, 0));
     m.markAllDirty();
     m.update();
     expect(sent).toEqual([1, 3]);
     expect(seen[0]).toEqual([expect.any(ArrayBuffer)]);
+    m.dispose();
+  });
+
+  it('never dispatches trivially empty chunks and removes stale meshes', () => {
+    const g = makeGrid();
+    const { t, sent, reply } = manualTransport();
+    const m = new TerrainMeshManager({ grid: g, transport: t });
+    m.markAllDirty();
+    m.update();
+    expect(sent.map((r) => r.chunkKey)).toEqual([0]);
+    expect(m.stats.totalDispatched).toBe(1);
+    reply(0);
+    m.update();
+    expect(m.meshCount).toBe(1);
+    for (let z = 2; z < 6; z++)
+      for (let y = 2; y < 6; y++) for (let x = 2; x < 6; x++) g.set(x, y, z, 1);
+    m.update();
+    expect(sent).toHaveLength(1);
+    expect(m.meshCount).toBe(0);
+    expect(m.idle).toBe(true);
+    m.dispose();
+  });
+
+  it('uses the larger initial in-flight limit only until the first build drains', () => {
+    const g = makeGrid();
+    for (const c of [0, 8])
+      for (const d of [0, 8]) for (const e of [0, 8]) g.set(c + 6, d + 6, e + 6, -1);
+    g.takeDirtyChunks();
+    const { t, sent, reply } = manualTransport();
+    const m = new TerrainMeshManager({
+      grid: g,
+      transport: t,
+      maxInFlight: 1,
+      initialMaxInFlight: 5,
+    });
+    m.markAllDirty();
+    m.update();
+    expect(sent).toHaveLength(5);
+    for (let i = 0; i < 5; i++) reply(i);
+    m.update();
+    m.update();
+    for (let i = 5; i < 8; i++) reply(i);
+    m.update();
+    expect(m.idle).toBe(true);
+    g.markDirty(0);
+    g.markDirty(1);
+    m.update();
+    expect(sent).toHaveLength(9);
+    m.dispose();
+  });
+
+  it('meshes far chunks coarser and re-meshes when the focus approaches', () => {
+    const g = new SdfGrid(32, 16, 16, 1, 1, 16);
+    for (let c = 0; c < 2; c++)
+      for (let z = 0; z < 16; z++)
+        for (let y = 0; y < 16; y++)
+          for (let x = 0; x < 16; x++)
+            g.data[g.index(c * 16 + x, y, z)] = Math.hypot(x - 8, y - 8, z - 8) - 5.3;
+    g.takeDirtyChunks();
+    const m = new TerrainMeshManager({
+      grid: g,
+      transport: createInProcessTransport({ sync: true }),
+      lodDistance: 10,
+      budgetMs: 1e6,
+    });
+    m.setFocus(new THREE.Vector3(8, 8, 8));
+    m.markAllDirty();
+    for (let i = 0; i < 3; i++) m.update();
+    const tris = (k: number): number => (m.getMesh(k)?.geometry.index?.count ?? 0) / 3;
+    expect(tris(0)).toBeGreaterThan(tris(1) * 1.5);
+    m.setFocus(new THREE.Vector3(24, 8, 8));
+    for (let i = 0; i < 3; i++) m.update();
+    expect(tris(1)).toBeGreaterThan(tris(0) * 1.5);
     m.dispose();
   });
 

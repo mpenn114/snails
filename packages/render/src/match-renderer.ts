@@ -158,6 +158,7 @@ export class MatchRenderer {
       transport,
       material,
       budgetMs: q.chunkBudgetMs,
+      lodDistance: q.terrainLodDistance,
       shadows: q.shadows,
     });
     const replica = new TerrainReplica({ grid });

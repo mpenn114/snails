@@ -32,6 +32,8 @@ export interface TierProfile {
   maxDynamicLights: number;
   /** Main-thread terrain chunk rebuild budget per frame in ms. */
   chunkBudgetMs: number;
+  /** Terrain chunks farther than this (metres) from the camera target use the coarse LOD. */
+  terrainLodDistance: number;
   /** Multiplier on camera far plane / draw distance. */
   drawDistanceScale: number;
 }
@@ -54,6 +56,7 @@ export const QUALITY_TABLE: Readonly<Record<QualityTier, TierProfile>> = {
     particleScale: 1,
     maxDynamicLights: 8,
     chunkBudgetMs: 8,
+    terrainLodDistance: 24,
     drawDistanceScale: 1,
   },
   medium: {
@@ -69,6 +72,7 @@ export const QUALITY_TABLE: Readonly<Record<QualityTier, TierProfile>> = {
     particleScale: 0.6,
     maxDynamicLights: 4,
     chunkBudgetMs: 6,
+    terrainLodDistance: 20,
     drawDistanceScale: 0.8,
   },
   low: {
@@ -84,6 +88,7 @@ export const QUALITY_TABLE: Readonly<Record<QualityTier, TierProfile>> = {
     particleScale: 0.3,
     maxDynamicLights: 2,
     chunkBudgetMs: 4,
+    terrainLodDistance: 16,
     drawDistanceScale: 0.6,
   },
   mobile: {
@@ -99,6 +104,7 @@ export const QUALITY_TABLE: Readonly<Record<QualityTier, TierProfile>> = {
     particleScale: 0.25,
     maxDynamicLights: 0,
     chunkBudgetMs: 3,
+    terrainLodDistance: 12,
     drawDistanceScale: 0.5,
   },
 };
