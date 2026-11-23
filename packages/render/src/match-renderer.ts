@@ -12,7 +12,7 @@ import type { LabelTextureFactory } from './snail-assets.js';
 import { SnailLayer } from './snail-layer.js';
 import { snailViewsFromSnapshot } from './snail-view.js';
 import { createWorkerPool, type MeshTransport } from './terrain/mesh-transport.js';
-import { createTerrainMaterialForTier } from './terrain/terrain-material.js';
+import { createTerrainMaterialForTier, type TerrainMaterial } from './terrain/terrain-material.js';
 import { TerrainMeshManager } from './terrain/terrain-mesh-manager.js';
 import { TerrainReplica } from './terrain/terrain-replica.js';
 import type { GameView } from './view.js';
@@ -87,7 +87,7 @@ interface Built {
   explosions: ExplosionEffects;
   rig: CameraRig;
   wind: WindParticles;
-  material: THREE.Material;
+  material: TerrainMaterial;
   removers: (() => void)[];
 }
 
@@ -221,6 +221,7 @@ export class MatchRenderer {
     add(b.snails.updater);
     add(b.projectiles.updater);
     add(b.explosions.updater);
+    add((dt) => b.material.scorch.advance(dt));
     add(b.wind.updater);
     for (const e of this.extras) this.attachExtra(b, e);
   }
@@ -239,6 +240,11 @@ export class MatchRenderer {
   handleEvents(events: readonly SimEvent[]): void {
     this.built?.replica.applyEvents(events);
     this.built?.explosions.handleEvents(events);
+    const scorch = this.built?.material.scorch;
+    if (!scorch) return;
+    for (const e of events) {
+      if (e.type === 'explosion') scorch.add(e.position.x, e.position.y, e.position.z, e.radius);
+    }
   }
 
   /**
