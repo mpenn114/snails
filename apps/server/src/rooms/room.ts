@@ -45,6 +45,8 @@ export interface ActiveMatch {
   membersChanged(): void;
   /** Handles a gameplay intent from a member. */
   intent(member: Member, intent: IntentMessage): void;
+  /** Current simulation tick (latency instrumentation). */
+  currentTick?(): number;
   /** Stops timers and the simulation. */
   stop(): void;
 }
@@ -73,6 +75,8 @@ export class Room {
   onMatchStart: MatchStartHook = () => {};
   /** The running match while `phase === 'playing'`. */
   match: ActiveMatch | null = null;
+  /** Optional hook called when a match ends (latency summary). */
+  onMatchEnd?: () => void;
 
   constructor(readonly code: string) {}
 
@@ -156,6 +160,7 @@ export class Room {
   endMatch(): void {
     this.match?.stop();
     this.match = null;
+    this.onMatchEnd?.();
     this.phase = 'lobby';
     for (const m of this.members.values()) m.ready = false;
     this.broadcastLobby();

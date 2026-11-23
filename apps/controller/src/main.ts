@@ -13,6 +13,8 @@ import { mountSpectate } from './spectate/spectate-view';
 import { mountFeedback } from './feedback/mount-feedback';
 import { mountPassPhone, shouldPassPhone } from './ui/pass-phone';
 import { playerTeams } from './ui/lobby-logic';
+import { trackFacingSign } from './controls/facing-tracker';
+import { mountDebugOverlay } from './debug/debug-overlay';
 import { registerServiceWorker } from './pwa/register-sw';
 
 if (import.meta.env.PROD) void registerServiceWorker(navigator);
@@ -37,9 +39,16 @@ const joinView = mountJoinView(screen, initial, (v) => {
   client.on('error', () => joinView.update(client));
   client.on('welcome', (w) => {
     joinView.destroy();
-    mountPhoneView(client);
+    const phone = mountPhoneView(client);
+    mountDebugOverlay(client);
+    const facing = trackFacingSign(client);
     // Mounted before lobbyState arrives so the controls learn our team.
-    mountControls(overlay, client, { playerId: w.playerId, weapons });
+    mountControls(overlay, client, {
+      playerId: w.playerId,
+      weapons,
+      facingSign: facing.facingSign,
+      onAimingChange: (a) => phone.handle.setAiming(a),
+    });
     mountSpectate(overlay, client, w.playerId, () => {
       lobby = mountLobbyView(screen, w.playerId, (m) => client.send(m));
     });

@@ -146,6 +146,11 @@ export class MatchRunner implements ActiveMatch {
     if (intent.type === 'aim') this.queueAim(member, intent.angle, intent.power);
   }
 
+  /** Current simulation tick. */
+  currentTick(): number {
+    return this.session.tick;
+  }
+
   /** Stops the session and pending timers. */
   stop(): void {
     this.stopped = true;
