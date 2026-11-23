@@ -53,7 +53,7 @@ const info = fetchInfo((u) => fetch(u));
 const client = new DisplayClient(relativeWsUrl(location), params.get('room') ?? undefined);
 client.onMessage = (m) => {
   adapter.handle(m);
-  if (m.type === 'lobbyState') {
+  if (m.type === 'lobbyState' && m.phase === 'lobby') {
     void info.then((i) => {
       const model: LobbyModel = {
         roomCode: m.roomCode,

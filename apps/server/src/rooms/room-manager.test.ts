@@ -92,7 +92,12 @@ describe('RoomManager', () => {
     const tv = add('tv', 'display');
     const a = add('a');
     const b = add('b');
-    const settings = { turnTimeSeconds: 30, snailsPerTeam: 2, seed: 7 };
+    const settings = {
+      turnTimeSeconds: 30,
+      snailsPerTeam: 2,
+      seed: 7,
+      controlMode: 'perPlayer' as const,
+    };
     const last = (n: string) => inbox.get(n)?.at(-1);
     let started: unknown;
     room.onMatchStart = (s) => (started = s);
@@ -117,7 +122,7 @@ describe('RoomManager', () => {
       expect(last('a')).toMatchObject({ code: 'invalid_settings' });
     }
     expect(room.lobbyState()).toMatchObject({
-      settings: { turnTimeSeconds: 30, snailsPerTeam: 3, seed: 1 },
+      settings: { turnTimeSeconds: 30, snailsPerTeam: 3, seed: 1, controlMode: 'perPlayer' },
     });
     room.handleLobbyAction(a, { type: 'startMatch', settings });
     expect(started).toEqual(settings);
@@ -143,5 +148,31 @@ describe('RoomManager', () => {
     expect(m.getRoom(room.code)).toBeUndefined();
     expect(m.roomCount).toBe(0);
     m.dispose();
+  });
+
+  it('reports phase, and hot-seat lets one phone own several teams', () => {
+    const { room, add } = setup();
+    const a = add('a');
+    expect(room.lobbyState()).toMatchObject({ phase: 'lobby' });
+    const settings = { turnTimeSeconds: 30, snailsPerTeam: 1, seed: 7 };
+    room.handleLobbyAction(a, { type: 'toggleTeam', teamId: 'red' });
+    room.handleLobbyAction(a, { type: 'toggleTeam', teamId: 'blue' });
+    room.handleLobbyAction(a, { type: 'setReady', ready: true });
+    expect(room.lobbyState()).toMatchObject({
+      players: [{ teamId: 'red', teamIds: ['red', 'blue'] }],
+    });
+    room.handleLobbyAction(a, {
+      type: 'startMatch',
+      settings: { ...settings, controlMode: 'perPlayer' },
+    });
+    expect(room.phase).toBe('lobby');
+    room.handleLobbyAction(a, {
+      type: 'startMatch',
+      settings: { ...settings, controlMode: 'hotSeat' },
+    });
+    expect(room.phase).toBe('playing');
+    expect(room.lobbyState()).toMatchObject({ phase: 'match' });
+    room.endMatch();
+    expect(room.lobbyState()).toMatchObject({ phase: 'lobby' });
   });
 });

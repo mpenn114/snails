@@ -116,6 +116,7 @@ export class RoomManager {
       name,
       role,
       teamId: null,
+      teamIds: [],
       colour: null,
       ready: false,
       connected: true,

@@ -1,4 +1,5 @@
 import { MatchSettings } from '@snails/protocol';
+import { startBlocker } from './start-rules.js';
 import type { IntentMessage } from '../net/connection.js';
 import type { ErrorCode, LobbyPlayer, Role, ServerMessage } from '@snails/protocol';
 
@@ -8,6 +9,7 @@ export type SendFn = (message: ServerMessage) => void;
 /** A lobby message from a controller, already validated by `@snails/protocol`. */
 export type LobbyAction =
   | { type: 'setTeam'; teamId: string }
+  | { type: 'toggleTeam'; teamId: string }
   | { type: 'setColour'; colour: string }
   | { type: 'setReady'; ready: boolean }
   | { type: 'startMatch'; settings: MatchSettings };
@@ -19,7 +21,10 @@ export interface Member {
   token: string;
   name: string;
   role: Role;
+  /** Primary team (first of `teamIds`), or null. */
   teamId: string | null;
+  /** Every team this phone controls: one in `perPlayer`, possibly several in `hotSeat`. */
+  teamIds: string[];
   colour: string | null;
   ready: boolean;
   /** False while the socket is gone but the slot is held for a reconnect. */
@@ -45,7 +50,12 @@ export interface ActiveMatch {
 }
 
 /** Default match settings for a fresh lobby. */
-export const DEFAULT_SETTINGS: MatchSettings = { turnTimeSeconds: 30, snailsPerTeam: 3, seed: 1 };
+export const DEFAULT_SETTINGS: MatchSettings = {
+  turnTimeSeconds: 30,
+  snailsPerTeam: 3,
+  seed: 1,
+  controlMode: 'perPlayer',
+};
 
 type Failure = [ErrorCode, string] | undefined;
 
@@ -121,6 +131,7 @@ export class Room {
       name: m.name,
       role: m.role,
       teamId: m.teamId,
+      teamIds: [...m.teamIds],
       colour: m.colour,
       ready: m.ready,
       connected: m.connected,
@@ -129,6 +140,7 @@ export class Room {
       type: 'lobbyState',
       roomCode: this.code,
       hostId: this.hostId,
+      phase: this.phase === 'playing' ? 'match' : 'lobby',
       players,
       settings: this.settings,
     };
@@ -162,12 +174,20 @@ export class Room {
     if (this.phase !== 'lobby') return ['not_in_lobby', 'Match already started'];
     switch (action.type) {
       case 'setTeam':
+        member.teamIds = [action.teamId];
         member.teamId = action.teamId;
+        return undefined;
+      case 'toggleTeam':
+        member.teamIds = member.teamIds.includes(action.teamId)
+          ? member.teamIds.filter((t) => t !== action.teamId)
+          : [...member.teamIds, action.teamId];
+        member.teamId = member.teamIds[0] ?? null;
+        if (member.teamIds.length === 0) member.ready = false;
         return undefined;
       case 'setColour':
         return this.setColour(member, action.colour);
       case 'setReady':
-        if (action.ready && !member.teamId) return ['not_ready', 'Pick a team first'];
+        if (action.ready && member.teamIds.length === 0) return ['not_ready', 'Pick a team first'];
         member.ready = action.ready;
         return undefined;
     }
@@ -189,8 +209,8 @@ export class Room {
     const parsed = MatchSettings.safeParse(raw);
     if (!parsed.success) return ['invalid_settings', 'Invalid match settings'];
     const players = [...this.members.values()].filter((m) => m.role === 'controller');
-    if (players.some((p) => !p.ready || !p.teamId)) return ['not_ready', 'Everyone must be ready'];
-    if (new Set(players.map((p) => p.teamId)).size < 2) return ['not_ready', 'Need two teams'];
+    const blocked = startBlocker(players, parsed.data.controlMode);
+    if (blocked) return ['not_ready', blocked];
     this.settings = parsed.data;
     this.phase = 'playing';
     this.broadcastLobby();

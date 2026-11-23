@@ -108,7 +108,10 @@ describe('MatchAdapter', () => {
     t.a.handle(encodeSnapshot(snap));
     t.a.handle(encodeEventBatch(9, [{ type: 'matchEnded', status: 'won', winnerTeamId: 'b' }]));
     expect(t.huds.at(-1)!.winner).toEqual({ name: 'Blues', colour: '#00f' });
-    t.a.handle({ type: 'lobbyState' } as ServerMessage);
+    t.a.handle({ type: 'lobbyState', phase: 'match' } as ServerMessage);
+    expect(t.visible).toEqual([true]);
+    expect(t.a.active).toBe(true);
+    t.a.handle({ type: 'lobbyState', phase: 'lobby' } as ServerMessage);
     expect(t.visible).toEqual([true, false]);
     expect(t.a.active).toBe(false);
     t.a.handle(encodeSnapshot(snap));

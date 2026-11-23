@@ -1,4 +1,5 @@
 import type { LobbyPlayer, ServerMessage } from '@snails/protocol';
+import { playerTeams } from './lobby-logic';
 
 /** The `lobbyState` server message. */
 export type LobbyStateMsg = Extract<ServerMessage, { type: 'lobbyState' }>;
@@ -32,9 +33,14 @@ export function rosterHtml(players: readonly LobbyPlayer[], hostId: string | nul
       ].filter(Boolean);
       const dot = `<span style="color:${safeColour(p.colour)}">&#9679;</span>`;
       const tag = badges.length ? ` (${badges.join(', ')})` : '';
-      return `<li>${dot} ${esc(p.name)} [${esc(p.teamId ?? '-')}]${tag}</li>`;
+      return `<li>${dot} ${esc(p.name)} [${esc(playerTeams(p).join('+') || '-')}]${tag}</li>`;
     })
     .join('');
+}
+
+function isActive(v: string, active: string | readonly string[] | null): boolean {
+  const list = active === null ? [] : typeof active === 'string' ? [active] : active;
+  return list.some((a) => a.toLowerCase() === v.toLowerCase());
 }
 
 /**
@@ -46,14 +52,14 @@ export function rosterHtml(players: readonly LobbyPlayer[], hostId: string | nul
  */
 export function choiceHtml(
   items: readonly string[],
-  active: string | null,
+  active: string | readonly string[] | null,
   disabled: ReadonlySet<string>,
   kind: 'team' | 'colour',
 ): string {
   return items
     .map((v) => {
       const style = kind === 'colour' ? ` style="background:${safeColour(v)}"` : '';
-      const on = v.toLowerCase() === active?.toLowerCase() ? ' on' : '';
+      const on = isActive(v, active) ? ' on' : '';
       const off = disabled.has(v.toLowerCase()) ? ' disabled' : '';
       const label = kind === 'team' ? esc(v) : '';
       return `<button type="button" class="pick${on}" data-v="${esc(v)}"${style}${off}>${label}</button>`;

@@ -1,4 +1,4 @@
-import type { ErrorCode, LobbyPlayer, MatchSettings } from '@snails/protocol';
+import type { ControlMode, ErrorCode, LobbyPlayer, MatchSettings } from '@snails/protocol';
 
 /** Selectable team ids. */
 export const TEAMS = ['A', 'B', 'C', 'D'] as const;
@@ -32,12 +32,26 @@ export function takenColours(players: readonly LobbyPlayer[], meId: string): Set
   return out;
 }
 
-/** Why the host cannot start yet, or `undefined` when the match can start (mirrors room.ts). */
-export function startBlocker(players: readonly LobbyPlayer[]): string | undefined {
+/** Every team a player controls (falls back to the primary `teamId`). */
+export function playerTeams(p: Pick<LobbyPlayer, 'teamId' | 'teamIds'>): readonly string[] {
+  if (p.teamIds && p.teamIds.length > 0) return p.teamIds;
+  return p.teamId ? [p.teamId] : [];
+}
+
+/**
+ * Why the host cannot start yet, or `undefined` when the match can start (mirrors the server's
+ * `rooms/start-rules.ts`). In `hotSeat` one phone may cover several teams.
+ */
+export function startBlocker(
+  players: readonly LobbyPlayer[],
+  mode: ControlMode = 'perPlayer',
+): string | undefined {
   const ctl = players.filter((p) => p.role === 'controller');
-  if (ctl.some((p) => !p.teamId)) return 'Everyone must pick a team';
+  if (ctl.some((p) => playerTeams(p).length === 0)) return 'Everyone must pick a team';
+  if (mode === 'perPlayer' && ctl.some((p) => playerTeams(p).length > 1))
+    return 'Each phone can play only one team';
   if (ctl.some((p) => !p.ready)) return 'Everyone must be ready';
-  if (new Set(ctl.map((p) => p.teamId)).size < 2) return 'Need at least two teams';
+  if (new Set(ctl.flatMap((p) => playerTeams(p))).size < 2) return 'Need at least two teams';
   return undefined;
 }
 
@@ -55,7 +69,9 @@ export function canStart(
   settings: MatchSettings,
 ): boolean {
   return (
-    hostId === meId && startBlocker(players) === undefined && settingsError(settings) === undefined
+    hostId === meId &&
+    startBlocker(players, settings.controlMode) === undefined &&
+    settingsError(settings) === undefined
   );
 }
 
@@ -77,6 +93,7 @@ export function settingsError(s: MatchSettings): string | undefined {
     return `Snails per team must be ${n.min}-${n.max}`;
   if (!Number.isInteger(s.seed) || s.seed < 0 || s.seed > 0xffffffff)
     return 'Seed must be 0-4294967295';
+  if (s.controlMode !== 'perPlayer' && s.controlMode !== 'hotSeat') return 'Unknown control mode';
   return undefined;
 }
 

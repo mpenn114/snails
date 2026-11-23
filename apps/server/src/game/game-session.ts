@@ -25,6 +25,8 @@ import {
   type TeamControlState,
 } from './intent.js';
 
+import { mayCommandTurn, pickActivePlayer } from './rotation.js';
+
 export type { GameIntent, IntentResult } from './intent.js';
 
 /** One team of a session and the players controlling it. */
@@ -47,6 +49,8 @@ export interface TurnStartInfo {
   teamId: string;
   snailId: string;
   durationMs: number;
+  /** Controller commanding this turn (rotates within a team). */
+  activePlayerId?: string;
 }
 
 /** Output callbacks; all optional. */
@@ -69,6 +73,8 @@ export interface GameSessionOptions extends SessionCallbacks {
   snapshotHz?: number;
   /** Cap on sim steps per frame (default 8). */
   maxStepsPerFrame?: number;
+  /** Presence check used when rotating the commanding player (default: everyone present). */
+  isConnected?: (playerId: string) => boolean;
 }
 
 /** Shape of the protocol `matchStarted` message. */
@@ -95,7 +101,9 @@ const realClock: SessionClock = {
 export class GameSession {
   private readonly match: MatchSetup;
   private readonly terrainParams: TerrainParams;
-  private readonly playerTeam = new Map<string, string>();
+  private readonly teamPlayers = new Map<string, string[]>();
+  private readonly cursors = new Map<string, number>();
+  private activePlayer: string | undefined;
   private readonly control = new Map<string, TeamControlState>();
   private readonly clock: SessionClock;
   private readonly snapshotEvery: number;
@@ -116,7 +124,7 @@ export class GameSession {
     const defs = opts.weapons ?? baseWeapons;
     const defaultWeapon = defs[0]?.id ?? '';
     for (const t of opts.teams) {
-      for (const p of t.playerIds) this.playerTeam.set(p, t.id);
+      this.teamPlayers.set(t.id, [...t.playerIds]);
       this.control.set(t.id, { direction: 0, weaponId: defaultWeapon });
     }
     this.match = createMatch({
@@ -179,6 +187,7 @@ export class GameSession {
         teamId: turn.activeTeamId,
         snailId: turn.activeSnailId,
         durationMs: this.opts.settings.turnTimeSeconds * 1000,
+        ...(this.activePlayer ? { activePlayerId: this.activePlayer } : {}),
       },
       remainingMs:
         turn.phase === 'action' ? Math.max(0, Math.round(turn.timeRemaining * 1000)) : null,
@@ -218,10 +227,14 @@ export class GameSession {
   /** Applies a controller intent for `playerId`; returns a rejection reason when refused. */
   applyIntent(playerId: string, intent: GameIntent): IntentResult {
     const state = this.match.sim.state;
-    const teamId = this.playerTeam.get(playerId);
-    if (!teamId) return { ok: false, reason: 'unknown_player' };
+    const teamId = state.turn.activeTeamId;
+    if (![...this.teamPlayers.values()].some((ids) => ids.includes(playerId)))
+      return { ok: false, reason: 'unknown_player' };
     if (this.ended || state.match.status !== 'playing') return { ok: false, reason: 'match_over' };
-    if (teamId !== state.turn.activeTeamId) return { ok: false, reason: 'not_your_turn' };
+    const roster = teamId ? (this.teamPlayers.get(teamId) ?? []) : [];
+    const mode = this.opts.settings.controlMode;
+    if (!teamId || !mayCommandTurn(mode, roster, this.activePlayer, playerId))
+      return { ok: false, reason: 'not_your_turn' };
     if (state.turn.phase !== 'action') return { ok: false, reason: 'wrong_phase' };
     const control = this.control.get(teamId) as TeamControlState;
     if (intent.type === 'selectWeapon') return this.selectWeapon(control, intent.weaponId);
@@ -254,10 +267,18 @@ export class GameSession {
     const { turn } = this.match.sim.state;
     if (!turn.activeTeamId || !turn.activeSnailId) return;
     this.lastTimerSecond = -1;
+    const pick = pickActivePlayer(
+      this.teamPlayers.get(turn.activeTeamId) ?? [],
+      this.cursors.get(turn.activeTeamId) ?? 0,
+      this.opts.isConnected ?? (() => true),
+    );
+    this.cursors.set(turn.activeTeamId, pick.next);
+    this.activePlayer = pick.playerId;
     this.opts.onTurnStart?.({
       teamId: turn.activeTeamId,
       snailId: turn.activeSnailId,
       durationMs: this.opts.settings.turnTimeSeconds * 1000,
+      ...(pick.playerId ? { activePlayerId: pick.playerId } : {}),
     });
   }
 

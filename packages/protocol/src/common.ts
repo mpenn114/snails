@@ -26,6 +26,11 @@ export const Role = z.enum(['display', 'controller']);
 /** Client role type. */
 export type Role = z.infer<typeof Role>;
 
+/** How phones map to teams: one phone per player, or a shared phone passed between teams. */
+export const ControlMode = z.enum(['perPlayer', 'hotSeat']);
+/** Control mode type. */
+export type ControlMode = z.infer<typeof ControlMode>;
+
 /** Match settings chosen by the host. */
 export const MatchSettings = z.object({
   /** Seconds each turn lasts. */
@@ -33,6 +38,8 @@ export const MatchSettings = z.object({
   snailsPerTeam: z.number().int().min(1).max(8),
   /** Terrain and simulation seed (uint32). */
   seed: z.number().int().min(0).max(0xffffffff),
+  /** `perPlayer` (default): each phone is bound to its own team; `hotSeat`: phones may serve several teams. */
+  controlMode: ControlMode.default('perPlayer'),
 });
 /** Match settings type. */
 export type MatchSettings = z.infer<typeof MatchSettings>;

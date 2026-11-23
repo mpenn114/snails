@@ -26,7 +26,9 @@ describe('display lobby logic', () => {
   });
 
   it('summarises settings and ready counts', () => {
-    expect(settingsSummary({ turnTimeSeconds: 30, snailsPerTeam: 3, seed: 1 })).toContain('30s');
+    expect(
+      settingsSummary({ turnTimeSeconds: 30, snailsPerTeam: 3, seed: 1, controlMode: 'perPlayer' }),
+    ).toContain('30s');
     expect(readyCount([p('a', 'A', true), p('b', 'B'), p('d', null, true, 'display')])).toEqual({
       ready: 1,
       total: 2,

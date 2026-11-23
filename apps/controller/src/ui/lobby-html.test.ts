@@ -7,6 +7,7 @@ const player = (over: Partial<LobbyPlayer>): LobbyPlayer => ({
   name: '<b>Ann</b>',
   role: 'controller',
   teamId: 'A',
+  teamIds: ['A'],
   colour: '#e53935',
   ready: true,
   connected: false,

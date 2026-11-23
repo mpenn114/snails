@@ -21,6 +21,8 @@ export const LobbyPlayer = z.object({
   name: z.string(),
   role: Role,
   teamId: TeamId.nullable(),
+  /** Every team this player controls (hot-seat may list several); `teamId` is the first. */
+  teamIds: z.array(TeamId).default([]),
   colour: Colour.nullable(),
   ready: z.boolean(),
   connected: z.boolean(),
@@ -33,6 +35,8 @@ export const LobbyState = z.object({
   type: z.literal('lobbyState'),
   roomCode: z.string(),
   hostId: z.string().nullable(),
+  /** `match` while a match runs, so a mid-match roster update is not mistaken for a return to the lobby. */
+  phase: z.enum(['lobby', 'match']),
   players: z.array(LobbyPlayer),
   settings: MatchSettings,
 });
@@ -62,6 +66,8 @@ export const TurnStart = z.object({
   teamId: z.string(),
   snailId: z.string(),
   durationMs: z.number().nonnegative(),
+  /** The controller that commands this turn (rotates within a team); omitted if none. */
+  activePlayerId: z.string().optional(),
 });
 
 /** Periodic turn clock update. */

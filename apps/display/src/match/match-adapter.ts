@@ -72,7 +72,8 @@ export class MatchAdapter {
         if (this.inMatch) this.deps.aim.set(m);
         return;
       case 'lobbyState':
-        return this.backToLobby();
+        // Mid-match roster updates (disconnect/reconnect) carry phase 'match' and must not exit.
+        return m.phase === 'lobby' ? this.backToLobby() : undefined;
       default:
     }
   }
