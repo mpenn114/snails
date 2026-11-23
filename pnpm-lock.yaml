@@ -41,6 +41,9 @@ importers:
 
   apps/controller:
     dependencies:
+      '@snails/core':
+        specifier: workspace:*
+        version: link:../../packages/core
       '@snails/protocol':
         specifier: workspace:*
         version: link:../../packages/protocol

@@ -1,4 +1,4 @@
-import { createGameView } from '@snails/render';
+import { mountPhoneView } from './view/mount-phone-view';
 import { ControllerClient } from './net/client';
 import { loadSession, saveSession } from './net/session-store';
 import { buildWsUrl } from './net/url';
@@ -9,7 +9,6 @@ import { registerServiceWorker } from './pwa/register-sw';
 
 if (import.meta.env.PROD) void registerServiceWorker(navigator);
 
-const canvas = document.getElementById('view') as HTMLCanvasElement;
 const overlay = document.getElementById('overlay') as HTMLElement;
 const screen = document.getElementById('screen') as HTMLElement;
 
@@ -23,10 +22,7 @@ const initial = {
 function showLobbyPlaceholder(client: ControllerClient): void {
   screen.innerHTML =
     '<div class="join"><h1>Lobby</h1><p class="status">Joined. Waiting...</p></div>';
-  const view = createGameView(canvas, { tier: 'mobile' });
-  const resize = (): void => view.resize(window.innerWidth, window.innerHeight);
-  window.addEventListener('resize', resize);
-  resize();
+  mountPhoneView(client);
   mountTurnControls(overlay, client);
 }
 
