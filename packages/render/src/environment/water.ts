@@ -78,9 +78,9 @@ export function createWater(opts: WaterOptions): Water {
     uniforms: {
       ...THREE.UniformsUtils.clone(THREE.UniformsLib['fog']),
       uTime: { value: 0 },
-      uShallow: { value: new THREE.Color(0x3fa7c4) },
-      uDeep: { value: new THREE.Color(0x0b3a5c) },
-      uOpacity: { value: profile.waterOpacity },
+      uShallow: { value: new THREE.Color(0x2c7f9c) },
+      uDeep: { value: new THREE.Color(0x082c48) },
+      uOpacity: { value: Math.max(0.94, profile.waterOpacity) },
     },
   });
   const mesh = new THREE.Mesh(geometry, material);
