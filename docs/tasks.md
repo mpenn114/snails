@@ -141,7 +141,7 @@ the MG-03 harness to its PR.
 | MG-03 | Visual reference harness: fixed-seed scenes and cameras, screenshots on display High and phone Mobile via Playwright (`pnpm shots`), uploaded as a CI artifact | ci | MG-01, M2-15 | ✅ |
 | MG-04 | Sky and lighting: gradient sky dome, warm low sun, hemisphere fill, soft shadows per tier, distance haze tinted to the sky | render | MG-02 | ⬜ |
 | MG-05 | Stylised terrain shading: flat facets, grass cap with a soft edge, soil and rock strata exposed in cliffs and craters, scorched crater rim | render | MG-02 | ⬜ |
-| M7-01 | Procedural low-poly spiral shell geometry from seed (moved from M7) | render | MG-02 | ⬜ |
+| M7-01 | Procedural low-poly spiral shell geometry from seed (moved from M7) | render | MG-02 | ✅ |
 | M7-02 | Shell patterns and team colour system, palette-driven and colour-blind safe (moved from M7) | render | M7-01, MG-01 | ⬜ |
 | MG-06 | Snail body, head and eye stalks built in code, with the shell on the back; replaces the M2-08 placeholder (keeps health bar and name tag) | render | M7-01, MG-02 | ⬜ |
 | M7-08 | Snail body animation set: squash-and-stretch crawl, idle, aim, jump, hurt, retreat (moved from M7) | render | MG-06 | ⬜ |
