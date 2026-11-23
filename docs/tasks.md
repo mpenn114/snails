@@ -132,7 +132,8 @@ loop or broadcast snapshots and events. The controller has stub net and turn-con
 Scheduled after M3 and before M4. The style is stylised low poly with soft toon lighting: a
 miniature garden at snail scale ([ADR-0009](adr/0009-stylised-low-poly-art-direction.md)). Six tasks
 moved here from M7 and keep their `M7-` IDs. Every task attaches before and after screenshots from
-the MG-03 harness to its PR.
+the MG-03 harness to its PR. After the first round looked poor, MG-13 to MG-15 switched to free
+(CC0) art assets and better terrain shapes rather than building everything in code.
 
 | ID | Task | Area | Depends on | Status |
 |---|---|---|---|---|
@@ -154,6 +155,9 @@ the MG-03 harness to its PR.
 | MG-11 | Display HUD and lobby, and phone overlays, restyled to the palette and one type scale | display | MG-01, M3-20 | ✅ |
 | M7-15 | Quality tier budget verification on display and phone after the restyle (moved from M7) | render | M7-13, MG-05, MG-06, MG-07, MG-08, MG-09, M3-26 | ⬜ |
 | MG-12 | Real-device visual check on Android and iOS phones and a TV (readability, frame rate); results in the device-testing doc | docs | M7-15, MG-11 | ⬜ |
+| MG-13 | Terrain shapes and framing: generator makes chunky islands, plateaus and cliffs instead of thin arches; cameras frame the snails; labels decluttered | core | MG-05 | ⬜ |
+| MG-14 | Asset pipeline: `content-base` glTF assets with licence credits, cached loader, mobile variants; CC0 low-poly nature props and a snail model replace code-built ones where better (covers MG-07) | render | MG-02 | ⬜ |
+| MG-15 | Textured terrain: CC0 stylised grass, dirt and rock textures blended by slope and depth (triplanar), replacing procedural stripes; cheap mobile path | render | MG-05 | ⬜ |
 
 ## M4: Weapons and content packs
 
