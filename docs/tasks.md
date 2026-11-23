@@ -106,7 +106,7 @@ loop or broadcast snapshots and events. The controller has stub net and turn-con
 | M3-11 | Heartbeats, disconnect detection and player timeout policy | server | M3-04 | ⬜ |
 | M3-12 | Reconnect and rejoin with session token; restore turn state within 3 s | server | M3-05, M3-09, M3-11 | ⬜ |
 | M3-13 | Serve built controller bundle with caching headers and SPA fallback | server | M3-06 | ⬜ |
-| M3-14 | Controller Vite dev server proxy for `/ws` and `/api` to the server | controller | M3-04 | ⬜ |
+| M3-14 | Controller Vite dev server proxy for `/ws` and `/api` to the server | controller | M3-04 | ✅ |
 | M3-15 | Controller net client: connect, reconnect backoff, typed messages | controller | M3-01, M3-14 | 🚧 |
 | M3-16 | Controller join screen (name, room code, QR deep link) | controller | M3-15, M3-05 | ⬜ |
 | M3-17 | Controller lobby (team setup, colours, ready, host start) | controller | M3-16 | ⬜ |
@@ -119,7 +119,7 @@ loop or broadcast snapshots and events. The controller has stub net and turn-con
 | M3-24 | Aim preview mirroring to display (throttled aim deltas) | server | M3-21, M3-09 | ⬜ |
 | M3-25 | Haptics and basic audio cues with graceful degradation | controller | M3-21 | ⬜ |
 | M3-26 | Quality auto-scaling and battery saver on phone | controller | M3-19, M2-13 | ⬜ |
-| M3-27 | PWA: generate icons, finalise manifest, add service worker for offline shell | controller | M3-13 | ⬜ |
+| M3-27 | PWA: generate icons, finalise manifest, add service worker for offline shell | controller | M3-13 | ✅ |
 | M3-28 | Hot-seat and one-phone-per-player modes | controller | M3-17, M3-10 | ⬜ |
 | M3-29 | Display app consumes snapshots and events and drives the shared renderer | display | M2-02, M3-09 | ⬜ |
 | M3-30 | Latency instrumentation (command-to-effect histogram) and debug overlay | server | M3-09, M3-21 | ⬜ |
