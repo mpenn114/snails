@@ -1,6 +1,9 @@
 import { createGameView } from '@snails/render';
 import { ControllerClient } from './net/client';
 import { mountTurnControls } from './ui/turn-controls';
+import { registerServiceWorker } from './pwa/register-sw';
+
+if (import.meta.env.PROD) void registerServiceWorker(navigator);
 
 const canvas = document.getElementById('view') as HTMLCanvasElement;
 const join = document.getElementById('join') as HTMLFormElement;
