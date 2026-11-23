@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import type { FrameUpdater, RenderState } from './render-loop.js';
 import { SnailAssets, canvasLabelFactory, type LabelTextureFactory } from './snail-assets.js';
 import { declutterLabels, type LabelBox } from './label-declutter.js';
+import { hashShellSeed } from './snail/shell-geometry.js';
 import { SnailMesh } from './snail-mesh.js';
 import { snailViewsFromSnapshot, type SnailView } from './snail-view.js';
 
@@ -82,7 +83,12 @@ export class SnailLayer {
       seen.add(v.id);
       let mesh = this.meshes.get(v.id);
       if (!mesh) {
-        mesh = new SnailMesh(v.colour, this.assets, this.labelFactory);
+        mesh = new SnailMesh(
+          v.colour,
+          this.assets,
+          this.labelFactory,
+          hashShellSeed(v.teamId, v.id),
+        );
         mesh.setCastShadow(this.shadows);
         this.meshes.set(v.id, mesh);
         this.group.add(mesh.group);

@@ -1,5 +1,6 @@
 import { createToonMaterial } from './style/materials.js';
 import { PALETTE } from './style/palette.js';
+import { buildShellGeometry, shellParamsFromSeed, type ShellLod } from './snail/shell-geometry.js';
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 
@@ -59,7 +60,6 @@ function buildBody(): THREE.BufferGeometry {
 export class SnailAssets {
   /** Body, stalks and eyes merged into one draw call (vertex colours). */
   readonly body = buildBody();
-  readonly shell = new THREE.SphereGeometry(0.5, 16, 12);
   readonly ring = new THREE.RingGeometry(0.7, 0.85, 24);
   readonly grave = new THREE.BoxGeometry(0.4, 0.6, 0.15);
   /** Quad anchored at its left edge (scale.x = fraction). */
@@ -80,10 +80,26 @@ export class SnailAssets {
   readonly barBackMat = new THREE.MeshBasicMaterial({ color: PALETTE.uiInk, depthTest: false });
   readonly barFillMat = new THREE.MeshBasicMaterial({ color: PALETTE.grassTop, depthTest: false });
 
+  private readonly shells = new Map<number, THREE.BufferGeometry>();
+
+  /** @param shellLod - Shell level of detail (0 = full, 1 = cheap mobile). */
+  constructor(readonly shellLod: ShellLod = 0) {}
+
+  /** Returns the shell geometry for `seed`, built once and cached (shared by equal seeds). */
+  shellGeometry(seed: number): THREE.BufferGeometry {
+    let g = this.shells.get(seed);
+    if (!g) {
+      g = buildShellGeometry(shellParamsFromSeed(seed), this.shellLod);
+      this.shells.set(seed, g);
+    }
+    return g;
+  }
+
   /** Frees all shared GPU resources. */
   dispose(): void {
-    const geos = [this.body, this.shell, this.ring, this.grave];
+    const geos = [this.body, this.ring, this.grave, ...this.shells.values()];
     for (const g of [...geos, this.barFill, this.barBack]) g.dispose();
+    this.shells.clear();
     const mats = [this.bodyMat, this.ringMat, this.graveMat];
     for (const m of [...mats, this.barBackMat, this.barFillMat]) m.dispose();
   }
