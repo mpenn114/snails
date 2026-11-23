@@ -79,7 +79,8 @@ export function reduceSpectate(state: SpectateState, msg: ServerMessage): Specta
       const me = msg.players.find((p) => p.id === state.playerId);
       const myTeamId = me?.teamId ?? null;
       // The lobby resuming after a finished match returns everyone to the lobby.
-      if (state.phase === 'ended') return { ...initialSpectate(state.playerId), myTeamId };
+      if (state.phase === 'ended' && msg.phase === 'lobby')
+        return { ...initialSpectate(state.playerId), myTeamId };
       return { ...state, myTeamId };
     }
     case 'matchStarted':
