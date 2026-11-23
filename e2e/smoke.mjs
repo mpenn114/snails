@@ -191,7 +191,7 @@ try {
   // Aim mapping is camera-relative: in the follow view (camera behind the snail) dragging up is
   // steeper, so a short upward drag is a mid-power lob regardless of facing.
   const lastAim = () => active.sent.filter((m) => m.type === 'aim').at(-1);
-  await drag('.ctl-aim', 0, -60);
+  await drag('.ctl-aim', 0, -25); // low power: a short lob that lands on terrain, never out of bounds
   step(`aim sent: ${JSON.stringify(lastAim())}`);
   await pg.evaluate(() => document.querySelector('.ctl-fire').click());
   step('moved, aimed, fired');
