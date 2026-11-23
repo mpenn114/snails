@@ -262,7 +262,11 @@ export class MatchRenderer {
   /** Sets the quality tier; applied immediately if initialised, else on `init`. */
   setTier(tier: QualityTier): void {
     this.tier = tier;
-    this.built?.view.setTier(tier);
+    const b = this.built;
+    if (!b) return;
+    b.view.setTier(tier);
+    b.terrain.setShadows(b.view.quality.shadows);
+    b.snails.setShadows(b.view.quality.shadows);
   }
 
   /** Resizes the view; remembered until `init`. */

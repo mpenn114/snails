@@ -108,6 +108,32 @@ describe('SnailLayer', () => {
     expect(layer.get('a')?.barGroup.quaternion.equals(cam.quaternion)).toBe(true);
   });
 
+  it('declutters overlapping name tags, keeping the nearer one visible', () => {
+    const { layer } = makeLayer();
+    const cam = new THREE.PerspectiveCamera(50, 1, 0.1, 500);
+    cam.position.set(0, 2, 0);
+    cam.lookAt(0, 2, -50);
+    layer.setCamera(cam);
+    const at = (z: number) => ({ position: { x: 0, y: 0, z } });
+    layer.sync([view('far', at(-40)), view('near', at(-10))]);
+    const far = layer.get('far')!.nameTag;
+    const near = layer.get('near')!.nameTag;
+    expect(near.visible).toBe(true);
+    expect(near.position.y).toBeLessThan(far.position.y + 100);
+    expect(far.visible === false || far.position.y > near.position.y).toBe(true);
+  });
+
+  it('toggles shadow casting on existing meshes', () => {
+    const { layer } = makeLayer();
+    layer.sync([view('a')]);
+    const body = layer.get('a')!.bodyGroup.children[0]!;
+    expect(body.castShadow).toBe(false);
+    layer.setShadows(true);
+    expect(body.castShadow).toBe(true);
+    layer.setShadows(false);
+    expect(body.castShadow).toBe(false);
+  });
+
   it('disposes meshes, shared assets and textures', () => {
     const { layer, made } = makeLayer();
     layer.sync([view('a'), view('b')]);

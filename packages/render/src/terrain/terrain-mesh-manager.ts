@@ -38,10 +38,12 @@ export class TerrainMeshManager {
   private focus: THREE.Vector3 | null = null;
   private nextId = 1;
   private disposed = false;
+  private shadows: boolean;
 
   /** Creates the manager and subscribes to the transport. */
   constructor(private readonly opts: TerrainMeshManagerOptions) {
     this.group.name = 'terrain-chunks';
+    this.shadows = opts.shadows ?? false;
     this.ownsMaterial = !opts.material;
     this.material = opts.material ?? new THREE.MeshStandardMaterial({ color: 0x8a7a5a });
     this.maxInFlight = opts.maxInFlight ?? 4;
@@ -157,9 +159,15 @@ export class TerrainMeshManager {
     }
     const mesh = new THREE.Mesh(geo, this.material);
     mesh.name = `chunk-${res.chunkKey}`;
-    mesh.castShadow = mesh.receiveShadow = this.opts.shadows ?? false;
+    mesh.castShadow = mesh.receiveShadow = this.shadows;
     this.meshes.set(res.chunkKey, mesh);
     this.group.add(mesh);
+  }
+
+  /** Enables or disables shadow casting/receiving on all existing and future chunk meshes. */
+  setShadows(on: boolean): void {
+    this.shadows = on;
+    for (const mesh of this.meshes.values()) mesh.castShadow = mesh.receiveShadow = on;
   }
 
   private remove(key: number, mesh: THREE.Mesh): void {
