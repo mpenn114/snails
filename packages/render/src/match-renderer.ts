@@ -195,7 +195,7 @@ export class MatchRenderer {
       selectViews: (s: RenderState) => snailViewsFromSnapshot(s.snapshot),
       ...(this.deps.labelFactory ? { labelFactory: this.deps.labelFactory } : {}),
     });
-    const projectiles = new ProjectileLayer({ shadows: q.shadows });
+    const projectiles = new ProjectileLayer({ shadows: q.shadows, quality: q.particleScale });
     const explosions = new ExplosionEffects({
       quality: q.particleScale,
       maxLights: q.maxDynamicLights,

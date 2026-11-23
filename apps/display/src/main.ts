@@ -45,7 +45,9 @@ const onResize = (): void => renderer.resize(window.innerWidth, window.innerHeig
 window.addEventListener('resize', onResize);
 onResize();
 
-const aimHint = createAimHint();
+const aimHint = createAimHint({
+  isSolid: (p) => renderer.terrainReplica?.grid.isSolid(p) ?? false,
+});
 renderer.addLayer(aimHint.layer);
 const hud = mountHud(document.getElementById('lobby-root') as HTMLElement);
 const lobby = mountLobbyScreen(document.getElementById('lobby-root') as HTMLElement);
