@@ -68,23 +68,23 @@ is a stub client.
 
 | ID | Task | Area | Depends on | Status |
 |---|---|---|---|---|
-| M2-01 | Render scene graph, renderer init, resize, render loop with injectable state source | render | M0-08 | 🚧 |
-| M2-02 | Snapshot interpolation buffer for smooth rendering between sim snapshots | render | M2-01, M1-01 | ⬜ |
-| M2-03 | Marching cubes mesher (pure function over chunk data) | render | M1-04 | ⬜ |
-| M2-04 | Web Worker chunk meshing with transferable buffers and dirty-chunk queue | render | M2-03 | ⬜ |
-| M2-05 | Terrain materials and triplanar shading | render | M2-04 | ⬜ |
-| M2-06 | Chunk rebuild budget scheduler (stay under 8 ms per frame) | render | M2-04 | ⬜ |
-| M2-07 | Apply carve events to the local terrain copy and remesh | render | M2-04, M1-05 | ⬜ |
-| M2-08 | Placeholder snail meshes with team colours, health bars and name tags | render | M2-01 | 🚧 |
-| M2-09 | Projectile and explosion rendering (basic particles, flash) | render | M2-01, M1-13 | ⬜ |
-| M2-10 | Camera rig: follow, free, cinematic modes | render | M2-01 | ⬜ |
-| M2-11 | Water plane and basic lighting with shadows | render | M2-01 | ⬜ |
-| M2-12 | Wind particles driven by wind state | render | M2-01 | ⬜ |
-| M2-13 | Quality tier implementation (high, medium, low, mobile) applied to renderer | render | M2-01 | 🚧 |
-| M2-14 | Display app: Vite config, mount `@snails/render`, connect as `display` role | display | M2-01, M3-04 | 🚧 |
-| M2-15 | Scripted-match render harness with 16 snails and FPS/chunk-stall overlay | display | M2-06, M2-08, M2-14 | ⬜ |
-| M2-16 | Dependency check that render owns no game rules (lint rule and test) | ci | M2-01 | ⬜ |
-| M2-17 | Performance pass to hit 60 fps at 1080p on mid-range laptop | render | M2-15 | ⬜ |
+| M2-01 | Render scene graph, renderer init, resize, render loop with injectable state source | render | M0-08 | ✅ |
+| M2-02 | Snapshot interpolation buffer for smooth rendering between sim snapshots | render | M2-01, M1-01 | ✅ |
+| M2-03 | Marching cubes mesher (pure function over chunk data) | render | M1-04 | ✅ |
+| M2-04 | Web Worker chunk meshing with transferable buffers and dirty-chunk queue | render | M2-03 | ✅ |
+| M2-05 | Terrain materials and triplanar shading | render | M2-04 | ✅ |
+| M2-06 | Chunk rebuild budget scheduler (stay under 8 ms per frame) | render | M2-04 | ✅ |
+| M2-07 | Apply carve events to the local terrain copy and remesh | render | M2-04, M1-05 | ✅ |
+| M2-08 | Placeholder snail meshes with team colours, health bars and name tags | render | M2-01 | ✅ |
+| M2-09 | Projectile and explosion rendering (basic particles, flash) | render | M2-01, M1-13 | ✅ |
+| M2-10 | Camera rig: follow, free, cinematic modes | render | M2-01 | ✅ |
+| M2-11 | Water plane and basic lighting with shadows | render | M2-01 | ✅ |
+| M2-12 | Wind particles driven by wind state | render | M2-01 | ✅ |
+| M2-13 | Quality tier implementation (high, medium, low, mobile) applied to renderer | render | M2-01 | ✅ |
+| M2-14 | Display app: Vite config, mount `@snails/render`, connect as `display` role | display | M2-01, M3-04 | ✅ |
+| M2-15 | Scripted-match render harness with 16 snails and FPS/chunk-stall overlay | display | M2-06, M2-08, M2-14 | ✅ |
+| M2-16 | Dependency check that render owns no game rules (lint rule and test) | ci | M2-01 | ✅ |
+| M2-17 | Performance pass to hit 60 fps at 1080p on mid-range laptop | render | M2-15 | ✅ |
 
 ## M3: Phone controller loop over LAN, with phone rendering
 

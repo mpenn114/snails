@@ -99,6 +99,10 @@ export interface TerrainCollapsedEvent {
   removedCells: number;
   /** Clusters that dropped and landed (renderer can animate from this). */
   fallen: FallenCluster[];
+  /** Ascending grid sample indices written by the collapse (moved and removed cells). */
+  cellIndices: number[];
+  /** Final sample value per `cellIndices` entry; lets a replica reproduce the grid exactly. */
+  cellValues: number[];
 }
 
 /** Why a snail took damage. */

@@ -73,6 +73,8 @@ function collapseAfterCarve(ctx: SimContext, centre: Vec3, radius: number): void
       chunks: col.chunks,
       removedCells: col.removedCells,
       fallen: col.fallen,
+      cellIndices: col.cellIndices,
+      cellValues: col.cellValues,
     });
   }
 }

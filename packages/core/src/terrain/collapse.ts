@@ -23,6 +23,10 @@ export interface CollapseResult {
   chunks: ChunkId[];
   /** Clusters that fell and came to rest (in processing order). */
   fallen: FallenCluster[];
+  /** Ascending indices of every grid sample the collapse wrote. */
+  cellIndices: number[];
+  /** Final sample value for each entry of `cellIndices` (same order). */
+  cellValues: number[];
 }
 
 /** One cluster that dropped as a rigid body. */
@@ -39,6 +43,8 @@ export interface CollapseEvent {
   chunks: ChunkId[];
   removedCells: number;
   fallen: FallenCluster[];
+  cellIndices: number[];
+  cellValues: number[];
 }
 
 /** `'fall'` drops clusters onto their support (default); `'remove'` deletes them. */
@@ -220,25 +226,34 @@ function moveCluster(
   cluster: FloatingCluster,
   drop: number,
   into: Set<ChunkId>,
+  written: Set<number>,
 ): void {
   const moved = cluster.cells.map((i) => ({ c: coordsOf(grid, i), v: grid.data[i] as number }));
   for (const { c } of moved) {
     grid.set(c[0], c[1], c[2], grid.cellSize);
     addChunks(grid, c[0], c[1], c[2], into);
+    written.add(grid.index(c[0], c[1], c[2]));
   }
   for (const { c, v } of moved) {
     const y = c[1] - drop;
     grid.set(c[0], y, c[2], Math.min(grid.get(c[0], y, c[2]), v));
     addChunks(grid, c[0], y, c[2], into);
+    written.add(grid.index(c[0], y, c[2]));
   }
 }
 
 /** Removes a cluster by setting its cells to air (`+cellSize`). */
-function removeCluster(grid: SdfGrid, cluster: FloatingCluster, into: Set<ChunkId>): void {
+function removeCluster(
+  grid: SdfGrid,
+  cluster: FloatingCluster,
+  into: Set<ChunkId>,
+  written: Set<number>,
+): void {
   for (const i of cluster.cells) {
     const [x, y, z] = coordsOf(grid, i);
     grid.set(x, y, z, grid.cellSize);
     addChunks(grid, x, y, z, into);
+    written.add(i);
   }
 }
 
@@ -260,6 +275,7 @@ export function collapseFloating(
 ): CollapseResult {
   const touched = new Set<ChunkId>();
   const fallen: FallenCluster[] = [];
+  const written = new Set<number>();
   let removedCells = 0;
   const living = livingSnailsOf(snails);
   const ordered = [...clusters].sort((a, b) => (a.cells[0] ?? 0) - (b.cells[0] ?? 0));
@@ -267,12 +283,12 @@ export function collapseFloating(
     const drop = mode === 'fall' ? dropDistance(grid, cluster) : null;
     if (mode === 'fall') releaseSnails(grid, cluster, living);
     if (drop === null) {
-      removeCluster(grid, cluster, touched);
+      removeCluster(grid, cluster, touched, written);
       removedCells += cluster.cells.length;
       continue;
     }
     if (drop === 0) continue;
-    moveCluster(grid, cluster, drop, touched);
+    moveCluster(grid, cluster, drop, touched, written);
     const b = cluster.bounds;
     const bounds = { min: { ...b.min, y: b.min.y - drop }, max: { ...b.max, y: b.max.y - drop } };
     pushSnailsOut(grid, bounds, living);
@@ -283,7 +299,15 @@ export function collapseFloating(
       bounds,
     });
   }
-  return { removedCells, chunks: [...touched].sort((a, b) => a - b), fallen };
+  const cellIndices = [...written].sort((a, b) => a - b);
+  const cellValues = cellIndices.map((i) => grid.data[i] as number);
+  return {
+    removedCells,
+    chunks: [...touched].sort((a, b) => a - b),
+    fallen,
+    cellIndices,
+    cellValues,
+  };
 }
 
 /**
