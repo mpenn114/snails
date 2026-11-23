@@ -31,13 +31,28 @@ const fail = (m) => {
 const teamOf = (m) => m.teamId ?? m.team;
 
 /** Collects parsed websocket frames and page errors for one page. */
-function watch(page, label, errors) {
+function watch(page, label, errors, sent = []) {
   const frames = [];
   page.on('websocket', (ws) => {
+    ws.on('framesent', (f) => {
+      try {
+        const m = JSON.parse(String(f.payload));
+        if (['aim', 'fire', 'move'].includes(m.type)) {
+          console.log(`[e2e] ${label} sent ${JSON.stringify(m)}`);
+          sent.push(m);
+        }
+      } catch {
+        /* ignore */
+      }
+    });
     ws.on('framereceived', (f) => {
       try {
         const m = JSON.parse(String(f.payload));
         if (m && typeof m.type === 'string') frames.push(m);
+        if (m?.type === 'eventBatch')
+          for (const e of m.events)
+            if (['projectileFired', 'projectileExpired', 'explosion'].includes(e.type))
+              console.log(`[e2e] ${label} recv ${JSON.stringify(e).slice(0, 300)}`);
       } catch {
         /* binary or non-JSON */
       }
@@ -106,7 +121,8 @@ try {
   ]) {
     const ctx = await browser.newContext({ ...devices['Pixel 7'] });
     const page = await ctx.newPage();
-    const frames = watch(page, `phone${i + 1}`, errors);
+    const sentMsgs = [];
+    const frames = watch(page, `phone${i + 1}`, errors, sentMsgs);
     await page.goto(`${base}/?room=${code}`);
     await page.fill('#name', name);
     await page.fill('#room', code);
@@ -115,7 +131,7 @@ try {
     await page.click(`.lobby .teams button[data-v="${team}"]`);
     await page.click(`.lobby .colours button.pick:not([disabled]) >> nth=${i}`);
     await page.click('.lobby button.ready');
-    phones.push({ page, frames, name });
+    phones.push({ page, frames, name, sent: sentMsgs });
     step(`${name} joined team ${team} and readied`);
   }
 
@@ -172,7 +188,13 @@ try {
       [sel, dx, dy],
     );
   await drag('.ctl-stick', 40, 0);
-  await drag('.ctl-aim', -90, -20);
+  // The aim mapping is relative to the camera (follow view: the snail faces into the screen, so
+  // the facing sign is ambiguous) and wind can blow a steep shot off-map. Aim a low lob; if the
+  // drag landed "behind" the facing (clamped to straight up), drag the other way.
+  const lastAim = () => active.sent.filter((m) => m.type === 'aim').at(-1);
+  await drag('.ctl-aim', 90, -25);
+  if (!lastAim() || lastAim().angle > 1.2) await drag('.ctl-aim', -90, -25);
+  step(`aim sent: ${JSON.stringify(lastAim())}`);
   await pg.evaluate(() => document.querySelector('.ctl-fire').click());
   step('moved, aimed, fired');
 
