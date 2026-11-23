@@ -107,8 +107,8 @@ loop or broadcast snapshots and events. The controller has stub net and turn-con
 | M3-12 | Reconnect and rejoin with session token; restore turn state within 3 s | server | M3-05, M3-09, M3-11 | ⬜ |
 | M3-13 | Serve built controller bundle with caching headers and SPA fallback | server | M3-06 | ✅ |
 | M3-14 | Controller Vite dev server proxy for `/ws` and `/api` to the server | controller | M3-04 | ✅ |
-| M3-15 | Controller net client: connect, reconnect backoff, typed messages | controller | M3-01, M3-14 | 🚧 |
-| M3-16 | Controller join screen (name, room code, QR deep link) | controller | M3-15, M3-05 | ⬜ |
+| M3-15 | Controller net client: connect, reconnect backoff, typed messages | controller | M3-01, M3-14 | ✅ |
+| M3-16 | Controller join screen (name, room code, QR deep link) | controller | M3-15, M3-05 | ✅ |
 | M3-17 | Controller lobby (team setup, colours, ready, host start) | controller | M3-16 | ⬜ |
 | M3-18 | Lobby and match settings handling on the display and server | display | M3-17, M3-07 | ⬜ |
 | M3-19 | Phone 3D view via `@snails/render` (lazy loaded, mobile tier) | controller | M2-13, M3-15, M2-04 | ⬜ |
