@@ -192,6 +192,7 @@ export class MatchRenderer {
 
     const snails = new SnailLayer({
       camera: view.camera,
+      tier: view.tier,
       shadows: q.shadows,
       selectViews: (s: RenderState) => snailViewsFromSnapshot(s.snapshot),
       ...(this.deps.labelFactory ? { labelFactory: this.deps.labelFactory } : {}),

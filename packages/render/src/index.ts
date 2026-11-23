@@ -39,3 +39,6 @@ export * from './effects/aim-hint.js';
 export * from './style/index.js';
 export * from './style/index.js';
 export * from './snail/shell-geometry.js';
+export * from './snail/body-geometry.js';
+export * from './snail/shell-pattern.js';
+export * from './snail/shell-material.js';

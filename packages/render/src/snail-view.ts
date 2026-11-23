@@ -6,6 +6,8 @@ import type { GameSnapshot } from '@snails/core';
 export interface SnailView {
   id: string;
   teamId: string;
+  /** Team slot (index in the snapshot's team list); selects the shell pattern. */
+  teamIndex: number;
   /** Team colour as a hex number (0xRRGGBB). */
   colour: number;
   position: { x: number; y: number; z: number };
@@ -48,6 +50,7 @@ export function snailViewsFromSnapshot(snapshot: GameSnapshot): SnailView[] {
       views.push({
         id: s.id,
         teamId: team.id,
+        teamIndex: index,
         colour,
         position: { x: s.position.x, y: s.position.y, z: s.position.z },
         facing: s.facing,

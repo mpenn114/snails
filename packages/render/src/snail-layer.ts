@@ -3,6 +3,7 @@ import type { FrameUpdater, RenderState } from './render-loop.js';
 import { SnailAssets, canvasLabelFactory, type LabelTextureFactory } from './snail-assets.js';
 import { declutterLabels, type LabelBox } from './label-declutter.js';
 import { hashShellSeed } from './snail/shell-geometry.js';
+import type { QualityTier } from './quality.js';
 import { SnailMesh } from './snail-mesh.js';
 import { snailViewsFromSnapshot, type SnailView } from './snail-view.js';
 
@@ -26,6 +27,8 @@ export interface SnailLayerOptions {
   camera?: THREE.Camera;
   /** Maps render state to snail views (default: raw snapshot, no interpolation). */
   selectViews?: (state: RenderState) => SnailView[];
+  /** Quality tier: picks the snail level of detail and toon variant (default high). */
+  tier?: QualityTier;
   /** Snail bodies cast shadows (default false). */
   shadows?: boolean;
 }
@@ -37,7 +40,7 @@ export class SnailLayer {
   /** Loop-compatible updater: syncs from the render state each frame. */
   readonly updater: FrameUpdater;
   private readonly meshes = new Map<string, SnailMesh>();
-  private readonly assets = new SnailAssets();
+  private readonly assets: SnailAssets;
   private readonly labelFactory: LabelTextureFactory;
   private camera: THREE.Camera | null;
 
@@ -45,6 +48,7 @@ export class SnailLayer {
   private shadows: boolean;
 
   constructor(opts: SnailLayerOptions = {}) {
+    this.assets = new SnailAssets(opts.tier ? { tier: opts.tier } : {});
     this.labelFactory = opts.labelFactory ?? canvasLabelFactory;
     this.camera = opts.camera ?? null;
     this.shadows = opts.shadows ?? false;
@@ -88,6 +92,7 @@ export class SnailLayer {
           this.assets,
           this.labelFactory,
           hashShellSeed(v.teamId, v.id),
+          v.teamIndex,
         );
         mesh.setCastShadow(this.shadows);
         this.meshes.set(v.id, mesh);

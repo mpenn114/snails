@@ -11,6 +11,7 @@ import { paletteColour, resolveTeamColour, type SnailView } from './snail-view.j
 const view = (id: string, over: Partial<SnailView> = {}): SnailView => ({
   id,
   teamId: 't0',
+  teamIndex: 0,
   colour: 0xff0000,
   position: { x: 1, y: 2, z: 3 },
   facing: 0,
@@ -139,7 +140,7 @@ describe('SnailLayer', () => {
   it('toggles shadow casting on existing meshes', () => {
     const { layer } = makeLayer();
     layer.sync([view('a')]);
-    const body = layer.get('a')!.bodyGroup.children[0]!;
+    const body = layer.get('a')!.rig.body;
     expect(body.castShadow).toBe(false);
     layer.setShadows(true);
     expect(body.castShadow).toBe(true);
@@ -196,6 +197,6 @@ describe('label scaling', () => {
     mesh.traverse((o) => {
       if (o instanceof THREE.Mesh || o instanceof THREE.Sprite) cast.push(o.castShadow);
     });
-    expect(cast.filter(Boolean)).toHaveLength(on ? 2 : 0);
+    expect(cast.filter(Boolean)).toHaveLength(on ? 6 : 0);
   });
 });
