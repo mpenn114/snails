@@ -36,6 +36,14 @@ describe('bindPageLifecycle', () => {
     expect(client.resume).toHaveBeenCalledTimes(2);
   });
 
+  it('resumes immediately when the network comes back', () => {
+    const client = { resume: vi.fn(), close: vi.fn() };
+    const win = target();
+    bindPageLifecycle(client, win, target());
+    win.fire('online');
+    expect(client.resume).toHaveBeenCalledTimes(1);
+  });
+
   it('closes only on a real unload, and disposes', () => {
     const client = { resume: vi.fn(), close: vi.fn() };
     const win = target();

@@ -4,9 +4,10 @@ import { encodeEventBatch } from '@snails/protocol';
 import { deriveView, initialSpectate, reduceSpectate, turnsUntilMine } from './spectate-model';
 import type { SpectateState } from './spectate-model';
 
-const lobby = (teamId: string | null): ServerMessage =>
+const lobby = (teamId: string | null, phase: 'lobby' | 'match' = 'lobby'): ServerMessage =>
   ({
     type: 'lobbyState',
+    phase,
     roomCode: 'ABCD',
     hostId: 'p1',
     players: [
@@ -107,6 +108,14 @@ describe('spectate model', () => {
     s = reduceSpectate(s, lobby('red'));
     expect(s.phase).toBe('lobby');
     expect(deriveView(s).kind).toBe('hidden');
+  });
+
+  it('keeps the end screen on mid-match roster updates until the lobby resumes', () => {
+    let s = run(lobby('red'), started, events({ type: 'matchEnded', status: 'draw' }));
+    s = reduceSpectate(s, lobby('red', 'match'));
+    expect(s.phase).toBe('ended');
+    s = reduceSpectate(s, lobby('red'));
+    expect(s.phase).toBe('lobby');
   });
 
   it('reports other winners and draws', () => {

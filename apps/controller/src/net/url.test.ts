@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { backoffDelay, buildWsUrl } from './url';
-import { clearSession, loadSession, saveSession } from './session-store';
+import { canAutoResume, clearSession, loadSession, saveSession } from './session-store';
 import type { StorageLike } from './session-store';
 
 function memStorage(): StorageLike & { data: Map<string, string> } {
@@ -43,5 +43,25 @@ describe('session store', () => {
     expect(st.data.size).toBe(0);
     expect(loadSession(undefined)).toBeUndefined();
     saveSession(undefined, { name: 'A', roomCode: 'ABCD' });
+  });
+
+  it('keeps the token across a token-less save for the same room only', () => {
+    const st = memStorage();
+    saveSession(st, { name: 'A', roomCode: 'ABCD', sessionToken: 't' });
+    saveSession(st, { name: 'A', roomCode: 'ABCD' });
+    expect(loadSession(st)?.sessionToken).toBe('t');
+    saveSession(st, { name: 'A', roomCode: 'WXYZ' });
+    expect(loadSession(st)?.sessionToken).toBeUndefined();
+  });
+
+  it('auto-resumes only with a token and an unchanged name and room', () => {
+    const s = { name: 'Ann', roomCode: 'ABCD', sessionToken: 't' };
+    expect(canAutoResume(s, { name: 'Ann', room: 'ABCD' })).toBe(true);
+    expect(canAutoResume(s, { name: 'Bob', room: 'ABCD' })).toBe(false);
+    expect(canAutoResume(s, { name: 'Ann', room: 'WXYZ' })).toBe(false);
+    expect(canAutoResume({ name: 'Ann', roomCode: 'ABCD' }, { name: 'Ann', room: 'ABCD' })).toBe(
+      false,
+    );
+    expect(canAutoResume(undefined, { name: 'Ann', room: 'ABCD' })).toBe(false);
   });
 });
