@@ -8,6 +8,8 @@ import { mountJoinView } from './ui/join-view';
 import { parseRoomParam } from './ui/join-logic';
 import { mountControls } from './controls/mount-controls';
 import { weapons } from '@snails/content-base';
+import { mountSpectate } from './spectate/spectate-view';
+import { mountFeedback } from './feedback/mount-feedback';
 import { registerServiceWorker } from './pwa/register-sw';
 
 if (import.meta.env.PROD) void registerServiceWorker(navigator);
@@ -35,7 +37,11 @@ const joinView = mountJoinView(screen, initial, (v) => {
     mountPhoneView(client);
     // Mounted before lobbyState arrives so the controls learn our team.
     mountControls(overlay, client, { playerId: w.playerId, weapons });
-    const lobby = mountLobbyView(screen, w.playerId, (m) => client.send(m));
+    mountSpectate(overlay, client, w.playerId, () => {
+      lobby = mountLobbyView(screen, w.playerId, (m) => client.send(m));
+    });
+    mountFeedback(overlay, client, w.playerId);
+    let lobby = mountLobbyView(screen, w.playerId, (m) => client.send(m));
     client.on('lobbyState', (s) => lobby.update(s));
     client.on('error', (e) => lobby.showError(lobbyErrorText(e.code, e.message)));
     client.on('matchStarted', () => {
