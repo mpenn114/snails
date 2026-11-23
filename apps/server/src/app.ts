@@ -65,14 +65,7 @@ export async function buildServer(opts: ServerOptions = {}): Promise<FastifyInst
           return;
         const check = checkHello(raw);
         if (!check.ok) {
-          return send({
-            type: 'error',
-            code: check.error,
-            message: check.error === 'bad_message' ? 'Invalid message' : 'Protocol mismatch',
-            ...(check.error === 'protocol_mismatch'
-              ? { expected: check.expected, got: check.got }
-              : {}),
-          });
+          return send(helloError(check));
         }
         const msg = check.hello;
         const code = msg.roomCode ?? (msg.role === 'display' ? rooms.createRoom().code : undefined);
@@ -95,4 +88,14 @@ export async function buildServer(opts: ServerOptions = {}): Promise<FastifyInst
     socket.on('close', () => joined && rooms.leave(joined.code, joined.id));
   });
   return app;
+}
+
+/** Builds the error reply for a rejected hello. */
+function helloError(check: Exclude<ReturnType<typeof checkHello>, { ok: true }>): ServerMessage {
+  return {
+    type: 'error',
+    code: check.error,
+    message: check.error === 'bad_message' ? 'Invalid message' : 'Protocol mismatch',
+    ...(check.error === 'protocol_mismatch' ? { expected: check.expected, got: check.got } : {}),
+  };
 }
