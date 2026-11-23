@@ -51,6 +51,23 @@ Exit:
 - Phone holds 30 fps or better for 20 minutes on a mid-range Android device without thermal throttling
   below that.
 
+## MG: Art direction and graphics
+
+Goal: replace the placeholder look with one consistent style: stylised low poly with soft toon
+lighting, a miniature garden at snail scale ([ADR-0009](adr/0009-stylised-low-poly-art-direction.md)).
+- Art direction note with a fixed palette, lighting values and shape language; a screenshot harness
+  for reviewing every change.
+- Colour pipeline (tone mapping, sRGB) and one shared stylised material factory.
+- Gradient sky and warm lighting, flat-shaded terrain with strata and crater detail, garden props.
+- Code-built snails: spiral shell, body and eye stalks, team patterns, animation and expressions.
+- Stylised water, explosions, projectiles and aim arc; HUD and overlays matched to the palette.
+- Post-processing on the display High tier only.
+Exit:
+- No placeholder primitives remain; reference screenshots on display High and phone Mobile are
+  reviewed against the art direction note.
+- Display still holds 60 fps at 1080p with 16 snails on High; phone holds 30 fps on Mobile.
+- Props and effects are cosmetic only; the renderer still owns no game rules.
+
 ## M4: Weapons and content packs
 
 Goal: the full base weapon set as data.
@@ -77,12 +94,12 @@ Goal: CPU teams ([ai.md](ai.md)).
 Exit: a human can play against any difficulty; Mastermind beats Rookie in at least 90% of
 matches; AI turn computation p99 under 250 ms on target hardware.
 
-## M7: Shell visual system and polish
+## M7: Shell upgrades, damage and polish
 
-Goal: the game looks like Snails ([snail-visuals.md](snail-visuals.md)).
-- Procedural shells, patterns, decals, material tiers, attachments.
+Goal: shells show tech and health ([snail-visuals.md](snail-visuals.md)), building on the MG style.
+- Material tiers driven by research, decals and attachments.
 - Crack shader, fragments, critical state, death shells.
-- Animations, expression system, VFX, audio pass, King of the Hill mode.
+- Per-weapon VFX, audio pass, accessibility, King of the Hill mode.
 Exit: all four shell tiers and 4 crack states are readable at TV distance and on phone;
 quality tiers hold their budgets on both display and phone ([graphics.md](graphics.md)).
 
@@ -117,5 +134,5 @@ are attached to a GitHub Release.
 | Firewalls and LAN discovery, client isolation on guest Wi-Fi | Joining must "just work" | Clear QR/URL guidance, host IP fallback, document hotspot mode |
 | iOS browser support for the controller | Mixed households | Test Safari; keep to broadly supported APIs (haptics degrade gracefully) |
 | Scope creep in the content system | Extensibility can swallow time | Keep the effect vocabulary small; the base game dogfoods it |
-| Art pipeline for original assets | Solo or small team capacity | Procedural shells, stylised low poly, CC0 or original-only assets |
+| Art pipeline for original assets | Solo or small team capacity | Stylised low poly built in code (ADR-0009), procedural shells, CC0 or original-only assets |
 | Hot-seat privacy | Secret research on a shared phone | Hold-to-reveal covers; playtest |

@@ -38,6 +38,7 @@ See [adr/README.md](adr/README.md) for the index and template.
 | [0006](adr/0006-data-driven-extensibility.md) | Data-driven content and event bus |
 | [0007](adr/0007-electron-desktop-distribution.md) | Electron desktop distribution |
 | [0008](adr/0008-phone-renders-game-view.md) | Phones render the 3D game view (`@snails/render`) |
+| [0009](adr/0009-stylised-low-poly-art-direction.md) | Stylised low-poly art direction |
 
 ## Development
 

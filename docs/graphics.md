@@ -2,6 +2,10 @@
 
 The rendering code lives in `packages/render` (`@snails/render`), shared by the big-screen display (`apps/display`) and the phone controller (`apps/controller`) ([ADR-0008](adr/0008-phone-renders-game-view.md)). It is a pure view of simulation state ([ADR-0002](adr/0002-threejs-rendering.md)). Target: 60 fps at 1920x1080 on a mid-range GPU (GTX 1660 / RX 580 / Apple M1 class) in the "High" tier.
 
+Art style: stylised low poly with soft toon lighting, built in code from a fixed palette
+([ADR-0009](adr/0009-stylised-low-poly-art-direction.md)). Where this doc mentions texture sets or
+HDRIs, they are optional extras; the palette-driven procedural look comes first.
+
 ## Pipeline overview
 
 ```mermaid
