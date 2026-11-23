@@ -123,7 +123,7 @@ loop or broadcast snapshots and events. The controller has stub net and turn-con
 | M3-28 | Hot-seat and one-phone-per-player modes | controller | M3-17, M3-10 | ✅ |
 | M3-29 | Display app consumes snapshots and events and drives the shared renderer | display | M2-02, M3-09 | ✅ |
 | M3-30 | Latency instrumentation (command-to-effect histogram) and debug overlay | server | M3-09, M3-21 | ✅ |
-| M3-31 | Playwright smoke test: server, display and two simulated controllers play a turn | ci | M3-29, M3-21 | ⬜ |
+| M3-31 | Playwright smoke test: server, display and two simulated controllers play a turn | ci | M3-29, M3-21 | ✅ |
 | M3-32 | Real-device test on 2 to 4 Android phones (latency, 20 min thermal run, reconnect) | docs | M3-26, M3-30, M3-12 | ✅ |
 | M3-33 | Safari/iOS compatibility pass for the controller | controller | M3-21 | ✅ |
 
