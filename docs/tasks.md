@@ -186,6 +186,11 @@ the MG-03 harness to its PR. After the first round looked poor, MG-13 to MG-15 s
 | M4-18 | Sudden death (rising water or health drain) | core | M4-17 | ⬜ |
 | M4-19 | Per-weapon simulation tests and a playable demo map with every weapon | content | M4-05, M4-06, M4-07, M4-08, M4-09, M4-10, M4-11, M4-12 | ⬜ |
 | M4-20 | Extensibility walkthrough verification: add a weapon with only a data file | docs | M4-19 | ⬜ |
+| M4-21 | Two-axis snail movement: turn/steer as well as crawl, deterministic and replayable (playtest #9) | core | M1-09, M3-21 | ⬜ |
+| M4-22 | Aim view rework: snail's point-of-view camera when aiming, discoverable, with a reticle and initial-trajectory target (playtest #9) | controller | M3-20, M3-21 | ⬜ |
+| M4-23 | Snail-to-snail collision and separation in core (crawl, jump, knockback tests) (playtest #9) | core | M1-08 | ⬜ |
+| M4-24 | Hot-seat team colours: keep each team's colour readable when one phone controls several teams (playtest #9) | controller | M3-28 | ⬜ |
+| M4-25 | Desktop viewing UX pass: an obvious way to open and watch the display view on the host PC (playtest #9) | display | M3-29 | ⬜ |
 
 ## M5: Research and tech tree
 
@@ -241,7 +246,7 @@ moved to MG (IDs kept). M7 keeps what depends on weapons (M4) and research (M5).
 | M7-06 | Fragment spawning on damage and critical state visuals | render | M7-05 | ⬜ |
 | M7-07 | Death shells and death sequence | render | M7-06, M1-20 | ⬜ |
 | M7-10 | Per-weapon VFX pass (builds on the MG-09 explosion style) | render | MG-09, M4-19 | ⬜ |
-| M7-11 | Audio system, SFX and music pass on display and phone | display | M3-25, M7-10 | ⬜ |
+| M7-11 | Audio system, SFX and music pass on display and phone (include snail reactions and impact cues, playtest #9) | display | M3-25, M7-10 | ⬜ |
 | M7-12 | King of the Hill mode | core | M4-17 | ⬜ |
 | M7-14 | Readability review at TV distance and on phone for tiers and cracks | docs | M7-05, M7-03 | ⬜ |
 | M7-16 | Accessibility pass (colour-blind team markers, text size, reduced motion) | controller | M3-23 | ⬜ |

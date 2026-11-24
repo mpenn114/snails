@@ -74,6 +74,8 @@ Goal: the full base weapon set as data.
 - `@snails/content-base` with the 10+ weapons from [game-design.md](game-design.md); crates and pickups.
 - Zod-validated definitions, content pack manifest, wind and terrain materials.
 - Match settings and the Classic mode complete; sudden death.
+- Playtest fixes from issue #9: two-axis movement, a proper aim view, snail collisions, hot-seat
+  team colours and desktop viewing.
 Exit: every weapon has simulation tests and appears in a playable demo map; a new weapon can be
 added with only a data file (walkthrough in [extensibility.md](extensibility.md)).
 
