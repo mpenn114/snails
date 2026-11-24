@@ -1,6 +1,7 @@
 import { destroyCratesInRadius } from '../crate/crate-destroy.js';
 import { applyDamage, findSnail, livingSnails } from '../entities/snail.js';
 import { distance, normalize, sub } from '../math/vec3.js';
+import { applyProjectileReflect } from '../research/tech-defence.js';
 import {
   applyMeleeThorns,
   consumeCitadelShield,
@@ -179,6 +180,9 @@ export function damageAround(
       });
     }
     if (result.dealt > 0 && source.excludeOwner) applyMeleeThorns(ctx, snail, source.ownerSnailId);
+    else if (result.dealt > 0 && !friendly) {
+      applyProjectileReflect(ctx, snail, source.ownerSnailId, result.dealt);
+    }
     if (result.killed) {
       killed.push(snail.id);
       ctx.emit({ type: 'snailDied', snailId: snail.id, teamId: snail.teamId, cause: 'explosion' });

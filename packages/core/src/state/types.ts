@@ -51,6 +51,8 @@ export interface Snail {
   jumpsUsed?: number;
   /** Turn number in which the Citadel shield already absorbed a hit for this snail. */
   shieldTurn?: number;
+  /** Position at its team's previous turn start (`healPerStillTurn` bookkeeping). */
+  stillRef?: Vec3;
 }
 
 /** A snail being reeled from `from` to `to` over `seconds`; `elapsed` advances each step. */

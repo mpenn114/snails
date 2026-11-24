@@ -12,7 +12,8 @@ export type WeaponAvailability = 'ok' | 'NO_AMMO' | 'WEAPON_LOCKED';
 
 /**
  * Builds a team's starting inventory: every finite weapon gets its `ammo` (or the `loadout`
- * override for that id); infinite weapons are not counted.
+ * override for that id); infinite weapons are not counted. Tech-gated weapons start with no
+ * stock (the tech's `unlockWeapon` grants it) unless a `loadout` entry says otherwise.
  */
 export function initialInventory(
   weapons: readonly StockedWeapon[],
@@ -22,7 +23,7 @@ export function initialInventory(
   for (const w of weapons) {
     const override = loadout[w.id];
     if (override !== undefined) inv[w.id] = Math.max(0, Math.floor(override));
-    else if (w.ammo !== 'infinite') inv[w.id] = w.ammo;
+    else if (w.ammo !== 'infinite' && w.requiresTech === undefined) inv[w.id] = w.ammo;
   }
   return inv;
 }

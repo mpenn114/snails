@@ -184,8 +184,16 @@ stored: `teamStat` (adds, then muls), `weaponModifier`, `teamHasFlag`, `teamHasA
 `registerTechHook(hookId, fn)`; the hook sees every sim event for teams that completed the tech.
 Stat bases: damage stats are multipliers (base 1), `crawlSpeed` m/s, `maxClimbDegrees` degrees
 (base 50), `jumpDistance` a multiplier on jump speed, `moveBudgetSeconds` the retreat window,
-`calciumPerTurn` Calcium, `stockBonus` extra uses on every finite grant. Not wired yet:
-`jumpCharges`, `retreatDamageTaken`, `projectileReflect`, `healPerStillTurn` (content jobs).
+`calciumPerTurn` Calcium, `stockBonus` extra uses on every finite grant. 
+`retreatDamageTaken` (multiplier, applies to the active team's snails during the `retreat` phase),
+`projectileReflect` (fraction of a projectile hit returned to the firer, not for melee) and
+`healPerStillTurn` (HP at team turn start for a snail that has not moved since its previous team
+turn start; `Snail.stillRef`) are wired in `research/tech-defence.ts`. Not wired yet: `jumpCharges`.
+
+The Weaponry and Shell techs are one file each in `packages/content-base/src/techs/`. Research
+turns: tier 1 = 1, tier 2 = 2, tier 3 = 2 to 3 (Beetle Calls and Crystal Lattice 3, Regrowth 2).
+Weapons with a `requiresTech` start with no stock; the tech's `unlockWeapon` / `grantStock`
+grants it (Beetle Calls uses `grantStock` with `everyRounds: 4`, whose first grant is immediate).
 
 ## Testing the balance
 
