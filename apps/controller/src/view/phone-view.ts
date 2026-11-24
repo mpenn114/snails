@@ -6,7 +6,7 @@ import {
   qualitySettings,
 } from '@snails/render';
 import type { GameView, QualityTier, ViewEnvironment } from '@snails/render';
-import { decodeEventBatch, decodeSnapshot } from '@snails/protocol';
+import { decodeEventBatch, decodeSnapshot, decodeTerrainHistory } from '@snails/protocol';
 import type { ServerMessage } from '@snails/protocol';
 import type { SimEvent } from '@snails/core';
 import { weapons } from '@snails/content-base';
@@ -159,6 +159,8 @@ export class PhoneView {
       r.pushSnapshot(snap);
       this.overlay?.onSnapshot(snap);
       this.aimView?.onSnapshot(snap);
+    } else if (msg.type === 'terrainHistory') {
+      r.applyTerrainHistory(decodeTerrainHistory(msg) as unknown as SimEvent[]);
     } else if (msg.type === 'eventBatch') {
       const events = decodeEventBatch(msg) as unknown as SimEvent[];
       r.handleEvents(events);

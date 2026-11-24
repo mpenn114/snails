@@ -133,4 +133,25 @@ describe('TerrainReplica', () => {
     new TerrainReplica({ grid: local }).applyEvents(events);
     expect(Array.from(local.data)).toEqual(Array.from(core.data));
   });
+
+  it('applyHistory equals applying the live events, without debris callbacks', () => {
+    const core = makeGrid();
+    const live = copy(core);
+    const late = copy(core);
+    const events: SimEvent[] = [];
+    for (const x of [6, 9, 12, 15]) {
+      const centre = { x, y: 9, z: 12 };
+      const res = carveSphere(core, centre, 2.5);
+      events.push({ type: 'terrainCarved', centre, radius: 2.5, chunks: res.chunks });
+    }
+    const lateFallen: FallenCluster[][] = [];
+    const a = new TerrainReplica({ grid: live });
+    const b = new TerrainReplica({ grid: late, onFallen: (c) => lateFallen.push([...c]) });
+    a.applyEvents(events);
+    b.applyHistory(events);
+    expect(Array.from(late.data)).toEqual(Array.from(live.data));
+    expect(Array.from(late.data)).toEqual(Array.from(core.data));
+    expect(b.applied).toBe(4);
+    expect(lateFallen).toEqual([]);
+  });
 });
