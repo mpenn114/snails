@@ -61,9 +61,16 @@ export const SelectWeapon = z.object({
 });
 export const Fire = z.object({ type: z.literal('fire'), seq: IntentSeq });
 export const EndTurn = z.object({ type: z.literal('endTurn'), seq: IntentSeq });
+/** Queues a tech for the sender's team (any phase; the sim validates tiers and Calcium). */
 export const QueueResearch = z.object({
   type: z.literal('queueResearch'),
-  technologyId: z.string(),
+  techId: z.string().min(1),
+  seq: IntentSeq,
+});
+/** Removes a queued tech or cancels the active one (refunds 50% of what was paid). */
+export const CancelResearch = z.object({
+  type: z.literal('cancelResearch'),
+  techId: z.string().min(1),
   seq: IntentSeq,
 });
 
@@ -88,6 +95,7 @@ export const ClientMessage = z.discriminatedUnion('type', [
   Fire,
   EndTurn,
   QueueResearch,
+  CancelResearch,
   Ping,
 ]);
 

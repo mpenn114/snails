@@ -28,7 +28,16 @@ export interface ClientContext {
 export type IntentMessage = Extract<
   ClientMessage,
   {
-    type: 'move' | 'jump' | 'aim' | 'steer' | 'selectWeapon' | 'fire' | 'endTurn' | 'queueResearch';
+    type:
+      | 'move'
+      | 'jump'
+      | 'aim'
+      | 'steer'
+      | 'selectWeapon'
+      | 'fire'
+      | 'endTurn'
+      | 'queueResearch'
+      | 'cancelResearch';
   }
 >;
 /** Heartbeat message. */
@@ -76,6 +85,7 @@ const INTENT_TYPES = new Set([
   'fire',
   'endTurn',
   'queueResearch',
+  'cancelResearch',
 ]);
 
 const serialised = new WeakMap<object, string>();

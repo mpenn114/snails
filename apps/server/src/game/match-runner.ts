@@ -8,6 +8,7 @@ import type { IntentMessage } from '../net/connection.js';
 import type { ActiveMatch, Member, Room } from '../rooms/room.js';
 import { GameSession, type SessionClock, type SessionTeam } from './game-session.js';
 import { clamp, HALF_PI } from './intent.js';
+import { filterMessage } from './privacy.js';
 
 /** Options for {@link MatchRunner} (all optional; tests inject fakes). */
 export interface MatchRunnerOptions {
@@ -76,6 +77,11 @@ export function buildTeams(members: readonly Member[]): SessionTeam[] {
     }
   }
   return [...teams.values()];
+}
+
+/** Teams whose private research a member may see: controllers see their own, displays none. */
+function viewerTeams(member: Member): readonly string[] {
+  return member.role === 'controller' ? member.teamIds : [];
 }
 
 /**
@@ -148,7 +154,7 @@ export class MatchRunner implements ActiveMatch {
         tick: this.session.tick,
         events: [...this.terrainLog],
       });
-    member.send(this.session.snapshot());
+    member.send(filterMessage(this.session.snapshot(), viewerTeams(member)));
     member.send(this.session.inventoryMessage());
     const turn = this.session.currentTurn();
     if (!turn) return;
@@ -194,7 +200,7 @@ export class MatchRunner implements ActiveMatch {
 
   /** Authorises and applies an intent; relays aim previews. */
   intent(member: Member, intent: IntentMessage): void {
-    if (this.stopped || intent.type === 'queueResearch') return;
+    if (this.stopped) return;
     const res = this.session.applyIntent(member.id, intent);
     if (!res.ok) {
       if (res.reason === 'not_your_turn') this.rejectNotYourTurn(member);
@@ -245,7 +251,7 @@ export class MatchRunner implements ActiveMatch {
   }
 
   private broadcast(msg: ServerMessage): void {
-    for (const m of this.room.members.values()) m.send(msg);
+    for (const m of this.room.members.values()) m.send(filterMessage(msg, viewerTeams(m)));
   }
 
   private rejectNotYourTurn(member: Member): void {
