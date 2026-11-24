@@ -8,6 +8,7 @@ import type { SimContext } from '../sim/types.js';
 import { applyStatus } from '../status/status-system.js';
 import type { AreaInstance, Snail, Vec3 } from '../state/types.js';
 import { skipTurnIfActiveDead } from '../turn/turn-hooks.js';
+import { applyWater, findLowPoint, isWaterArea } from './water-area.js';
 
 /** Overrides when creating an area. */
 export interface AreaSpawn {
@@ -17,13 +18,22 @@ export interface AreaSpawn {
   sourceSnailId: string;
 }
 
-/** Creates an area from its definition (id `a<counter>`) and emits `areaCreated`. */
+/**
+ * Creates an area from its definition (id `a<counter>`) and emits `areaCreated`. A water area
+ * (`waterDepth`) settles to the lowest terrain within its radius first.
+ */
 export function spawnArea(ctx: SimContext, def: AreaDefinition, spawn: AreaSpawn): AreaInstance {
+  const radius = spawn.radius ?? def.defaultRadius;
+  let position = { ...spawn.position };
+  if (def.waterDepth !== undefined) {
+    const low = findLowPoint(ctx.terrain, position, radius);
+    position = { x: low.x, y: low.y + def.waterDepth, z: low.z };
+  }
   const area: AreaInstance = {
     id: `a${ctx.state.nextAreaId}`,
     kind: def.id,
-    position: { ...spawn.position },
-    radius: spawn.radius ?? def.defaultRadius,
+    position,
+    radius,
     turnsLeft: spawn.turns ?? def.defaultTurns,
     sourceSnailId: spawn.sourceSnailId,
   };
@@ -108,11 +118,13 @@ export function processAreasAtTurnStart(ctx: SimContext, r: AreaRegistries): voi
     const def = r.areas.get(area.kind);
     if (def) {
       drift(ctx, area, def);
-      for (const snail of livingSnails(ctx.state)) {
-        if (distance(area.position, snail.position) <= area.radius + SNAIL_RADIUS) {
-          affect(ctx, area, def, snail, r.statuses);
+      if (isWaterArea(def)) applyWater(ctx, area, def);
+      else
+        for (const snail of livingSnails(ctx.state)) {
+          if (distance(area.position, snail.position) <= area.radius + SNAIL_RADIUS) {
+            affect(ctx, area, def, snail, r.statuses);
+          }
         }
-      }
     }
     area.turnsLeft -= 1;
     if (area.turnsLeft <= 0 || !def) {

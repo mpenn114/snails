@@ -43,6 +43,9 @@ const otherRefs: Check = (r, fail) => {
     if (id !== undefined && !r.statuses.has(id)) {
       fail(`area "${a.id}": applyStatus refers to unknown status "${id}"`);
     }
+    for (const s of a.extinguishes ?? []) {
+      if (!r.statuses.has(s)) fail(`area "${a.id}": extinguishes unknown status "${s}"`);
+    }
   }
   for (const s of r.statuses.list()) {
     for (const c of s.cures ?? []) {

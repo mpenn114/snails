@@ -106,7 +106,7 @@ export function createMatch(options: MatchOptions): MatchSetup {
   const turnConfig = { ...DEFAULT_TURN_CONFIG, ...options.turn };
   const windConfig = options.wind ?? DEFAULT_WIND_CONFIG;
   sim.registerCommandHandler('move', moveCommandHandler);
-  sim.addSystem('movement', movementSystem());
+  sim.addSystem('movement', movementSystem(undefined, content.statuses));
   registerCombat(sim, content);
   registerHazards(sim);
   sim.addSystem('turns', turnSystem(turnConfig, windConfig));

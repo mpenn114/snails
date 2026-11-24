@@ -1,4 +1,5 @@
 import { spawnArea } from '../../area/area-system.js';
+import { applyWater, isWaterArea } from '../../area/water-area.js';
 import { findSnail, livingSnails } from '../../entities/snail.js';
 import { distance, normalize } from '../../math/vec3.js';
 import { carveAt, damageAround } from '../../physics/explosion.js';
@@ -62,12 +63,13 @@ const spawn: EffectHandler<EffectOf<'spawn'>> = (ctx, e, at, source) => {
   if (what.what === 'area') {
     const def = ctx.content.areas.get(what.areaId);
     if (!def) return;
-    spawnArea(ctx, def, {
+    const area = spawnArea(ctx, def, {
       position: at,
       ...(what.radius !== undefined ? { radius: what.radius } : {}),
       ...(what.turns !== undefined ? { turns: what.turns } : {}),
       sourceSnailId: source.ownerSnailId,
     });
+    if (isWaterArea(def)) applyWater(ctx, area, def);
     return;
   }
   const weapon = ctx.content.weapons.get(what.weaponId);
