@@ -126,6 +126,10 @@ importers:
       '@snails/core':
         specifier: workspace:*
         version: link:../core
+    devDependencies:
+      '@snails/content-base':
+        specifier: workspace:*
+        version: link:../content-base
 
   packages/content-base:
     dependencies:
