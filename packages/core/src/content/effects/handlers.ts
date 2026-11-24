@@ -117,6 +117,8 @@ const reel: EffectHandler<EffectOf<'reel'>> = (ctx, e, at, source) => {
   const snail = findSnail(ctx.state, source.ownerSnailId);
   if (!snail || !snail.alive || snail.rope) return;
   attachRope(ctx, snail, at, e.seconds, e.standoff);
+};
+
 const schedule: EffectHandler<EffectOf<'schedule'>> = (ctx, e, at, source) => {
   scheduleEffect(ctx, e, at, source);
 };
