@@ -65,11 +65,15 @@ try {
   step('demo match started with every weapon stocked and unlocked');
 
   for (const weapon of WEAPON_TURNS) {
-    const active = await until(`a phone gets my-turn controls for ${weapon}`, async () => {
-      for (const p of phones) if (await p.page.locator('.ctl.mine').count()) return p;
-      return null;
-    });
-    await until('display saw the turn start', () => has(dFrames, 'turnStart'));
+    const active = await until(
+      `a phone gets my-turn controls for ${weapon}`,
+      async () => {
+        for (const p of phones) if (await p.page.locator('.ctl.mine').count()) return p;
+        return null;
+      },
+      60000,
+    ); // software GL can take a while to repaint the controls on CI
+    await until('display saw the turn start', () => has(dFrames, 'turnStart'), 60000);
     const mark = dFrames.length;
     const turnTeam = teamOf(dFrames.filter((m) => m.type === 'turnStart').at(-1));
     await active.page.evaluate((name) => {
