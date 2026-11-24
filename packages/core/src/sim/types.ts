@@ -1,5 +1,6 @@
 import type { RngStreams } from '../rng-streams.js';
 import type { SdfGrid } from '../terrain/sdf-grid.js';
+import type { TechRegistry } from '../research/tech-rules.js';
 import type { GameState } from '../state/types.js';
 import type { SimEvent } from './events.js';
 import { FIXED_DT } from '../physics/ballistics.js';
@@ -87,6 +88,8 @@ export interface SimContext {
   readonly terrain: SdfGrid;
   readonly rng: SimRng;
   readonly dt: number;
+  /** Technology registry (absent in sims built without one); tech stats read it. */
+  readonly techs?: TechRegistry;
   /** Queues an event to be returned from the current step. */
   emit(event: SimEvent): void;
 }

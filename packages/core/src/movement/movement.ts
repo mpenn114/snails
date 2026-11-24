@@ -1,3 +1,4 @@
+import { teamStat } from '../research/tech-effects.js';
 import { facingVector, findSnail, livingSnails, setFacing } from '../entities/snail.js';
 import { add, dot, normalize, scale, sub } from '../math/vec3.js';
 import type { CommandHandler, SimContext, SystemFn } from '../sim/types.js';
@@ -44,13 +45,28 @@ export function movementSystem(
       if (snail.grounded === false) stepAirborne(ctx, snail, config);
       else {
         const slow = statuses ? statusMoveSpeedMultiplier(snail, statuses) : 1;
-        stepGrounded(
-          ctx,
-          snail,
-          slow === 1 ? config : { ...config, crawlSpeed: config.crawlSpeed * slow },
-        );
+        const cfg = techMovementConfig(ctx, snail, config);
+        stepGrounded(ctx, snail, slow === 1 ? cfg : { ...cfg, crawlSpeed: cfg.crawlSpeed * slow });
       }
     }
+  };
+}
+
+/**
+ * Movement parameters after the snail's team techs: `crawlSpeed` (m/s), `maxClimbDegrees`
+ * (base 50) and `jumpDistance` (multiplier on the horizontal jump speed, base 1).
+ * TODO(jumpCharges): no multi-jump concept exists yet; the double-jump tech adds it.
+ */
+function techMovementConfig(ctx: SimContext, snail: Snail, config: MovementConfig): MovementConfig {
+  if (!ctx.techs) return config;
+  const { state, techs } = ctx;
+  const id = snail.teamId;
+  const base = (config.maxSlope * 180) / Math.PI;
+  return {
+    ...config,
+    crawlSpeed: teamStat(state, techs, id, 'crawlSpeed', config.crawlSpeed),
+    maxSlope: (teamStat(state, techs, id, 'maxClimbDegrees', base) * Math.PI) / 180,
+    jumpForwardSpeed: teamStat(state, techs, id, 'jumpDistance', 1) * config.jumpForwardSpeed,
   };
 }
 

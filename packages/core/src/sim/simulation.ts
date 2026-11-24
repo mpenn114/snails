@@ -160,6 +160,7 @@ export class Simulation {
       terrain: this.terrain,
       rng: this.rng,
       dt,
+      ...(this.technologies ? { techs: this.technologies } : {}),
       emit: (e) => {
         events.push(e);
         tallyDamage(this.state, e);

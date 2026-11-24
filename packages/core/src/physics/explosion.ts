@@ -1,6 +1,7 @@
 import { destroyCratesInRadius } from '../crate/crate-destroy.js';
 import { applyDamage, findSnail, livingSnails } from '../entities/snail.js';
 import { distance, normalize, sub } from '../math/vec3.js';
+import { applyMeleeThorns, sourceHitMultiplier } from '../research/tech-effects.js';
 import type { SimContext } from '../sim/types.js';
 import type { Snail, Vec3 } from '../state/types.js';
 import { type CarveResult, carveSphere, toCarveEvent } from '../terrain/carve.js';
@@ -104,6 +105,21 @@ function friendlyFireOff(ctx: SimContext, snail: Snail, source: ExplosionSource)
   return owner !== undefined && owner.teamId === snail.teamId;
 }
 
+/** Pushes `snail` away from `centre` at `speed`; a push off the ground makes it airborne. */
+function knockSnail(snail: Snail, centre: Vec3, speed: number): void {
+  const dir = knockbackDir(centre, snail.position);
+  snail.velocity = {
+    x: snail.velocity.x + dir.x * speed,
+    y: snail.velocity.y + dir.y * speed,
+    z: snail.velocity.z + dir.z * speed,
+  };
+  if (speed > 0 && snail.grounded !== false) {
+    // Knocked off the ground: the movement system now flies and lands the snail.
+    snail.grounded = false;
+    snail.airborneFromY = snail.position.y;
+  }
+}
+
 /** Damage part of an explosion. */
 export type DamageSpec = Pick<ExplosionSpec, 'radius' | 'maxDamage' | 'knockback' | 'falloff'>;
 
@@ -135,19 +151,11 @@ export function damageAround(
     const f = computeFalloff(dist, spec.radius, spec.falloff);
     if (f <= 0) continue;
     const friendly = friendlyFireOff(ctx, snail, source);
-    const result = applyDamage(snail, friendly ? 0 : Math.round(spec.maxDamage * f));
-    const dir = knockbackDir(centre, snail.position);
-    const speed = spec.knockback * f;
-    snail.velocity = {
-      x: snail.velocity.x + dir.x * speed,
-      y: snail.velocity.y + dir.y * speed,
-      z: snail.velocity.z + dir.z * speed,
-    };
-    if (speed > 0 && snail.grounded !== false) {
-      // Knocked off the ground: the movement system now flies and lands the snail.
-      snail.grounded = false;
-      snail.airborneFromY = snail.position.y;
-    }
+    const mul = friendly
+      ? 0
+      : sourceHitMultiplier(ctx, snail, source.ownerSnailId, source.excludeOwner === true);
+    const result = applyDamage(snail, Math.round(spec.maxDamage * f * mul));
+    knockSnail(snail, centre, spec.knockback * f);
     if (result.dealt > 0) {
       ctx.emit({
         type: 'snailDamaged',
@@ -164,6 +172,7 @@ export function damageAround(
         killed: result.killed,
       });
     }
+    if (result.dealt > 0 && source.excludeOwner) applyMeleeThorns(ctx, snail, source.ownerSnailId);
     if (result.killed) {
       killed.push(snail.id);
       ctx.emit({ type: 'snailDied', snailId: snail.id, teamId: snail.teamId, cause: 'explosion' });

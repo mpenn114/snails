@@ -176,6 +176,17 @@ Effects are a small closed vocabulary (`modifyStat`, `unlockWeapon`, `grantStock
 `setFlag`, `hook`) so the AI ([ai.md](ai.md)) and UI can reason about them. The `hook` effect
 subscribes to the event bus for rare custom behaviour.
 
+Effects are applied in `packages/core/src/research/`. Continuous effects are derived, never
+stored: `teamStat` (adds, then muls), `weaponModifier`, `teamHasFlag`, `teamHasAbility` read
+`team.researched` and the registry (`ctx.techs`). One-time effects (`heal`, `maxHealth`,
+`unlockWeapon`, `grantStock`) run from the `researchCompleted` event observer; repeating
+`grantStock` counts the team's own turns in `research.stockTimers`. `hook` effects look up
+`registerTechHook(hookId, fn)`; the hook sees every sim event for teams that completed the tech.
+Stat bases: damage stats are multipliers (base 1), `crawlSpeed` m/s, `maxClimbDegrees` degrees
+(base 50), `jumpDistance` a multiplier on jump speed, `moveBudgetSeconds` the retreat window,
+`calciumPerTurn` Calcium, `stockBonus` extra uses on every finite grant. Not wired yet:
+`jumpCharges`, `retreatDamageTaken`, `projectileReflect`, `healPerStillTurn` (content jobs).
+
 ## Testing the balance
 
 Headless AI-vs-AI matches (see [ai.md](ai.md)) log win rate per tech and per branch. Targets:

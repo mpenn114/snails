@@ -1,6 +1,7 @@
 import type { MatchContent } from '../content/match-content.js';
 import type { CrateDefinition } from '../content/types.js';
 import { applyDamage, heal } from '../entities/snail.js';
+import { stockGrantAmount } from '../research/tech-completion.js';
 import { addCalcium } from '../research/calcium.js';
 import type { SimContext } from '../sim/types.js';
 import { applyStatus } from '../status/status-system.js';
@@ -18,10 +19,11 @@ interface Outcome {
 }
 
 /** Adds weapon stock to a team's inventory (the M4-15 hook point for ammo). */
-export function grantWeapons(team: Team, weapons: Grant): void {
+export function grantWeapons(team: Team, weapons: Grant, bonus = 0): void {
   if (weapons.length === 0) return;
   const inv = (team.inventory ??= {});
-  for (const w of weapons) inv[w.weaponId] = (inv[w.weaponId] ?? 0) + w.count;
+  for (const w of weapons)
+    inv[w.weaponId] = (inv[w.weaponId] ?? 0) + (w.count > 0 ? w.count + bonus : 0);
 }
 
 /**
@@ -83,7 +85,7 @@ export function collectCrate(
     });
   }
   const team = ctx.state.teams.find((t) => t.id === snail.teamId);
-  if (team) grantWeapons(team, out.weapons);
+  if (team) grantWeapons(team, out.weapons, stockGrantAmount(ctx, team.id, 1) - 1);
   if (def.contents.calcium) addCalcium(ctx, snail.teamId, def.contents.calcium, 'crate');
   const status = out.statusId ? content.statuses.get(out.statusId) : undefined;
   if (status) {

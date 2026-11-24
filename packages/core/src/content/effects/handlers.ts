@@ -5,6 +5,7 @@ import { distance, normalize } from '../../math/vec3.js';
 import { attachRope } from '../../rope/rope-system.js';
 import { carveAt, damageAround } from '../../physics/explosion.js';
 import { SNAIL_RADIUS, spawnProjectile } from '../../physics/projectile-system.js';
+import { weaponModifier } from '../../research/tech-effects.js';
 import { scheduleEffect } from '../../scheduled/scheduled-system.js';
 import { applyStatus } from '../../status/status-system.js';
 import type { Vec3 } from '../../state/types.js';
@@ -27,13 +28,25 @@ export type EffectHandler<E extends Effect = Effect> = (
   source: EffectSource,
 ) => void;
 
+/** Weapon stat after the owner's team `modifyWeapon` techs (rounded damage, radius as is). */
+function techWeaponStat(
+  ctx: EffectContext,
+  source: EffectSource,
+  stat: 'damage' | 'radius',
+  base: number,
+): number {
+  const teamId = findSnail(ctx.state, source.ownerSnailId)?.teamId;
+  if (!teamId) return base;
+  return weaponModifier(ctx.state, ctx.techs, teamId, source.weaponId, stat, base);
+}
+
 const damage: EffectHandler<EffectOf<'damage'>> = (ctx, e, at, source) => {
   damageAround(
     ctx,
     at,
     {
-      radius: e.radius,
-      maxDamage: e.maxDamage,
+      radius: techWeaponStat(ctx, source, 'radius', e.radius),
+      maxDamage: techWeaponStat(ctx, source, 'damage', e.maxDamage),
       knockback: e.knockback ?? 0,
       falloff: e.falloff ?? 'linear',
     },
@@ -42,8 +55,8 @@ const damage: EffectHandler<EffectOf<'damage'>> = (ctx, e, at, source) => {
   );
 };
 
-const carve: EffectHandler<EffectOf<'carve'>> = (ctx, e, at) => {
-  carveAt(ctx, at, e.radius, e.collapse, e.power);
+const carve: EffectHandler<EffectOf<'carve'>> = (ctx, e, at, source) => {
+  carveAt(ctx, at, techWeaponStat(ctx, source, 'radius', e.radius), e.collapse, e.power);
 };
 
 const status: EffectHandler<EffectOf<'status'>> = (ctx, e, at, source) => {

@@ -1,3 +1,4 @@
+import { teamStat } from '../research/tech-effects.js';
 import { applyDamage, kill, livingSnails } from '../entities/snail.js';
 import type { Simulation } from '../sim/simulation.js';
 import type { SimContext, SystemFn } from '../sim/types.js';
@@ -74,7 +75,9 @@ function applyPendingLanding(ctx: SimContext, snail: Snail, cfg: HazardConfig): 
   if (!landing) return;
   delete snail.pendingLanding;
   if (landing.fallDistance < cfg.minFallDistance) return;
-  const amount = computeFallDamage(landing.fallDistance, cfg);
+  const base = computeFallDamage(landing.fallDistance, cfg);
+  const mul = teamStat(ctx.state, ctx.techs, snail.teamId, 'fallDamageTaken', 1);
+  const amount = Math.round(base * mul);
   if (amount <= 0) return;
   const result = applyDamage(snail, amount);
   if (result.dealt > 0) {
