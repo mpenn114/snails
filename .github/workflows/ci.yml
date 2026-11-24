@@ -47,6 +47,7 @@ jobs:
         env:
           NODE_PATH: ${{ runner.temp }}/pw/node_modules
           SHOTS_DIR: ${{ runner.temp }}/shots
+          SHOTS_SMALL: '1'
       - uses: actions/upload-artifact@v4
         if: always()
         with:

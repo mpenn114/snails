@@ -11,6 +11,13 @@ import { chromium, devices, fail, startServer, step, until, watch } from './lib.
  */
 const SHOT_TIMEOUT = 180000;
 
+/**
+ * Display viewport. `SHOTS_SMALL=1` (set in CI) renders at 960x540: a 1080p High-tier frame takes
+ * minutes on GPU-less runners, a quarter of the pixels keeps the job practical.
+ */
+const DISPLAY_VIEWPORT =
+  process.env.SHOTS_SMALL === '1' ? { width: 960, height: 540 } : { width: 1920, height: 1080 };
+
 const out = resolve(process.env.SHOTS_DIR ?? join(process.cwd(), 'shots-out'));
 const cmpIdx = process.argv.indexOf('--compare');
 const compareDir = cmpIdx > 0 ? resolve(process.argv[cmpIdx + 1] ?? '') : null;
@@ -34,7 +41,7 @@ const captions = [];
 
 async function displayShots(browser, base, errors) {
   const ctx = await browser.newContext({
-    viewport: { width: 1920, height: 1080 },
+    viewport: DISPLAY_VIEWPORT,
     deviceScaleFactor: 1,
     reducedMotion: 'reduce',
   });
