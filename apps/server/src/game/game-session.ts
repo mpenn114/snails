@@ -135,7 +135,7 @@ export class GameSession {
     const defaultWeapon = (plain ?? ungated[0] ?? defs[0])?.id ?? '';
     for (const t of opts.teams) {
       this.teamPlayers.set(t.id, [...t.playerIds]);
-      this.control.set(t.id, { direction: 0, weaponId: defaultWeapon });
+      this.control.set(t.id, { direction: 0, turn: 0, weaponId: defaultWeapon });
     }
     this.match = createMatch({
       seed: opts.settings.seed,

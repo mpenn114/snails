@@ -35,6 +35,8 @@ export const IntentSeq = z.number().int().nonnegative().optional();
 export const Move = z.object({
   type: z.literal('move'),
   direction: z.enum(['left', 'right', 'stop']),
+  /** Steering input -1..1 (positive = counter-clockwise from above); omitted = no turning. */
+  turn: z.number().min(-1).max(1).optional(),
   seq: IntentSeq,
 });
 export const Jump = z.object({ type: z.literal('jump'), seq: IntentSeq });

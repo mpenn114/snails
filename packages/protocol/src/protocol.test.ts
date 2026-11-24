@@ -31,6 +31,7 @@ describe('client messages', () => {
       { type: 'setReady', ready: true },
       { type: 'startMatch', settings },
       { type: 'move', direction: 'stop' },
+      { type: 'move', direction: 'right', turn: -0.5 },
       { type: 'jump' },
       { type: 'aim', angle: 0.5, power: 0.5 },
       { type: 'steer', input: -0.5 },

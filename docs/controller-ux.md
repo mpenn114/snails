@@ -112,8 +112,11 @@ Controls:
 - **Movement:** virtual joystick (left thumb) controls crawl; dead zone and left/right-handed
   swap in settings. Joystick direction is relative to the camera: the stick vector is projected onto
   the active snail's on-screen facing (forward = stick toward where the snail faces, so stick-up in
-  the follow view, stick-right/left in a side view); the perpendicular part is ignored because the
-  sim has no turn intent.
+  the follow view, stick-right/left in a side view). The perpendicular component steers: it is sent
+  as `move.turn` (-1..1, 0.1 steps; stick-up turns a right-facing snail counter-clockwise, in the
+  follow view stick-left does) and the snail turns at a limited rate while crawling or standing, so
+  a diagonal stick crawls and turns at once. While a guided Radula Missile is in flight the stick
+  steers the missile instead (no move).
 - **Jump:** button (right thumb); tap for hop, swipe up for backflip.
 - **Aim by drag:** touch and drag anywhere on the scene (outside buttons) from the snail: direction
   sets yaw/pitch (in a side view the drag direction is the shot direction; behind the snail drag up =

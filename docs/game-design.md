@@ -33,6 +33,14 @@ Snails are slow and committed.
 
 - **Crawl:** 1.2 m/s on flat ground (a snail is about 0.5 m long; a map is roughly 60 to 100 m wide).
   Crawl leaves a visible **slime trail** that fades over about 20 s.
+- **Turning (two axes):** the move intent has a crawl axis (forward/back along the facing) and a turn
+  axis (-1..1, `turnRate` 2.5 rad/s at full input, grounded only, also standing still). Turning is
+  its own input on `move`, not part of `aim` (aim's optional `facing` stays for the shot only). The
+  sim only integrates the standing input each fixed step, so it is deterministic and replayable.
+- **Snail collision:** snails are 0.5 m-radius spheres that cannot overlap. Crawling into another
+  snail is blocked (sliding along or backing away is fine); a jump landing on, knockback into, or a
+  spawn overlapping another snail is resolved by a deterministic horizontal separation after
+  movement (half each, pairs in team/snail order, ties broken by id).
 - **Slime trail:** Cosmetic and mechanical. Allies move 25% faster along fresh trail; enemies are
   unaffected. Trails are one of the tools for pathing and for the AI to read recent movement.
 - **Climbing:** Snails can climb slopes up to 70 degrees (other critters give up at 45). Above 70

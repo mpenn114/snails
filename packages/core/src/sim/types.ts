@@ -14,6 +14,8 @@ export interface MoveCommand {
   type: 'move';
   snailId: string;
   direction: -1 | 0 | 1;
+  /** Standing turn input -1..1 (see `MoveIntent.turn`); omitted means no turning. */
+  turn?: number;
   jump?: boolean;
 }
 

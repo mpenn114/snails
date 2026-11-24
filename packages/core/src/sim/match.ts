@@ -10,6 +10,7 @@ import type {
 import type { CrateRules } from '../crate/crate-rules.js';
 import { registerCrates } from '../crate/crate-system.js';
 import { moveCommandHandler, movementSystem } from '../movement/movement.js';
+import { snailSeparationSystem } from '../movement/snail-collision.js';
 import { facingToward } from '../entities/snail.js';
 import { RngStreams } from '../rng-streams.js';
 import { registerHazards } from '../rules/hazards.js';
@@ -118,6 +119,7 @@ export function createMatch(options: MatchOptions): MatchSetup {
   const windConfig = options.wind ?? DEFAULT_WIND_CONFIG;
   sim.registerCommandHandler('move', moveCommandHandler);
   sim.addSystem('movement', movementSystem(undefined, content.statuses));
+  sim.addSystem('snailSeparation', snailSeparationSystem());
   registerCombat(sim, content);
   registerHazards(sim);
   sim.addSystem('turns', turnSystem(turnConfig, windConfig));

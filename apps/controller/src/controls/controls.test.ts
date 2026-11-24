@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { dragToAim, screenFacing, stickToWireMove } from './aim-mapping';
+import { dragToAim, screenFacing, stickToMove, stickToTurn, stickToWireMove } from './aim-mapping';
 import type { ScreenFacing } from './aim-mapping';
 import { clampKnob, onChange } from './joystick';
 import { findMyTeam, isMyTurn } from './my-turn';
@@ -176,7 +176,7 @@ describe('camera-relative mapping', () => {
     expect(f.x).toBeCloseTo(x);
     expect(f.y).toBeCloseTo(y);
   });
-  it('behind view: stick up is forward, down is back, sideways is ignored', () => {
+  it('behind view: stick up is forward, down is back, sideways does not crawl', () => {
     const up = screenFacing(Math.PI / 2, Math.PI / 2);
     expect(stickToWireMove(0, -40, up, 18)).toBe('right');
     expect(stickToWireMove(0, 40, up, 18)).toBe('left');
@@ -198,5 +198,31 @@ describe('camera-relative mapping', () => {
     expect(up).toBeCloseTo(Math.PI / 4);
     expect(down).toBeCloseTo(-Math.PI / 4);
     expect(dragToAim(60, 0, b, 100)?.angle).toBeCloseTo(0);
+  });
+});
+
+describe('two-axis stick (crawl and turn)', () => {
+  it('side view facing right: stick-up turns counter-clockwise, stick-down clockwise', () => {
+    expect(stickToTurn(0, -60, R, 60, 18)).toBe(1);
+    expect(stickToTurn(0, 60, R, 60, 18)).toBe(-1);
+    expect(stickToTurn(0, -10, R, 60, 18)).toBe(0);
+    expect(stickToTurn(40, 0, R, 60, 18)).toBe(0);
+  });
+  it('side view facing left mirrors the turn sign', () => {
+    expect(stickToTurn(0, -60, L, 60, 18)).toBe(-1);
+    expect(stickToTurn(0, 60, L, 60, 18)).toBe(1);
+  });
+  it('behind view: stick-left turns counter-clockwise', () => {
+    const up = screenFacing(Math.PI / 2, Math.PI / 2);
+    expect(stickToTurn(-60, 0, up, 60, 18)).toBe(1);
+    expect(stickToTurn(60, 0, up, 60, 18)).toBe(-1);
+  });
+  it('turn scales between deadzone and radius and is quantised to 0.1', () => {
+    expect(stickToTurn(0, -39, R, 60, 18)).toBeCloseTo(0.5, 5);
+  });
+  it('a diagonal stick crawls and turns at once', () => {
+    expect(stickToMove(60, -60, R, 60, 18)).toEqual({ direction: 'right', turn: 1 });
+    expect(stickToMove(-60, 60, R, 60, 18)).toEqual({ direction: 'left', turn: -1 });
+    expect(stickToMove(0, 0, R, 60, 18)).toEqual({ direction: 'stop', turn: 0 });
   });
 });

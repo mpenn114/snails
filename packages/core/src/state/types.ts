@@ -142,6 +142,11 @@ export interface Aim {
 export interface MoveIntent {
   /** Walk along (+1) or against (-1) the facing direction; 0 stands still. */
   direction: -1 | 0 | 1;
+  /**
+   * Standing turn input in -1..1 (absent = 0). Positive increases `Snail.facing` (counter-clockwise
+   * seen from above), scaled by `MovementConfig.turnRate`; applies while grounded, also standing still.
+   */
+  turn?: number;
   /** A jump is pending and will be consumed by the movement system. */
   jumpRequested: boolean;
 }

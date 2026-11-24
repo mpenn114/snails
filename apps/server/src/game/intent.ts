@@ -13,6 +13,8 @@ export type IntentResult = { ok: true } | { ok: false; reason: string };
 /** Per-team mutable controller state kept between intents. */
 export interface TeamControlState {
   direction: -1 | 0 | 1;
+  /** Standing turn input -1..1 from the last move intent. */
+  turn: number;
   weaponId: string;
 }
 
@@ -37,9 +39,16 @@ export function intentToCommand(
   switch (intent.type) {
     case 'move':
       control.direction = intent.direction === 'left' ? -1 : intent.direction === 'right' ? 1 : 0;
-      return { type: 'move', snailId: snail.id, direction: control.direction };
+      control.turn = clamp(intent.turn ?? 0, -1, 1);
+      return { type: 'move', snailId: snail.id, direction: control.direction, turn: control.turn };
     case 'jump':
-      return { type: 'move', snailId: snail.id, direction: control.direction, jump: true };
+      return {
+        type: 'move',
+        snailId: snail.id,
+        direction: control.direction,
+        turn: control.turn,
+        jump: true,
+      };
     case 'aim':
       return {
         type: 'aim',

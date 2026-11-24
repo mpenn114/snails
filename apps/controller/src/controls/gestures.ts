@@ -1,5 +1,5 @@
 import type { ControllerClient } from '../net/client';
-import { DEFAULT_SCREEN_FACING, dragToAim, stickToWireMove } from './aim-mapping';
+import { DEFAULT_SCREEN_FACING, dragToAim, stickToMove } from './aim-mapping';
 import type { ScreenFacing } from './aim-mapping';
 import { clampKnob, onChange } from './joystick';
 import type { MoveDirection } from './joystick';
@@ -75,6 +75,23 @@ function trackPointer(
   };
 }
 
+function steerThrottle(client: ControllerClient): ReturnType<typeof createThrottle<number>> {
+  return createThrottle<number>((input) => client.send({ type: 'steer', input }), AIM_INTERVAL_MS, {
+    now: () => performance.now(),
+    setTimeout: (fn, ms) => setTimeout(fn, ms),
+    clearTimeout: (h) => clearTimeout(h as ReturnType<typeof setTimeout>),
+  });
+}
+
+/** Sends `move` (with `turn` when non-zero) only when the `direction|turn` key changes. */
+function moveSender(client: ControllerClient): (key: string) => void {
+  return onChange<string>((key) => {
+    const [d, t] = key.split('|') as [MoveDirection, string];
+    const turnField = Number(t) === 0 ? {} : { turn: Number(t) };
+    client.send({ type: 'move', direction: d, ...turnField });
+  }, 'stop|0');
+}
+
 /**
  * Wires the joystick element to `move` intents (sent only on change). While `steering()` is true
  * (a guided missile of mine is in flight) its horizontal deflection becomes throttled `steer`
@@ -88,22 +105,16 @@ export function bindJoystick(
   steering: () => boolean = () => false,
 ): Gestures {
   let dir: MoveDirection = 'stop';
+  let turn = 0;
   let steered = false;
-  const steer = createThrottle<number>(
-    (input) => client.send({ type: 'steer', input }),
-    AIM_INTERVAL_MS,
-    {
-      now: () => performance.now(),
-      setTimeout: (fn, ms) => setTimeout(fn, ms),
-      clearTimeout: (h) => clearTimeout(h as ReturnType<typeof setTimeout>),
-    },
-  );
+  const steer = steerThrottle(client);
   const stopSteer = (): void => {
     steer.cancel();
     if (steered) client.send({ type: 'steer', input: 0 });
     steered = false;
   };
-  const send = onChange<MoveDirection>((d) => client.send({ type: 'move', direction: d }), 'stop');
+  const send = moveSender(client);
+  const sendMove = (): void => send(`${dir}|${turn}`);
   const off = trackPointer(stick, {
     move(dx, dy) {
       const k = clampKnob(dx, dy, STICK_RADIUS);
@@ -113,14 +124,17 @@ export function bindJoystick(
         steer.push(stickToSteer(dx, STICK_RADIUS));
         return;
       }
-      dir = stickToWireMove(dx, dy, facing(), STICK_DEADZONE, dir);
-      send(dir);
+      const m = stickToMove(dx, dy, facing(), STICK_RADIUS, STICK_DEADZONE, dir);
+      dir = m.direction;
+      turn = m.turn;
+      sendMove();
     },
     up() {
       knob.style.transform = '';
       stopSteer();
       dir = 'stop';
-      send(dir);
+      turn = 0;
+      sendMove();
     },
   });
   return {
@@ -128,7 +142,8 @@ export function bindJoystick(
       knob.style.transform = '';
       stopSteer();
       dir = 'stop';
-      send(dir);
+      turn = 0;
+      sendMove();
     },
     dispose() {
       off();
