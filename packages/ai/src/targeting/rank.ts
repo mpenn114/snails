@@ -33,7 +33,8 @@ export function rankTargets(
     const stock = Object.values(team?.inventory ?? {}).filter((n) => n > 0).length;
     const threat = 1 + 0.2 * (team?.researched.length ?? 0) + 0.05 * stock;
     const killChance = (1 - 0.8 * (s.health / Math.max(1, s.maxHealth))) * armour(s);
-    const resource = weights.revenge?.snailId === s.id ? weights.revenge.factor : 1;
+    const rv = weights.revenge;
+    const resource = rv && (rv.snailId === s.id || rv.teamId === s.teamId) ? rv.factor : 1;
     out.push({ snailId: s.id, value: threat * killChance * resource });
   }
   return out.sort((a, b) => b.value - a.value || (a.snailId < b.snailId ? -1 : 1));

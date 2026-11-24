@@ -23,17 +23,17 @@ const DEG = Math.PI / 180;
 /** Per-difficulty tuning (Regular is the docs' "Gardener" level). */
 export const DIFFICULTY_PROFILES: Readonly<Record<Difficulty, DifficultyProfile>> = {
   rookie: {
-    aimNoise: { angle: 8 * DEG, power: 0.15 },
-    samples: 40,
-    ignoresWindChance: 0.5,
+    aimNoise: { angle: 2.5 * DEG, power: 0.04 },
+    samples: 250,
+    ignoresWindChance: 0.4,
     movementCandidates: 6,
     movementChance: 0.15,
     epsilon: 0.2,
     lookahead: false,
   },
   regular: {
-    aimNoise: { angle: 4 * DEG, power: 0.08 },
-    samples: 150,
+    aimNoise: { angle: 2 * DEG, power: 0.04 },
+    samples: 400,
     ignoresWindChance: 0,
     movementCandidates: 12,
     movementChance: 0.6,
@@ -41,7 +41,7 @@ export const DIFFICULTY_PROFILES: Readonly<Record<Difficulty, DifficultyProfile>
     lookahead: false,
   },
   veteran: {
-    aimNoise: { angle: 1.5 * DEG, power: 0.03 },
+    aimNoise: { angle: 1.2 * DEG, power: 0.04 },
     samples: 500,
     ignoresWindChance: 0,
     movementCandidates: 20,

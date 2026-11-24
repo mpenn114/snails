@@ -31,6 +31,11 @@ export interface PlannedCommand {
  */
 export interface TurnPlan {
   commands: PlannedCommand[];
+  /**
+   * Optional retreat moves, delivered once the turn reaches the `retreat` phase (after the shot
+   * resolves). Ticks are relative to the start of that phase; ends with `move direction 0`.
+   */
+  retreat?: PlannedCommand[];
 }
 
 /** A CPU player. It reads the match but never mutates it; lookahead works on forks. */

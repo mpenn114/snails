@@ -13,6 +13,9 @@ interface ActivePlan {
   turnNumber: number;
   startTick: number;
   queue: PlannedCommand[];
+  /** Retreat commands, queued (relative to the retreat phase start) once that phase begins. */
+  retreat: PlannedCommand[];
+  retreatStarted: boolean;
 }
 
 /**
@@ -58,33 +61,48 @@ export class CpuDriver {
   step(): void {
     const { turn, tick } = this.match.sim.state;
     const teamId = turn.activeTeamId;
-    if (!teamId || turn.phase !== 'action') return;
+    if (!teamId || (turn.phase !== 'action' && turn.phase !== 'retreat')) return;
     const cpu = this.opts.players.get(teamId);
     if (!cpu) return;
-    if (this.lastPlanned !== turn.turnNumber) {
+    if (this.lastPlanned !== turn.turnNumber && turn.phase === 'action') {
       this.lastPlanned = turn.turnNumber;
       this.plan = {
         turnNumber: turn.turnNumber,
         startTick: tick + this.thinkTicks,
-        queue: this.safePlan(cpu, teamId),
+        ...this.safePlan(cpu, teamId),
+        retreatStarted: false,
       };
     }
     const plan = this.plan;
     if (!plan || plan.turnNumber !== turn.turnNumber) return;
+    if (turn.phase === 'retreat' && !plan.retreatStarted) {
+      plan.retreatStarted = true;
+      plan.queue = plan.retreat;
+      plan.startTick = tick;
+    }
     while (plan.queue.length > 0 && tick >= plan.startTick + (plan.queue[0]?.atTick ?? 0)) {
       const next = plan.queue.shift();
       if (next && this.allowed(next.command, teamId)) this.match.sim.submit(next.command, teamId);
     }
   }
 
-  private safePlan(cpu: CpuPlayer, teamId: string): PlannedCommand[] {
+  private safePlan(
+    cpu: CpuPlayer,
+    teamId: string,
+  ): { queue: PlannedCommand[]; retreat: PlannedCommand[] } {
     try {
-      const commands = cpu.planTurn(this.match, teamId).commands;
-      if (commands.length > 0) return [...commands].sort((a, b) => a.atTick - b.atTick);
+      const plan = cpu.planTurn(this.match, teamId);
+      const byTick = (a: PlannedCommand, b: PlannedCommand): number => a.atTick - b.atTick;
+      if (plan.commands.length > 0) {
+        return {
+          queue: [...plan.commands].sort(byTick),
+          retreat: [...(plan.retreat ?? [])].sort(byTick),
+        };
+      }
     } catch {
       // A broken plan just ends the turn.
     }
-    return [{ atTick: 0, command: { type: 'endTurn', teamId } }];
+    return { queue: [{ atTick: 0, command: { type: 'endTurn', teamId } }], retreat: [] };
   }
 
   /** A CPU may only command its own team's active snail. */

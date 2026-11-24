@@ -44,3 +44,36 @@ describe('AI match runner', () => {
     expect(a.errors).toEqual([]);
   }, 20_000);
 });
+
+describe('retreat delivery', () => {
+  it('moves the shooter during the retreat phase', () => {
+    let phase = '';
+    let start: { x: number; z: number } | null = null;
+    let moved = 0;
+    runAiMatch({
+      ...opts,
+      teams: [
+        { difficulty: 'veteran', personality: 'cautious' },
+        { difficulty: 'veteran', personality: 'cautious' },
+      ],
+      seed: 5,
+      turnCap: 6,
+      onStep: (m) => {
+        const { turn } = m.sim.state;
+        const snail = m.sim.state.teams
+          .flatMap((t) => t.snails)
+          .find((s) => s.id === turn.activeSnailId);
+        if (!snail) return;
+        if (turn.phase === 'retreat' && phase !== 'retreat') start = { ...snail.position };
+        if (turn.phase === 'retreat' && start) {
+          moved = Math.max(
+            moved,
+            Math.hypot(snail.position.x - start.x, snail.position.z - start.z),
+          );
+        }
+        phase = turn.phase;
+      },
+    });
+    expect(moved).toBeGreaterThan(0.5);
+  }, 30_000);
+});

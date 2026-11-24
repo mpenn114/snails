@@ -99,8 +99,8 @@ function (tier-aware, cost-aware, counter-picks).
 | Personality | Order sketch |
 |---|---|
 | Aggressive | Salt Mining, Sticky Slime, Heavy Pebbles, Lubricated Foot, Spiked Whorl, Beetle Calls, Great Spiral: Arsenal |
-| Turtle | Calcified Shell, Iron Plating, Regrowth, Weather Vane, Crystal Lattice, Great Spiral: Citadel |
-| Tech-rusher | Weather Vane, Eye Stalk Optics, Egg Hunt, Calcified Shell, Scouting Mist, Snail Mail, Oracle capstone |
+| Cautious | Calcified Shell, Iron Plating, Regrowth, Weather Vane, Crystal Lattice, Great Spiral: Citadel |
+| Opportunist | Weather Vane, Eye Stalk Optics, Egg Hunt, Calcified Shell, Scouting Mist, Snail Mail, Oracle capstone |
 
 Fallback scoring is `value(effect) / cost`, with counters: opponents going Iron makes it prefer
 Salt and Spore; opponents with scouts make it prefer Calcified. Because techs are data, the AI reads
@@ -109,12 +109,17 @@ generic valuation from their stat modifiers.
 
 ## Difficulty levels
 
-| Level | Aim noise (angle, power) | Samples per turn | Think time | Other |
+| Level | Aim noise (angle, power) | Samples per turn | Hit rate (18 m, within 2 m) | Other |
 |---|---|---|---|---|
-| Rookie | 8 degrees, 15% | 40 | 1.5 to 3 s | Ignores wind 50%; rarely uses movement. |
-| Gardener | 4 degrees, 8% | 150 | 1 to 2 s | Uses wind; basic cover. |
-| Veteran | 1.5 degrees, 3% | 500 | 1 s | Full movement plan; research counters. |
-| Mastermind | 0.3 degrees, 1% | 1500 | 1 s | Two-turn lookahead (own shot then predicted replies); uses terrain collapse. |
+| Rookie | 2.5 degrees, 4% | 250 | about 15% | Ignores wind 40%; moves 15% of the time when it has no good shot. |
+| Regular | 2 degrees, 4% | 400 | about 50% | Uses wind; moves 60% of the time when it has no good shot. |
+| Veteran | 1.2 degrees, 4% | 500 | about 85% | Always considers movement (20 candidate scripts). |
+| Mastermind | 0.3 degrees, 1% | 1500 | 100% | Two-turn lookahead (own shot then predicted replies). |
+
+The hit rates are asserted (with slack) in `packages/ai/src/cpu/planner.test.ts`. In 20-match
+`pnpm sim:ai` runs (opportunist mirror): Mastermind beat Rookie 20-0, Veteran beat Regular 18-2 and
+Mastermind beat Veteran 15-5. Sample counts also limit accuracy: with too few samples the solver
+cannot find a good aim, so noise alone does not set a level's strength.
 
 Think time is artificial pacing: the plan is computed quickly but played back with human-like
 delays so players can follow what the CPU does. The display shows "thinking" stalks wiggling.
@@ -122,14 +127,22 @@ Time-slicing keeps the worker under a per-turn CPU limit (default 200 ms) even o
 
 ## Personalities
 
-- **Aggressive:** weights damage dealt and kills, ignores self-risk up to 25% HP, closes distance,
-  likes Pebble Roller and Beetle Barrage.
-- **Turtle:** weights safety and cover, prefers high ground, retreats often, targets crate pickups
-  last, strikes when a target is exposed.
-- **Tech-rusher:** goes for crates and Calcium, plays minimal combat until key techs complete,
-  then spikes in power.
-- Personality is a bag of weights (`aggression`, `caution`, `greed`, `revenge`) and a build
-  order, defined as data so mods can add more.
+- **Aggressive:** `aggression` 1.4, `caution` 0.6, kill bonus 70, tolerates self damage up to 25%
+  of health, retreats after 20% of shots.
+- **Cautious:** `aggression` 0.9, `caution` 1.6, tolerates only 5% self damage, retreats after 90%
+  of shots.
+- **Opportunist:** balanced combat weights with the highest `greed` (1.5): when no good shot exists
+  it picks reposition spots near crates. Retreats after 50% of shots.
+- Personality is a bag of weights and a build order, defined as data so mods can add more.
+  `aggression`, `caution` and `killBonus` feed shot scoring. `revenge` multiplies the value of
+  damaging the team that last hit one of our snails (`Snail.lastHitByTeam`). `greed` adds a
+  movement-score bonus within 12 m of a landed crate. `retreatChance` decides whether the plan
+  carries retreat moves.
+- **Retreat:** `TurnPlan.retreat` holds moves with ticks relative to the start of the retreat phase
+  (after the shot resolves). The brain plans them on a fork after the predicted shot with
+  `planRetreat`; the headless runner and the server's CPU driver deliver them when the phase
+  becomes `retreat`. Over 20 veteran matches each: Aggressive 8-12 vs Cautious, Aggressive 11-9 vs
+  Opportunist, Cautious 6-14 vs Opportunist.
 
 ## Testing the AI
 
