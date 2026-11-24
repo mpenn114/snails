@@ -18,4 +18,5 @@ export const radulaMissile = {
     { type: 'damage', radius: 2.5, maxDamage: 35, knockback: 8, falloff: 'linear' },
   ],
   ammo: 2,
+  requiresTech: 'radula-guidance',
 } satisfies WeaponDefinition;

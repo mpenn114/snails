@@ -87,9 +87,9 @@ describe('GameSession', () => {
     expect(() => Inventory.parse(msg)).not.toThrow();
     expect(msg.teams.map((t) => t.teamId)).toEqual(['a', 'b']);
     const a = msg.teams[0];
-    expect(a?.stock['base:slime-grenade']).toBe(3);
+    expect(a?.stock['base:slime-grenade']).toBeUndefined(); // gated: stock comes with the tech
     expect(a?.stock['base:pebble-toss']).toBeUndefined();
-    expect(a?.locked['base:beetle-barrage']).toBe('beetle-callers');
+    expect(a?.locked['base:beetle-barrage']).toBe('beetle-calls');
     expect(a?.locked['base:pebble-toss']).toBeUndefined();
   });
 
@@ -101,10 +101,8 @@ describe('GameSession', () => {
       reason: 'weapon_locked',
     });
     expect(s.activeWeaponId).toBe('base:pebble-toss');
-    expect(s.applyIntent(p, { type: 'selectWeapon', weaponId: 'base:slime-grenade' }).ok).toBe(
-      true,
-    );
-    expect(s.activeWeaponId).toBe('base:slime-grenade');
+    expect(s.applyIntent(p, { type: 'selectWeapon', weaponId: 'base:shell-bash' }).ok).toBe(true);
+    expect(s.activeWeaponId).toBe('base:shell-bash');
   });
 
   it('fire produces projectile events', () => {

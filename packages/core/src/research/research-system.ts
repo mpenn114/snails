@@ -6,6 +6,7 @@ import type { SimContext } from '../sim/types.js';
 import { applyMossTax, grantCatchUp } from './anti-snowball.js';
 import { addCalcium, CALCIUM_INCOME } from './calcium.js';
 import { applyCompletionEffects, tickStockGrants } from './tech-completion.js';
+import { tickStillHealing } from './tech-defence.js';
 import { dispatchTechHooks, teamStat } from './tech-effects.js';
 import { advanceResearch, cancelResearchHandler, queueResearchHandler } from './research-queue.js';
 
@@ -60,6 +61,7 @@ export function registerResearch(sim: Simulation, content: MatchContent): void {
   sim.registerCommandHandler('cancelResearch', (ctx, cmd) => cancelResearchHandler(ctx, cmd));
   sim.registerTurnStartHook('research-income', (ctx, info) => turnIncome(ctx, info.teamId));
   sim.registerTurnStartHook('research-stock', (ctx, info) => tickStockGrants(ctx, info.teamId));
+  sim.registerTurnStartHook('research-regrowth', (ctx, info) => tickStillHealing(ctx, info.teamId));
   sim.registerTurnStartHook('research-progress', (ctx, info) =>
     advanceResearch(ctx, info.teamId, techs),
   );

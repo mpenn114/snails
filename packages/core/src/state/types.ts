@@ -47,6 +47,8 @@ export interface Snail {
   rope?: RopeState;
   /** Team that last damaged this snail (research kill credit); cleared on death. */
   lastHitByTeam?: string;
+  /** Position at its team's previous turn start (`healPerStillTurn` bookkeeping). */
+  stillRef?: Vec3;
 }
 
 /** A snail being reeled from `from` to `to` over `seconds`; `elapsed` advances each step. */

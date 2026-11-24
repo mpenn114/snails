@@ -133,6 +133,9 @@ export function hitDamageMultiplier(
 ): number {
   const { state, techs } = ctx;
   let m = teamStat(state, techs, victimTeamId, 'blastDamageTaken', 1);
+  if (state.turn.phase === 'retreat' && state.turn.activeTeamId === victimTeamId) {
+    m *= teamStat(state, techs, victimTeamId, 'retreatDamageTaken', 1);
+  }
   if (dealerTeamId === undefined) return m;
   m *= teamStat(state, techs, dealerTeamId, 'damageDealt', 1);
   if (melee) m *= teamStat(state, techs, dealerTeamId, 'meleeDamage', 1);

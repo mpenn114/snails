@@ -1,10 +1,13 @@
 import type { ContentPack } from '@snails/core';
 import { areas } from './areas.js';
 import { crates } from './crates.js';
-import { shellUpgrades, technologies } from './definitions.js';
+import { legacyTechnologies, shellUpgrades } from './definitions.js';
+import { technologies as baseTechs } from './techs/index.js';
 import { statuses } from './statuses/index.js';
 import { weapons } from './weapons/index.js';
 import { winds } from './winds.js';
+
+const technologies = [...baseTechs, ...legacyTechnologies];
 
 export { areas, crates, shellUpgrades, statuses, technologies, weapons, winds };
 

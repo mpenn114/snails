@@ -55,10 +55,10 @@ function rearm(m: MatchSetup): void {
 }
 
 describe('initial inventory', () => {
-  it('counts finite weapons only, for every team', () => {
+  it('counts finite ungated weapons only, for every team', () => {
     const m = match();
-    expect(team(m).inventory).toEqual({ 'test:shell': 2, 'test:gated': 3 });
-    expect(team(m, 'b').inventory).toEqual({ 'test:shell': 2, 'test:gated': 3 });
+    expect(team(m).inventory).toEqual({ 'test:shell': 2 });
+    expect(team(m, 'b').inventory).toEqual({ 'test:shell': 2 });
   });
 
   it('applies loadout overrides, including limiting an infinite weapon', () => {
@@ -120,6 +120,7 @@ describe('tech lock', () => {
   it('allows it once researched, and still counts stock', () => {
     const m = match();
     team(m).researched.push('test:tech');
+    team(m).inventory!['test:gated'] = 3; // the tech's unlockWeapon grants the stock
     expect(submitFire(m, 'test:gated').ok).toBe(true);
     m.sim.step();
     expect(team(m).inventory?.['test:gated']).toBe(2);
@@ -130,7 +131,7 @@ describe('tech lock', () => {
     const snailId = m.sim.state.turn.activeSnailId as string;
     m.sim.enqueue({ type: 'fire', snailId, weaponId: 'test:gated' });
     expect(m.sim.step().some((e) => e.type === 'projectileFired')).toBe(false);
-    expect(team(m).inventory?.['test:gated']).toBe(3);
+    expect(team(m).inventory?.['test:gated']).toBeUndefined(); // gated: no starting stock
   });
 });
 

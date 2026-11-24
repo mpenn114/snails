@@ -5,7 +5,7 @@ import type { WeaponDefinition } from '@snails/core';
  * 12 m line centred on it (x axis, snapped to the ground). Telegraphed: the warning rings show
  * for the whole of the next turn and the shells land at the start of the turn after (2 turn
  * starts), each carving a small crater and dealing 18 damage (r = 2.5 m). Needs the
- * `beetle-callers` technology.
+ * `beetle-calls` technology.
  */
 export const beetleBarrage = {
   id: 'base:beetle-barrage',
@@ -26,5 +26,5 @@ export const beetleBarrage = {
     },
   ],
   ammo: 1,
-  requiresTech: 'beetle-callers',
+  requiresTech: 'beetle-calls',
 } satisfies WeaponDefinition;

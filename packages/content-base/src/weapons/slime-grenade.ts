@@ -19,4 +19,5 @@ export const slimeGrenade = {
     { type: 'spawn', spawn: { what: 'area', areaId: 'base:goo-splat' } },
   ],
   ammo: 3,
+  requiresTech: 'sticky-slime',
 } satisfies WeaponDefinition;
