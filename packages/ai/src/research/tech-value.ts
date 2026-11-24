@@ -85,6 +85,9 @@ export function setsFlag(def: TechnologyDefinition | undefined, flag: string): b
   return (def?.effects ?? []).some((e) => e.type === 'setFlag' && e.flag === flag);
 }
 
+/** Flags that reveal opponents' research (same list as the server's privacy filter). */
+const SEES_RESEARCH = ['seeOpponentResearch', 'seeAll'];
+
 /** What a team can see about its opponents' research. */
 export interface OpponentView {
   /** Tech ids opponents finished (always visible), plus queued ones with `seeOpponentResearch`. */
@@ -95,21 +98,22 @@ export interface OpponentView {
 
 /**
  * Opponent research visible to `team`. Finished techs are public; queued and active work is
- * visible only to a team that finished a tech setting the `seeOpponentResearch` flag (mirrors the
- * server's privacy filter).
+ * visible only to a team that finished a tech setting `seeOpponentResearch` or `seeAll` (mirrors
+ * apps/server/src/game/privacy.ts).
  */
 export function opponentView(
   state: GameState,
   team: Team,
   lookup: (id: string) => TechnologyDefinition | undefined,
 ): OpponentView {
-  const sees = team.researched.some((id) => setsFlag(lookup(id), 'seeOpponentResearch'));
+  const scout = (id: string): boolean => SEES_RESEARCH.some((flag) => setsFlag(lookup(id), flag));
+  const sees = team.researched.some(scout);
   const ids: string[] = [];
   let scouting = false;
   for (const other of state.teams) {
     if (other.id === team.id) continue;
     ids.push(...other.researched);
-    if (other.researched.some((id) => setsFlag(lookup(id), 'seeOpponentResearch'))) scouting = true;
+    if (other.researched.some(scout)) scouting = true;
     if (sees && other.research) {
       ids.push(...other.research.queue);
       if (other.research.active) ids.push(other.research.active.techId);
