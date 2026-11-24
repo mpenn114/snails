@@ -27,7 +27,7 @@ import {
 } from '../rules/match-settings.js';
 import { registerSuddenDeath } from '../rules/sudden-death.js';
 import { createInitialState, type TeamConfig } from '../state/game-state.js';
-import type { GameState, Vec3 } from '../state/types.js';
+import type { Vec3 } from '../state/types.js';
 import { DEFAULT_TERRAIN_CONFIG, findSpawnPoints, generateTerrain } from '../terrain/generator.js';
 import type { TerrainGenConfig } from '../terrain/generator.js';
 import {

@@ -169,9 +169,11 @@ describe('settings honoured by a headless match', () => {
     expect(a1!.health).toBe(70);
   });
 
-  it('applies the starting loadout hook to every team', () => {
-    const { sim } = createMatch({ ...base, settings: { startingLoadout: { 'base:x': 2 } } });
-    expect(sim.state.teams.map((t) => t.inventory)).toEqual([{ 'base:x': 2 }, { 'base:x': 2 }]);
-    expect(createMatch(base).sim.state.teams[0]?.inventory).toBeUndefined();
+  it('applies the starting loadout to every team (unknown weapons are ignored)', () => {
+    const loadout = { 'test:pebble-toss': 2, 'base:x': 5 };
+    const { sim } = createMatch({ ...base, settings: { startingLoadout: loadout } });
+    const want = { 'test:pebble-toss': 2 };
+    expect(sim.state.teams.map((t) => t.inventory)).toEqual([want, want]);
+    expect(createMatch(base).sim.state.teams[0]?.inventory).toEqual({});
   });
 });

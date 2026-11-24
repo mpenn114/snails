@@ -49,8 +49,8 @@ export const MatchSettingsSchema = z.object({
   /** When on, the action timer only starts counting at the turn's first input. */
   lazyStart: z.boolean().default(false),
   /**
-   * Extra weapon stock every team starts with (`weaponId -> uses`). Hook for the ammo and
-   * inventory system: merged into the starting inventory by `createMatch` (see `initialInventory`).
+   * Starting stock overrides for every team (`weaponId -> uses`), replacing each weapon's `ammo`;
+   * applied by `createMatch` through `initialInventory` (unknown weapon ids are ignored).
    */
   startingLoadout: z.record(z.string(), z.number().int().min(0).max(99)).default({}),
 });
