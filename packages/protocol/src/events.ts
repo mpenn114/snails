@@ -71,13 +71,13 @@ const plain = [
     amount: z.number(),
     remaining: z.number(),
     sourceSnailId: z.string().nullable(),
-    cause: z.enum(['explosion', 'fall']),
+    cause: z.enum(['explosion', 'fall', 'status', 'area']),
   }),
   z.object({
     type: z.literal('snailDied'),
     snailId: z.string(),
     teamId: z.string(),
-    cause: z.enum(['explosion', 'fall', 'drown', 'void']),
+    cause: z.enum(['explosion', 'fall', 'drown', 'void', 'status', 'area']),
   }),
   z.object({ type: z.literal('snailDrowned'), snailId: z.string() }),
   z.object({
@@ -91,6 +91,26 @@ const plain = [
     command: z.enum(['move', 'aim', 'fire', 'endTurn']),
     reason: z.string(),
   }),
+  z.object({
+    type: z.literal('statusApplied'),
+    snailId: z.string(),
+    statusId: z.string(),
+    turnsLeft: int,
+    magnitude: z.number(),
+    sourceSnailId: z.string(),
+  }),
+  z.object({ type: z.literal('statusExpired'), snailId: z.string(), statusId: z.string() }),
+  z.object({
+    type: z.literal('areaCreated'),
+    areaId: z.string(),
+    kind: z.string(),
+    position: V,
+    radius: z.number(),
+    turnsLeft: int,
+  }),
+  z.object({ type: z.literal('areaExpired'), areaId: z.string(), kind: z.string() }),
+  z.object({ type: z.literal('areaMoved'), areaId: z.string(), position: V }),
+  z.object({ type: z.literal('snailMoved'), snailId: z.string(), from: V, to: V }),
 ] as const;
 
 const carvedBase = {

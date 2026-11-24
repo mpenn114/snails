@@ -5,6 +5,7 @@ import { CameraRig, type CameraMode, type CameraRigOptions } from './camera/came
 import { ExplosionEffects } from './effects/explosion-effects.js';
 import { SplashEffects } from './effects/splash-effects.js';
 import { createWindParticles, type WindParticles } from './environment/wind-particles.js';
+import { AreaLayer } from './effects/area-layer.js';
 import { ProjectileLayer } from './effects/projectile-layer.js';
 import { SnapshotBuffer } from './interpolation.js';
 import { createGltfModelLoader, type ModelLoader } from './props/model-loader.js';
@@ -99,6 +100,7 @@ interface Built {
   replica: TerrainReplica;
   snails: SnailLayer;
   projectiles: ProjectileLayer;
+  areas: AreaLayer;
   props: PropLayer | null;
   explosions: ExplosionEffects;
   splashes: SplashEffects;
@@ -202,6 +204,7 @@ export class MatchRenderer {
       ...(this.deps.labelFactory ? { labelFactory: this.deps.labelFactory } : {}),
     });
     const projectiles = new ProjectileLayer({ shadows: q.shadows, quality: q.particleScale });
+    const areas = new AreaLayer();
     const explosions = new ExplosionEffects({
       quality: q.particleScale,
       maxLights: q.maxDynamicLights,
@@ -211,7 +214,7 @@ export class MatchRenderer {
     const props = this.makeProps(grid, waterLevel, q.propCount, q.shadows);
     if (props) view.roots.entities.add(props.group);
     const splashes = this.makeSplashes(view, source, waterLevel);
-    view.roots.effects.add(projectiles.group, explosions.group, splashes.group);
+    view.roots.effects.add(projectiles.group, areas.group, explosions.group, splashes.group);
 
     const rig = createRig(view.camera, grid, this.deps.rigOptions);
     const wind = this.makeWind(grid, q.particleScale);
@@ -222,6 +225,7 @@ export class MatchRenderer {
       replica,
       snails,
       projectiles,
+      areas,
       props,
       explosions,
       splashes,
@@ -265,6 +269,7 @@ export class MatchRenderer {
     add(b.snails.updater);
     if (b.props) add(b.props.updater);
     add(b.projectiles.updater);
+    add(b.areas.updater);
     add(b.explosions.updater);
     add(b.splashes.updater);
     add((dt) => b.material.scorch.advance(dt));
@@ -340,6 +345,7 @@ export class MatchRenderer {
     b.snails.dispose();
     b.props?.dispose();
     b.projectiles.dispose();
+    b.areas.dispose();
     b.explosions.dispose();
     b.splashes.dispose();
     b.wind.dispose();

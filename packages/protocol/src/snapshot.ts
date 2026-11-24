@@ -33,6 +33,11 @@ export const WireSnail = z.tuple([
 /** Wire projectile: `[id, weaponId, px,py,pz (mm), vx,vy,vz (mm/s)]`. */
 export const WireProjectile = z.tuple([z.string(), z.string(), int, int, int, int, int, int]);
 
+/** Wire status: `[snailId, statusId, turnsLeft, magnitude (milli)]`. */
+export const WireStatus = z.tuple([z.string(), z.string(), int, int]);
+/** Wire area: `[id, kind, px,py,pz (mm), radius (mm), turnsLeft]`. */
+export const WireArea = z.tuple([z.string(), z.string(), int, int, int, int, int]);
+
 /** Compact authoritative snapshot (sent to display and controllers alike, ADR-0008). */
 export const Snapshot = z.object({
   type: z.literal('snapshot'),
@@ -43,6 +48,10 @@ export const Snapshot = z.object({
   turn: z.tuple([z.string().nullable(), z.string().nullable(), int.nonnegative(), int, int]),
   snails: z.array(WireSnail),
   projectiles: z.array(WireProjectile),
+  /** Active snail statuses (absent from older servers = none). */
+  statuses: z.array(WireStatus).optional(),
+  /** Lingering areas (absent from older servers = none). */
+  areas: z.array(WireArea).optional(),
 });
 /** Compact snapshot message. */
 export type Snapshot = z.infer<typeof Snapshot>;
@@ -73,6 +82,23 @@ export interface ProjectileState {
   velocity: Vec3;
 }
 
+/** Decoded snail status. */
+export interface StatusState {
+  snailId: string;
+  statusId: string;
+  turnsLeft: number;
+  magnitude: number;
+}
+
+/** Decoded lingering area. */
+export interface AreaState {
+  id: string;
+  kind: string;
+  position: Vec3;
+  radius: number;
+  turnsLeft: number;
+}
+
 /** Decoded snapshot (metres, seconds, radians). */
 export interface DecodedSnapshot {
   tick: number;
@@ -86,6 +112,8 @@ export interface DecodedSnapshot {
   };
   snails: SnailState[];
   projectiles: ProjectileState[];
+  statuses: StatusState[];
+  areas: AreaState[];
 }
 
 const q = (v: number): number => Math.round(v * 1000);
@@ -129,6 +157,16 @@ export function encodeSnapshot(s: DecodedSnapshot): Snapshot {
       q(p.velocity.y),
       q(p.velocity.z),
     ]),
+    statuses: s.statuses.map((t) => [t.snailId, t.statusId, t.turnsLeft, q(t.magnitude)]),
+    areas: s.areas.map((a) => [
+      a.id,
+      a.kind,
+      q(a.position.x),
+      q(a.position.y),
+      q(a.position.z),
+      q(a.radius),
+      a.turnsLeft,
+    ]),
   };
 }
 
@@ -159,6 +197,19 @@ export function decodeSnapshot(m: Snapshot): DecodedSnapshot {
       weaponId,
       position: dv(px, py, pz),
       velocity: dv(vx, vy, vz),
+    })),
+    statuses: (m.statuses ?? []).map(([snailId, statusId, turnsLeft, magnitude]) => ({
+      snailId,
+      statusId,
+      turnsLeft,
+      magnitude: dq(magnitude),
+    })),
+    areas: (m.areas ?? []).map(([id, kind, px, py, pz, radius, turnsLeft]) => ({
+      id,
+      kind,
+      position: dv(px, py, pz),
+      radius: dq(radius),
+      turnsLeft,
     })),
   };
 }

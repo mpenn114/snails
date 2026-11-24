@@ -5,10 +5,13 @@ import type { MatchOptions } from './match.js';
 export const PEBBLE: WeaponDefinition = {
   id: 'test:pebble-toss',
   name: 'Pebble Toss',
-  kind: 'projectile',
+  category: 'projectile',
   launch: { minSpeed: 5, maxSpeed: 22, gravityScale: 1, windScale: 1, projectileRadius: 0.1 },
   fuseSeconds: 0,
-  explosion: { radius: 4, maxDamage: 45, knockback: 6, falloff: 'linear' },
+  effects: [
+    { type: 'carve', radius: 4 },
+    { type: 'damage', radius: 4, maxDamage: 45, knockback: 6, falloff: 'linear' },
+  ],
   ammo: 'infinite',
 };
 

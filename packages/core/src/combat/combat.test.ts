@@ -11,10 +11,13 @@ import { aimCommandHandler, registerCombat } from './combat.js';
 const PEBBLE: WeaponDefinition = {
   id: 'test:pebble-toss',
   name: 'Pebble Toss',
-  kind: 'projectile',
+  category: 'projectile',
   launch: { minSpeed: 5, maxSpeed: 20, gravityScale: 1, windScale: 1, projectileRadius: 0.1 },
   fuseSeconds: 0,
-  explosion: { radius: 3, maxDamage: 30, knockback: 5, falloff: 'linear' },
+  effects: [
+    { type: 'carve', radius: 3 },
+    { type: 'damage', radius: 3, maxDamage: 30, knockback: 5, falloff: 'linear' },
+  ],
   ammo: 'infinite',
 };
 
