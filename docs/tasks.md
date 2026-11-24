@@ -170,14 +170,14 @@ the MG-03 harness to its PR. After the first round looked poor, MG-13 to MG-15 s
 | M4-02 | Content pack manifest (id, version, deps) and loader validation | core | M4-01 | ✅ |
 | M4-03 | Effect vocabulary (damage, carve, status, spawn, move) kept small | core | M4-01, M1-13 | ✅ |
 | M4-04 | Pebble Toss and Salt Shaker as pure data (cluster, salt status) | content | M4-03, M1-19 | ✅ |
-| M4-05 | Slime Grenade (thrown, fuse, slow status) | content | M4-03 | ⬜ |
+| M4-05 | Slime Grenade (thrown, fuse, slow status) | content | M4-03 | ✅ |
 | M4-06 | Pebble Roller (bouncing, fuse) | content | M4-03, M1-08 | ⬜ |
 | M4-07 | Radula Missile (guided steering input) | content | M4-03, M3-21 | ✅ |
 | M4-08 | Spore Cloud (lingering area effect over turns) | content | M4-03 | ⬜ |
 | M4-09 | Shell Drill (digger tunnel) | content | M4-03, M1-05 | ⬜ |
 | M4-10 | Shell Bash (melee, knockback) | content | M4-03 | ⬜ |
 | M4-11 | Slime Rope (utility, swing or climb) | content | M4-03, M1-10 | ⬜ |
-| M4-12 | Dew Bomb (temporary puddle, drowning, extinguish salt) | content | M4-03 | ⬜ |
+| M4-12 | Dew Bomb (temporary puddle, drowning, extinguish salt) | content | M4-03 | ✅ |
 | M4-13 | Beetle Barrage and Snail Mail (research-unlocked, telegraphed) | content | M4-03 | ⬜ |
 | M4-14 | Crates and pickups (drop rules, health, ammo, weapon crates) | core | M4-01, M1-20 | ⬜ |
 | M4-15 | Ammo and inventory model plus phone weapon picker integration | core | M4-04, M3-22 | ⬜ |
