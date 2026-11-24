@@ -71,8 +71,8 @@ export const MoveEffectSchema = z
   .object({ type: z.literal('move'), mode: z.enum(['teleport']), lift: nonNeg.optional() })
   .strict();
 
-/** The effect vocabulary: a small union discriminated on `type`. */
-export const EffectSchema = z.discriminatedUnion('type', [
+/** Effects a `schedule` effect may delay (everything except `schedule` itself). */
+export const BasicEffectSchema = z.discriminatedUnion('type', [
   DamageEffectSchema,
   CarveEffectSchema,
   StatusEffectSchema,
@@ -80,8 +80,38 @@ export const EffectSchema = z.discriminatedUnion('type', [
   MoveEffectSchema,
 ]);
 
+/**
+ * Runs `effects` at the detonation point after `turns` turn starts, with a warning marker
+ * (`telegraph`) shown meanwhile. With `line`, `count` copies are spread evenly along the
+ * x axis over `length` metres, centred on the point and snapped to the ground (a barrage).
+ */
+export const ScheduleEffectSchema = z
+  .object({
+    type: z.literal('schedule'),
+    turns: z.number().int().positive(),
+    effects: z.array(BasicEffectSchema).min(1),
+    telegraph: z.object({ radius: pos, style: z.enum(['strike', 'arrival']).optional() }).strict(),
+    line: z
+      .object({ count: z.number().int().min(2).max(16), length: pos })
+      .strict()
+      .optional(),
+  })
+  .strict();
+
+/** The effect vocabulary: a small union discriminated on `type`. */
+export const EffectSchema = z.discriminatedUnion('type', [
+  DamageEffectSchema,
+  CarveEffectSchema,
+  StatusEffectSchema,
+  SpawnEffectSchema,
+  MoveEffectSchema,
+  ScheduleEffectSchema,
+]);
+
 /** One effect run when a weapon detonates. */
 export type Effect = z.infer<typeof EffectSchema>;
+/** An effect that may be scheduled (any but `schedule`). */
+export type BasicEffect = z.infer<typeof BasicEffectSchema>;
 /** Discriminator values of {@link Effect}. */
 export type EffectType = Effect['type'];
 /** The effect interface for discriminator `T`. */

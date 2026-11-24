@@ -110,6 +110,22 @@ const plain = [
   }),
   z.object({ type: z.literal('areaExpired'), areaId: z.string(), kind: z.string() }),
   z.object({ type: z.literal('areaMoved'), areaId: z.string(), position: V }),
+  z.object({
+    type: z.literal('scheduledCreated'),
+    scheduledId: z.string(),
+    groupId: z.string(),
+    weaponId: z.string(),
+    position: V,
+    turnsLeft: int,
+    radius: z.number(),
+    style: z.enum(['strike', 'arrival']),
+  }),
+  z.object({
+    type: z.literal('scheduledFired'),
+    scheduledId: z.string(),
+    groupId: z.string(),
+    position: V,
+  }),
   z.object({ type: z.literal('snailMoved'), snailId: z.string(), from: V, to: V }),
 ] as const;
 

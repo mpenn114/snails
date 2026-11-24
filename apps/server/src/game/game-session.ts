@@ -126,7 +126,10 @@ export class GameSession {
     this.terrainParams = { ...DEFAULT_TERRAIN_CONFIG, ...opts.terrain };
     const content = loadServerContent().registries;
     const defs = opts.weapons ?? content.weapons.list();
-    const defaultWeapon = defs[0]?.id ?? '';
+    // Default pick: an unlimited plain projectile that needs no research, else the first ungated.
+    const ungated = defs.filter((w) => w.requiresTech === undefined);
+    const plain = ungated.find((w) => w.ammo === 'infinite' && w.category === 'projectile');
+    const defaultWeapon = (plain ?? ungated[0] ?? defs[0])?.id ?? '';
     for (const t of opts.teams) {
       this.teamPlayers.set(t.id, [...t.playerIds]);
       this.control.set(t.id, { direction: 0, weaponId: defaultWeapon });
@@ -398,6 +401,14 @@ export class GameSession {
         position: a.position,
         radius: a.radius,
         turnsLeft: a.turnsLeft,
+      })),
+      scheduled: s.scheduled.map((e) => ({
+        id: e.id,
+        groupId: e.groupId,
+        position: e.position,
+        radius: e.telegraph.radius,
+        turnsLeft: e.turnsLeft,
+        style: e.telegraph.style,
       })),
     };
   }

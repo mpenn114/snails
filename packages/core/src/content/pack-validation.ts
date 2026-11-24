@@ -5,6 +5,7 @@ type Check = (r: ContentRegistries, fail: (msg: string) => void) => void;
 
 function effectRefs(e: Effect): { kind: 'status' | 'area' | 'weapon'; id: string }[] {
   if (e.type === 'status') return [{ kind: 'status', id: e.statusId }];
+  if (e.type === 'schedule') return e.effects.flatMap(effectRefs);
   if (e.type !== 'spawn') return [];
   return e.spawn.what === 'area'
     ? [{ kind: 'area', id: e.spawn.areaId }]

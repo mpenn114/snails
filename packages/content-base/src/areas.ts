@@ -24,5 +24,18 @@ export const puddle = {
   extinguishes: ['base:salt'],
 } satisfies AreaDefinition;
 
+/**
+ * Spore cloud: poisonous spores, 4 m radius, 6 damage to every snail inside at each turn start
+ * (shells do not help), lingering 3 turns and drifting downwind 1 m per unit of wind strength.
+ */
+export const sporeCloud = {
+  id: 'base:spore-cloud',
+  name: 'Spore Cloud',
+  defaultRadius: 4,
+  defaultTurns: 3,
+  perTurnDamage: 6,
+  windDrift: 1,
+} satisfies AreaDefinition;
+
 /** Base-game lingering areas. */
-export const areas: AreaDefinition[] = [gooSplat, puddle];
+export const areas: AreaDefinition[] = [gooSplat, puddle, sporeCloud];

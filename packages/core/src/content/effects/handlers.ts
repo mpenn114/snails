@@ -4,6 +4,7 @@ import { findSnail, livingSnails } from '../../entities/snail.js';
 import { distance, normalize } from '../../math/vec3.js';
 import { carveAt, damageAround } from '../../physics/explosion.js';
 import { SNAIL_RADIUS, spawnProjectile } from '../../physics/projectile-system.js';
+import { scheduleEffect } from '../../scheduled/scheduled-system.js';
 import { applyStatus } from '../../status/status-system.js';
 import type { Vec3 } from '../../state/types.js';
 import type { EffectContext } from '../match-content.js';
@@ -107,6 +108,10 @@ const move: EffectHandler<EffectOf<'move'>> = (ctx, e, at, source) => {
   ctx.emit({ type: 'snailMoved', snailId: snail.id, from, to: { ...snail.position } });
 };
 
+const schedule: EffectHandler<EffectOf<'schedule'>> = (ctx, e, at, source) => {
+  scheduleEffect(ctx, e, at, source);
+};
+
 /**
  * The effect handler table: ONE handler per effect type. Adding an effect type means adding
  * its schema to `EffectSchema` and one entry here; weapons never get weapon-specific code.
@@ -117,6 +122,7 @@ export const effectHandlers: { [T in EffectType]: EffectHandler<EffectOf<T>> } =
   status,
   spawn,
   move,
+  schedule,
 };
 
 /** Runs effects in order at a detonation point. */

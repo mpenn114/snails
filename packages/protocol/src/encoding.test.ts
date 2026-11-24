@@ -51,6 +51,24 @@ function makeSnapshot(count: number): DecodedSnapshot {
         turnsLeft: 3,
       },
     ],
+    scheduled: [
+      {
+        id: 's1',
+        groupId: 'g1',
+        position: { x: 7.5, y: 5, z: 6 },
+        radius: 2.5,
+        turnsLeft: 2,
+        style: 'strike',
+      },
+      {
+        id: 's2',
+        groupId: 'g2',
+        position: { x: 9, y: 5, z: 6 },
+        radius: 0.9,
+        turnsLeft: 1,
+        style: 'arrival',
+      },
+    ],
   };
 }
 
@@ -70,6 +88,7 @@ describe('snapshot encoding', () => {
     expect(d.projectiles[0]?.position.x).toBeCloseTo(1.0004, 3);
     expect(d.wind.strength).toBeCloseTo(1.5, 3);
     expect(d.statuses).toEqual(s.statuses);
+    expect(d.scheduled).toEqual(s.scheduled);
     expect(d.areas[0]?.position.x).toBeCloseTo(4.0004, 3);
     expect(d.areas[0]).toMatchObject({
       id: 'a1',

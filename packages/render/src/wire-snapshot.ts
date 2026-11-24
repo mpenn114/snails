@@ -78,6 +78,17 @@ export class WireSnapshotMapper {
         sourceSnailId: '',
       })),
       nextAreaId: 0,
+      scheduled: s.scheduled.map((e) => ({
+        id: e.id,
+        groupId: e.groupId,
+        weaponId: '',
+        ownerSnailId: '',
+        position: e.position,
+        turnsLeft: e.turnsLeft,
+        effects: [],
+        telegraph: { radius: e.radius, style: e.style },
+      })),
+      nextScheduledId: 0,
       match: { status: 'playing', winnerTeamId: null },
     };
   }

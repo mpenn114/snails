@@ -5,6 +5,19 @@ import { PALETTE } from '../style/palette.js';
 /** Goo green: a bright slime, kept clear of the grass tones. */
 const GOO_COLOUR = 0x9bdc3c;
 const GOO_RIM_COLOUR = 0x5fae2a;
+/** Spore cloud: pale lilac puffs with a warm yellow core, kept clear of terrain and team hues. */
+const SPORE_COLOUR = 0xd4b8ee;
+const SPORE_CORE_COLOUR = 0xf0e0a0;
+/** Puff centres in the unit sphere (fixed layout, so views are deterministic). */
+const SPORE_PUFFS: readonly (readonly [number, number, number, number])[] = [
+  [0, 0, 0, 0.55],
+  [0.5, 0.2, 0.1, 0.4],
+  [-0.5, 0.1, -0.15, 0.42],
+  [0.15, 0.5, 0.2, 0.36],
+  [-0.2, -0.35, 0.3, 0.38],
+  [0.35, -0.3, -0.3, 0.34],
+  [-0.1, 0.3, -0.45, 0.32],
+];
 /** Seconds-scale bob so a dome reads as alive without per-kind art. */
 const PULSE_RATE = 1.6;
 /** Puddle disc lift above the water surface (stops z-fighting with terrain-hugging ground). */
@@ -45,13 +58,33 @@ export class AreaAssets {
     opacity: 0.9,
     depthWrite: false,
   });
+  readonly sporeMat = new THREE.MeshBasicMaterial({
+    color: SPORE_COLOUR,
+    transparent: true,
+    opacity: 0.32,
+    depthWrite: false,
+  });
+  readonly sporeCoreMat = new THREE.MeshBasicMaterial({
+    color: SPORE_CORE_COLOUR,
+    transparent: true,
+    opacity: 0.22,
+    depthWrite: false,
+  });
   readonly gooMat = new THREE.MeshLambertMaterial({ color: GOO_COLOUR });
   readonly gooRimMat = new THREE.MeshLambertMaterial({ color: GOO_RIM_COLOUR });
 
   /** Frees every shared GPU resource. */
   dispose(): void {
     for (const g of [this.dome, this.disc, this.ring, this.blob]) g.dispose();
-    for (const m of [this.domeMat, this.waterMat, this.foamMat, this.gooMat, this.gooRimMat]) {
+    for (const m of [
+      this.domeMat,
+      this.waterMat,
+      this.foamMat,
+      this.gooMat,
+      this.gooRimMat,
+      this.sporeMat,
+      this.sporeCoreMat,
+    ]) {
       m.dispose();
     }
   }
@@ -107,10 +140,41 @@ const gooView: AreaViewFactory = (assets) => {
   };
 };
 
+/**
+ * Spore cloud: seven soft translucent puffs (a lilac shell around a warm core) that drift in
+ * slow orbits inside the cloud's radius. Shares one icosphere, two materials; 7 small meshes.
+ */
+const sporeView: AreaViewFactory = (assets) => {
+  const group = new THREE.Group();
+  const puffs = SPORE_PUFFS.map((_, i) => {
+    const mesh = new THREE.Mesh(assets.dome, i % 3 === 0 ? assets.sporeCoreMat : assets.sporeMat);
+    group.add(mesh);
+    return mesh;
+  });
+  return {
+    object: group,
+    update(a, clock) {
+      group.position.set(a.position.x, a.position.y, a.position.z);
+      const r = Math.max(0.1, a.radius);
+      puffs.forEach((mesh, i) => {
+        const [x, y, z, size] = SPORE_PUFFS[i] ?? [0, 0, 0, 0.3];
+        const t = clock * 0.5 + i * 1.7;
+        mesh.position.set(
+          (x + 0.08 * Math.sin(t)) * r,
+          (y + 0.08 * Math.cos(t * 1.3)) * r,
+          (z + 0.08 * Math.sin(t * 0.8)) * r,
+        );
+        mesh.scale.setScalar(size * r * (1 + 0.06 * Math.sin(t * 1.9)));
+      });
+    },
+  };
+};
+
 /** View factories by area kind id; add a line to give a new area kind its own look. */
 export const areaViewFactories: Readonly<Record<string, AreaViewFactory>> = {
   'base:puddle': puddleView,
   'base:goo-splat': gooView,
+  'base:spore-cloud': sporeView,
 };
 
 /** The view for `kind`: its registered factory, or the translucent dome. */

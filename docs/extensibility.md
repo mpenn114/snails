@@ -46,6 +46,7 @@ A small union discriminated on `type` (`content/effects/effect-schemas.ts`). Eac
 | `status` | `statusId`, `radius`, `turns?`, `magnitude?`                                                                                   | applies a status to snails in range                           |
 | `spawn`  | `spawn: { what: 'area', areaId, radius?, turns? }` or `{ what: 'projectiles', weaponId, count, speed, spread? }` | creates an area, or sub-projectiles of another weapon         |
 | `move`   | `mode: 'teleport'`, `lift?`                                                                                                    | moves the firer to the detonation point, emits `snailMoved`   |
+| `schedule` | `turns`, `effects` (any of the above except `schedule`), `telegraph: { radius, style? }`, `line?: { count, length }` | queues the effects to run at the detonation point after `turns` turn starts (see Scheduled effects) |
 
 To add an effect type: add its schema to `EffectSchema`, add one entry to `effectHandlers` (the table type forces you to), and add a protocol event if clients must see it.
 
@@ -81,6 +82,14 @@ Views: `packages/render/src/effects/area-views.ts` has one `AreaViewFactory` per
 ### Turn-start hooks
 
 `sim.registerTurnStartHook(name, (ctx, { teamId, snailId, turnNumber }) => void)`. Hooks run in registration order in the step where `turn.turnNumber` changes, after the `turnStarted` event. `registerLingeringEffects(sim, content)` registers `statuses` then `areas`; crates and sudden death register theirs after. Use `ctx.rng` streams for randomness. `skipTurnIfActiveDead(ctx)` ends the turn when a hook killed the active snail. The very first turn starts before the sim exists and does not trigger hooks.
+
+### Scheduled effects (telegraphed delays)
+
+The `schedule` effect is the one reusable delay mechanism (Beetle Barrage, Snail Mail; a mod can use it for mines, air strikes, delayed heals). Handler: `scheduled/scheduled-system.ts` (`scheduleEffect`). It pushes `ScheduledEffect` entries onto `GameState.scheduled` (`id` `s<n>`, `groupId` `g<n>`, `weaponId`, `ownerSnailId`, `position`, `turnsLeft`, `effects`, `telegraph: { radius, style: 'strike' | 'arrival' }`) and emits `scheduledCreated` per entry. With `line`, `count` entries are spread evenly over `length` metres along x, centred on the detonation point and snapped to the ground; all share one `groupId`.
+
+The `scheduled` turn-start hook (registered by `registerLingeringEffects`, after areas) spends one turn of every entry at **each** turn start, whichever team's; entries reaching 0 are removed in creation order, emit `scheduledFired` and run their `effects` at `position` with the original weapon and owner as source (so a `move` effect teleports the firer, damage credits the owner). Timing: with `turns: N` fired in turn T, the effects run at the start of turn T+N, so `N = 2` shows the marker for the whole of turn T+1 (Beetle Barrage). `N = 1` runs at the very next turn start (Snail Mail: the firer is posted away just before the enemy's turn).
+
+Clients: the protocol snapshot carries `scheduled` (`[id, groupId, x,y,z mm, radius mm, turnsLeft, style]`, decoded as `ScheduledState`) and events `scheduledCreated` / `scheduledFired`. `render/src/effects/scheduled-layer.ts` draws a warning-coloured (`PALETTE.uiAccent`) ground ring and beam per entry, a landing disc for `arrival`, and a line joining the entries of a group. Spore Cloud's look is `sporeView` in `effects/area-views.ts`.
 
 ### Crate and wind
 
