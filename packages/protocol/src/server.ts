@@ -90,6 +90,11 @@ export const AimPreview = z.object({
     windScale: z.number(),
     projectileRadius: z.number(),
   }),
+  /**
+   * That weapon's motion parameters (`{ kind: 'drill', length, ... }`), omitted for plain
+   * ballistic weapons, so displays preview a drill as a straight line.
+   */
+  motion: z.object({ kind: z.string() }).passthrough().optional(),
   angle: z.number().min(-Math.PI).max(Math.PI),
   power: z.number().min(0).max(1),
 });

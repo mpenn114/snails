@@ -1,11 +1,13 @@
 import type { WeaponDefinition } from '@snails/core';
 import { dewBomb } from './dew-bomb.js';
+import { pebbleRoller } from './pebble-roller.js';
 import { pebbleToss } from './pebble-toss.js';
 import { radulaMissile } from './radula-missile.js';
 import { saltShaker } from './salt-shaker.js';
+import { shellDrill } from './shell-drill.js';
 import { slimeGrenade } from './slime-grenade.js';
 
-export { dewBomb, pebbleToss, radulaMissile, saltShaker, slimeGrenade };
+export { dewBomb, pebbleRoller, pebbleToss, radulaMissile, saltShaker, shellDrill, slimeGrenade };
 
 /**
  * Base-game weapons in picker order (the first is the default). To add a weapon: create
@@ -16,6 +18,8 @@ export const weapons: WeaponDefinition[] = [
   pebbleToss,
   saltShaker,
   slimeGrenade,
-  dewBomb,
+  pebbleRoller,
   radulaMissile,
+  dewBomb,
+  shellDrill,
 ];

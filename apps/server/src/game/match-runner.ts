@@ -199,8 +199,17 @@ export class MatchRunner implements ActiveMatch {
     const weaponId = this.session.activeWeaponId;
     const launch = this.session.activeLaunch;
     if (!snailId || !weaponId || !launch) return;
+    const motion = this.session.activeMotion;
     this.pendingAim = {
-      msg: { type: 'aimPreview', snailId, weaponId, launch, angle, power },
+      msg: {
+        type: 'aimPreview',
+        snailId,
+        weaponId,
+        launch,
+        ...(motion ? { motion } : {}),
+        angle,
+        power,
+      },
       from: member.id,
     };
     const wait = this.lastAimAt + (this.opts.aimIntervalMs ?? 66) - this.now();

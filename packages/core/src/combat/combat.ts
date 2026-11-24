@@ -3,8 +3,9 @@ import { buildMatchContent, withContent, type MatchContent } from '../content/ma
 import type { WeaponDefinition, WeaponLaunchSpec } from '../content/types.js';
 import type { ContentRegistry } from '../content/registry.js';
 import { findSnail, setFacing } from '../entities/snail.js';
-import { FIXED_DT, stepProjectile, type ProjectileState } from '../physics/ballistics.js';
-import { isGuidable } from '../physics/motion.js';
+import { FIXED_DT, type ProjectileState } from '../physics/ballistics.js';
+import { isGuidable, resolveMotion, type MotionSpec } from '../physics/motion.js';
+import { distance } from '../math/vec3.js';
 import { patternOffsets } from './pattern.js';
 import {
   createProjectileSystem,
@@ -91,9 +92,11 @@ export function computeLaunch(
 }
 
 /**
- * Samples the unobstructed (no terrain) arc of a shot for aim previews: position of the
+ * Samples the unobstructed (no terrain) path of a shot for aim previews: position of the
  * projectile every `stepsPerSample` fixed steps, starting at its spawn point. Built on
- * `computeLaunch` and `stepProjectile` (wind included) so it cannot drift from the sim. Pure.
+ * `computeLaunch` and the weapon's motion strategy `step` (wind included) so it cannot drift
+ * from the sim: a drill previews as a straight line cut off at its length, a bouncing stone as
+ * its first free arc. Pure. `motion` omitted means ballistic.
  */
 export function predictTrajectory(
   origin: Vec3,
@@ -103,7 +106,10 @@ export function predictTrajectory(
   wind: Wind,
   samples = 24,
   stepsPerSample = 5,
+  motion?: MotionSpec,
 ): Vec3[] {
+  const resolved = resolveMotion(motion);
+  const range = resolved.strategy.previewRange?.(resolved.motion) ?? Infinity;
   const clamped = {
     angle: clamp(aim.angle, -Math.PI / 2, Math.PI / 2),
     power: clamp(aim.power, 0, 1),
@@ -117,7 +123,10 @@ export function predictTrajectory(
   const out: Vec3[] = [];
   for (let i = 0; i < samples; i++) {
     out.push({ ...p.position });
-    for (let k = 0; k < stepsPerSample; k++) p = stepProjectile(p, wind, FIXED_DT);
+    if (distance(shot.position, p.position) >= range) break;
+    for (let k = 0; k < stepsPerSample; k++) {
+      p = resolved.strategy.step(p, resolved.motion, wind, FIXED_DT);
+    }
   }
   return out;
 }
