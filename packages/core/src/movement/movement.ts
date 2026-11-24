@@ -55,7 +55,6 @@ export function movementSystem(
 /**
  * Movement parameters after the snail's team techs: `crawlSpeed` (m/s), `maxClimbDegrees`
  * (base 50) and `jumpDistance` (multiplier on the horizontal jump speed, base 1).
- * TODO(jumpCharges): no multi-jump concept exists yet; the double-jump tech adds it.
  */
 function techMovementConfig(ctx: SimContext, snail: Snail, config: MovementConfig): MovementConfig {
   if (!ctx.techs) return config;
@@ -72,8 +71,28 @@ function techMovementConfig(ctx: SimContext, snail: Snail, config: MovementConfi
 
 function startAirborne(snail: Snail, velocity: Vec3): void {
   snail.grounded = false;
+  snail.jumpsUsed = 1;
   snail.velocity = velocity;
   snail.airborneFromY = snail.position.y;
+}
+
+/** Launch velocity of a jump along facing (scaled by the crawl direction; forward when 0). */
+function jumpVelocity(snail: Snail, cfg: MovementConfig): Vec3 {
+  const dir = snail.moveIntent?.direction ?? 0;
+  const f = scale(facingVector(snail), dir === 0 ? 1 : dir);
+  return { x: f.x * cfg.jumpForwardSpeed, y: cfg.jumpUpSpeed, z: f.z * cfg.jumpForwardSpeed };
+}
+
+/** Extra mid-air jump when the team's `jumpCharges` (base 1) allow another one. */
+function tryAirJump(ctx: SimContext, snail: Snail, config: MovementConfig): void {
+  const intent = snail.moveIntent;
+  if (!intent?.jumpRequested) return;
+  intent.jumpRequested = false;
+  const charges = Math.floor(teamStat(ctx.state, ctx.techs, snail.teamId, 'jumpCharges', 1));
+  if ((snail.jumpsUsed ?? 1) >= charges) return;
+  const cfg = techMovementConfig(ctx, snail, config);
+  snail.jumpsUsed = (snail.jumpsUsed ?? 1) + 1;
+  snail.velocity = jumpVelocity(snail, cfg);
 }
 
 function stepGrounded(ctx: SimContext, snail: Snail, cfg: MovementConfig): void {
@@ -82,12 +101,7 @@ function stepGrounded(ctx: SimContext, snail: Snail, cfg: MovementConfig): void 
   const dir = intent?.direction ?? 0;
   if (intent?.jumpRequested) {
     intent.jumpRequested = false;
-    const f = scale(facingVector(snail), dir === 0 ? 1 : dir);
-    startAirborne(snail, {
-      x: f.x * cfg.jumpForwardSpeed,
-      y: cfg.jumpUpSpeed,
-      z: f.z * cfg.jumpForwardSpeed,
-    });
+    startAirborne(snail, jumpVelocity(snail, cfg));
     return;
   }
   const heading = scale(facingVector(snail), dir);
@@ -138,7 +152,7 @@ export function snapToGround(ctx: SimContext, p: Vec3, cfg: MovementConfig): Sna
 }
 
 function stepAirborne(ctx: SimContext, snail: Snail, cfg: MovementConfig): void {
-  if (snail.moveIntent) snail.moveIntent.jumpRequested = false;
+  tryAirJump(ctx, snail, cfg);
   const v = { ...snail.velocity, y: snail.velocity.y - cfg.gravity * ctx.dt };
   const to = add(snail.position, scale(v, ctx.dt));
   const hit = sphereSweep(ctx.terrain, snail.position, to, cfg.radius);
@@ -152,6 +166,7 @@ function stepAirborne(ctx: SimContext, snail: Snail, cfg: MovementConfig): void 
   snail.velocity = { x: 0, y: 0, z: 0 };
   snail.grounded = true;
   delete snail.airborneFromY;
+  delete snail.jumpsUsed;
   const landing = {
     impactSpeed: Math.hypot(v.x, v.y, v.z),
     fallDistance: Math.max(0, fromY - hit.point.y),

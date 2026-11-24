@@ -47,6 +47,10 @@ export interface Snail {
   rope?: RopeState;
   /** Team that last damaged this snail (research kill credit); cleared on death. */
   lastHitByTeam?: string;
+  /** Jumps made since leaving the ground (multi-jump techs); unset while grounded. */
+  jumpsUsed?: number;
+  /** Turn number in which the Citadel shield already absorbed a hit for this snail. */
+  shieldTurn?: number;
 }
 
 /** A snail being reeled from `from` to `to` over `seconds`; `elapsed` advances each step. */
@@ -263,6 +267,8 @@ export interface GameState {
   tick: number;
   seed: number;
   wind: Wind;
+  /** Pre-rolled wind of the next turn (only when research is on; the Weather Vane tech shows it). */
+  nextWind?: Wind;
   terrain: TerrainDescriptor;
   teams: Team[];
   turn: TurnState;

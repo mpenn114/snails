@@ -1,4 +1,4 @@
-import type { GameState } from '@snails/core';
+import { completedEffects, type GameState, type TechRegistry } from '@snails/core';
 import type { ServerMessage, Snapshot, WireEvent, WireTeamEntry } from '@snails/protocol';
 
 /** Event types only the owning team's controllers may see (`researchCompleted` is public). */
@@ -12,15 +12,35 @@ export const PRIVATE_EVENT_TYPES: ReadonlySet<string> = new Set([
 /** The research part of a decoded snapshot: preset plus per-team entries (all private data included). */
 export function researchFields(
   state: Pick<GameState, 'research' | 'teams'>,
+  techs?: TechRegistry,
 ): Pick<Snapshot, 'research' | 'teams'> {
   if (!state.research || state.research === 'off') return {};
   const teams: WireTeamEntry[] = state.teams.map((t) => ({
     id: t.id,
     researching: t.research?.active != null,
     ...(t.researched.length > 0 ? { researched: [...t.researched] } : {}),
+    ...teamFlags(t, techs),
     ...(t.research ? { research: structuredClone(t.research) } : {}),
   }));
   return { research: state.research, teams };
+}
+
+function teamFlags(team: GameState['teams'][number], techs?: TechRegistry): { flags?: string[] } {
+  const flags = completedEffects(team, techs).flatMap((e) =>
+    e.type === 'setFlag' ? [e.flag] : [],
+  );
+  return flags.length > 0 ? { flags } : {};
+}
+
+/** Flags that reveal opponents' research (Scouting Mist, and everything with the Oracle). */
+const SEES_RESEARCH = ['seeOpponentResearch', 'seeAll'];
+/** Flags that reveal next turn's wind (Weather Vane, Oracle). */
+const SEES_NEXT_WIND = ['seeNextWind', 'seeAll'];
+
+function viewerHas(snap: Snapshot, viewerTeams: readonly string[], wanted: string[]): boolean {
+  return (snap.teams ?? []).some(
+    (t) => viewerTeams.includes(t.id) && (t.flags ?? []).some((f) => wanted.includes(f)),
+  );
 }
 
 /**
@@ -38,15 +58,19 @@ export function filterMessage(msg: ServerMessage, viewerTeams: readonly string[]
 
 /** Strips other teams' `research` objects from a snapshot (the `researching` flag stays). */
 export function filterSnapshot(snap: Snapshot, viewerTeams: readonly string[]): Snapshot {
-  if (!snap.teams) return snap;
+  const { nextWind, ...rest } = snap;
+  const out: Snapshot = nextWind && viewerHas(snap, viewerTeams, SEES_NEXT_WIND) ? snap : rest;
+  if (!out.teams) return out;
+  const scout = viewerHas(snap, viewerTeams, SEES_RESEARCH);
   return {
-    ...snap,
-    teams: snap.teams.map((t) => {
-      if (!t.research || viewerTeams.includes(t.id)) return t;
+    ...out,
+    teams: out.teams.map((t) => {
+      if (!t.research || scout || viewerTeams.includes(t.id)) return t;
       return {
         id: t.id,
         ...(t.researching === undefined ? {} : { researching: t.researching }),
         ...(t.researched === undefined ? {} : { researched: t.researched }),
+        ...(t.flags ? { flags: t.flags } : {}),
       };
     }),
   };

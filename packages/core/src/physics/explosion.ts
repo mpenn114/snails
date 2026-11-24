@@ -1,7 +1,11 @@
 import { destroyCratesInRadius } from '../crate/crate-destroy.js';
 import { applyDamage, findSnail, livingSnails } from '../entities/snail.js';
 import { distance, normalize, sub } from '../math/vec3.js';
-import { applyMeleeThorns, sourceHitMultiplier } from '../research/tech-effects.js';
+import {
+  applyMeleeThorns,
+  consumeCitadelShield,
+  sourceHitMultiplier,
+} from '../research/tech-effects.js';
 import type { SimContext } from '../sim/types.js';
 import type { Snail, Vec3 } from '../state/types.js';
 import { type CarveResult, carveSphere, toCarveEvent } from '../terrain/carve.js';
@@ -154,7 +158,9 @@ export function damageAround(
     const mul = friendly
       ? 0
       : sourceHitMultiplier(ctx, snail, source.ownerSnailId, source.excludeOwner === true);
-    const result = applyDamage(snail, Math.round(spec.maxDamage * f * mul));
+    let amount = Math.round(spec.maxDamage * f * mul);
+    if (amount > 0 && consumeCitadelShield(ctx, snail)) amount = 0;
+    const result = applyDamage(snail, amount);
     knockSnail(snail, centre, spec.knockback * f);
     if (result.dealt > 0) {
       ctx.emit({

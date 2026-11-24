@@ -180,3 +180,15 @@ export function applyMeleeThorns(ctx: SimContext, victim: Snail, attackerId: str
     });
   }
 }
+
+/**
+ * Great Spiral: Citadel (`citadelShield` flag): a snail at full health ignores the first hit of
+ * each turn. Returns true (and records the turn on the snail) when this hit is absorbed.
+ */
+export function consumeCitadelShield(ctx: SimContext, snail: Snail): boolean {
+  if (!ctx.techs || snail.health < snail.maxHealth) return false;
+  if (snail.shieldTurn === ctx.state.turn.turnNumber) return false;
+  if (!teamHasFlag(ctx.state, ctx.techs, snail.teamId, 'citadelShield')) return false;
+  snail.shieldTurn = ctx.state.turn.turnNumber;
+  return true;
+}

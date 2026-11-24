@@ -16,5 +16,6 @@ export const slimeRope = {
   effects: [{ type: 'reel', seconds: 0.7, standoff: 0.9 }],
   ammo: 'infinite',
   perTurn: 1,
+  requiresTech: 'slime-rope',
   endsAction: false,
 } satisfies WeaponDefinition;

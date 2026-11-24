@@ -430,6 +430,7 @@ export class GameSession {
     return {
       tick: s.tick,
       wind: { ...s.wind },
+      ...(s.nextWind ? { nextWind: { ...s.nextWind } } : {}),
       turn: {
         activeTeamId: s.turn.activeTeamId,
         activeSnailId: s.turn.activeSnailId,
@@ -448,7 +449,7 @@ export class GameSession {
           aim: n.aim ?? { angle: 0, power: 0 },
         })),
       ),
-      ...researchFields(s),
+      ...researchFields(s, this.match.content.technologies),
       projectiles: s.projectiles.map((p) => ({
         id: p.id,
         weaponId: p.weaponId,

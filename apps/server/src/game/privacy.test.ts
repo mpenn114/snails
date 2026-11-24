@@ -78,3 +78,47 @@ describe('privacy filter', () => {
     expect(researchFields({ research: 'off', teams: [] })).toEqual({});
   });
 });
+
+describe('intel techs', () => {
+  const withFlags = (aFlags: string[]): Snapshot => ({
+    ...snap,
+    nextWind: [3000, 100],
+    teams: [
+      { id: 'a', researching: true, research: research(5), flags: aFlags },
+      { id: 'b', researching: false, research: research(9) },
+    ],
+  });
+
+  it('Scouting Mist reveals opponents research to its team only', () => {
+    const s = withFlags(['seeOpponentResearch']);
+    expect(teamsOf(filterMessage(s, ['a']))?.map((e) => !!e.research)).toEqual([true, true]);
+    expect(teamsOf(filterMessage(s, ['b']))?.map((e) => !!e.research)).toEqual([false, true]);
+    expect(teamsOf(filterMessage(s, []))?.map((e) => !!e.research)).toEqual([false, false]);
+  });
+
+  it('the Oracle reveals research and the next wind; Weather Vane only the wind', () => {
+    const oracle = filterMessage(withFlags(['seeAll']), ['a']) as Snapshot;
+    expect(oracle.nextWind).toEqual([3000, 100]);
+    expect(oracle.teams?.[1]?.research).toBeDefined();
+    const vane = filterMessage(withFlags(['seeNextWind']), ['a']) as Snapshot;
+    expect(vane.nextWind).toEqual([3000, 100]);
+    expect(vane.teams?.[1]?.research).toBeUndefined();
+  });
+
+  it('hides the next wind from everyone without the flag and exposes team flags', () => {
+    const s = withFlags(['seeNextWind']);
+    expect((filterMessage(s, ['b']) as Snapshot).nextWind).toBeUndefined();
+    expect((filterMessage(s, []) as Snapshot).nextWind).toBeUndefined();
+    expect(teamsOf(filterMessage(s, ['b']))?.[0]?.flags).toEqual(['seeNextWind']);
+  });
+
+  it('researchFields lists the flags of completed techs', () => {
+    const team = { id: 'a', researched: ['t'], snails: [] } as never;
+    const techs = {
+      get: () => ({ effects: [{ type: 'setFlag', flag: 'seeAll' }] }) as never,
+    };
+    expect(researchFields({ research: 'on', teams: [team] }, techs).teams?.[0]?.flags).toEqual([
+      'seeAll',
+    ]);
+  });
+});
