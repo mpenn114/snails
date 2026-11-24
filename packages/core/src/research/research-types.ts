@@ -31,6 +31,10 @@ export interface TeamResearch {
   damageCalciumThisTurn: number;
   /** Rounds since this team last damaged an enemy snail (Moss Tax). */
   roundsSinceDamage: number;
+  /** Damage dealt to enemies not yet converted to Calcium (0 up to one Calcium's worth). */
+  damageRemainder?: number;
+  /** True once this team damaged an enemy since its last turn start (Moss Tax bookkeeping). */
+  damagedSinceTurnStart?: boolean;
   /** Uses of once-per-match abilities, `abilityId -> uses spent`. */
   abilityUses?: Record<string, number>;
 }
