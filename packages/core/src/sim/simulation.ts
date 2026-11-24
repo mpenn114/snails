@@ -207,10 +207,12 @@ export class Simulation {
       terrain: this.terrain.clone(),
       rng: RngStreams.fromState(this.rng.saveState()),
       weapons: this.weapons,
+      technologies: this.technologies,
     });
     for (const [type, fn] of this.handlers) copy.handlers.set(type, fn);
     copy.systems.push(...this.systems);
     copy.turnStartHooks.push(...this.turnStartHooks);
+    copy.eventObservers.push(...this.eventObservers);
     copy.hookedTurn = this.hookedTurn;
     for (const q of this.queue) {
       copy.queue.push({
