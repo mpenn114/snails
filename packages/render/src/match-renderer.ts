@@ -3,6 +3,9 @@ import { SdfGrid } from '@snails/core';
 import type { GameSnapshot, SimEvent } from '@snails/core';
 import { CameraRig, type CameraMode, type CameraRigOptions } from './camera/camera-rig.js';
 import { ExplosionEffects } from './effects/explosion-effects.js';
+import { TechUnlockBurst } from './effects/tech-unlock-burst.js';
+import { ResearchVisuals, type TeamResearchInput } from './research/research-visuals.js';
+import type { TechVisualLookup } from './research/shell-look.js';
 import { SplashEffects } from './effects/splash-effects.js';
 import { createWindParticles, type WindParticles } from './environment/wind-particles.js';
 import { ScheduledLayer } from './effects/scheduled-layer.js';
@@ -110,6 +113,7 @@ interface Built {
   props: PropLayer | null;
   explosions: ExplosionEffects;
   splashes: SplashEffects;
+  unlock: TechUnlockBurst;
   rig: CameraRig;
   wind: WindParticles;
   material: TerrainMaterial;
@@ -127,6 +131,7 @@ export class MatchRenderer {
   private readonly buffer: SnapshotBuffer;
   private readonly extras: ExtraLayer[] = [];
   private ownedLoader: ModelLoader | null = null;
+  private readonly research = new ResearchVisuals();
 
   /** Creates an idle renderer; nothing is built until `init`. */
   constructor(private readonly deps: MatchRendererDeps) {
@@ -200,13 +205,7 @@ export class MatchRenderer {
     });
     terrain.markAllDirty();
     view.roots.terrain.add(terrain.group);
-    const snails = new SnailLayer({
-      camera: view.camera,
-      tier: view.tier,
-      shadows: q.shadows,
-      selectViews: (s: RenderState) => snailViewsFromSnapshot(s.snapshot),
-      ...(this.deps.labelFactory ? { labelFactory: this.deps.labelFactory } : {}),
-    });
+    const snails = this.makeSnails(view);
     const projectiles = new ProjectileLayer({ shadows: q.shadows, quality: q.particleScale });
     const areas = new AreaLayer();
     const strands = this.makeStrands(q.particleScale);
@@ -216,6 +215,7 @@ export class MatchRenderer {
     view.roots.entities.add(snails.group, ...(props ? [props.group] : []));
     const splashes = this.makeSplashes(view, source, waterLevel);
     const wind = this.makeWind(grid, q.particleScale);
+    const unlock = this.makeUnlock(view, snails);
     const effects = [projectiles, areas, scheduled, explosions, splashes, strands, crates].map(
       (l) => l.group,
     );
@@ -234,6 +234,7 @@ export class MatchRenderer {
       props,
       explosions,
       splashes,
+      unlock,
       rig,
       wind,
       material,
@@ -241,6 +242,27 @@ export class MatchRenderer {
     };
     this.registerUpdaters(built);
     return built;
+  }
+
+  private makeUnlock(view: GameView, snails: SnailLayer): TechUnlockBurst {
+    const unlock = new TechUnlockBurst(
+      (id) => snails.livingPositions(id),
+      view.quality.particleScale,
+      this.deps.random,
+    );
+    view.roots.effects.add(unlock.group);
+    return unlock;
+  }
+
+  private makeSnails(view: GameView): SnailLayer {
+    return new SnailLayer({
+      camera: view.camera,
+      tier: view.tier,
+      shadows: view.quality.shadows,
+      research: this.research,
+      selectViews: (s: RenderState) => snailViewsFromSnapshot(s.snapshot),
+      ...(this.deps.labelFactory ? { labelFactory: this.deps.labelFactory } : {}),
+    });
   }
 
   private makeStrands(quality: number): StrandEffects {
@@ -294,6 +316,7 @@ export class MatchRenderer {
     add(b.scheduled.updater);
     add(b.crates.updater);
     add(b.explosions.updater);
+    add(b.unlock.updater);
     add((_dt, s) => {
       if (s) b.view.water?.setLevel(s.snapshot.terrain.waterLevel);
     });
@@ -313,6 +336,19 @@ export class MatchRenderer {
     return this.buffer.push(snapshot);
   }
 
+  /** Sets where tech `visual` payloads come from (the content registry's technologies). */
+  setTechVisuals(lookup: TechVisualLookup): void {
+    this.research.setLookup(lookup);
+  }
+
+  /**
+   * Feeds the snapshot's public per-team research entries (shimmer flag, researched ids). Safe to
+   * call on every snapshot; absolute, so a late joiner shows the right shells without replay.
+   */
+  setResearchTeams(teams: readonly TeamResearchInput[] | undefined): void {
+    this.research.setTeams(teams);
+  }
+
   /** Applies a catch-up terrain history silently (no effects); the mesh rebuilds in one budgeted pass. */
   applyTerrainHistory(events: readonly SimEvent[]): void {
     this.built?.replica.applyHistory(events);
@@ -325,6 +361,7 @@ export class MatchRenderer {
     this.built?.strands.handleEvents(events);
     this.built?.crates.handleEvents(events);
     this.built?.snails.handleEvents(events);
+    this.built?.unlock.handleEvents(events);
     const scorch = this.built?.material.scorch;
     if (!scorch) return;
     for (const e of events) {
@@ -384,6 +421,7 @@ export class MatchRenderer {
     b.crates.dispose();
     b.explosions.dispose();
     b.splashes.dispose();
+    b.unlock.dispose();
     b.wind.dispose();
     b.material.dispose();
     b.view.dispose();

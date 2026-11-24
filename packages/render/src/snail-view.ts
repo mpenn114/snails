@@ -1,6 +1,7 @@
 import { TEAM_COLORS } from './style/palette.js';
 import { Color } from 'three';
 import type { GameSnapshot } from '@snails/core';
+import type { TeamResearchView } from './research/shell-look.js';
 
 /** Everything the renderer needs to draw one snail (possibly interpolated). */
 export interface SnailView {
@@ -26,6 +27,8 @@ export interface SnailView {
   aimAngle?: number;
   /** Active snail retreating after its shot (animation). */
   retreating?: boolean;
+  /** Research feedback of the snail's team (shimmer flag and persistent shell look). */
+  research?: TeamResearchView;
 }
 
 /** Fallback team palette, indexed by team order. */

@@ -112,6 +112,30 @@
         margin-left: 1.5vw;
         font-weight: 800;
       }
+      .research-banner-slot {
+        position: fixed;
+        top: 6vh;
+        left: 50%;
+        transform: translateX(-50%);
+        pointer-events: none;
+        z-index: 5;
+      }
+      .research-banner {
+        padding: 0.6vw 2.4vw;
+        font-size: 2.6vw;
+        font-weight: 800;
+        color: var(--snl-paper);
+        background: rgba(var(--snl-ink-rgb), 0.82);
+        border-bottom: 0.4vw solid;
+        border-radius: var(--snl-radius);
+        animation: banner-in 0.35s ease-out;
+      }
+      @keyframes banner-in {
+        from {
+          opacity: 0;
+          transform: translateY(-2vh) scale(0.94);
+        }
+      }
       .hud .notice {
         position: absolute;
         top: 12vh;
