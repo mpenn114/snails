@@ -7,6 +7,7 @@ export const ERROR_CODES = [
   'bad_message',
   'no_room',
   'room_full',
+  'teams_full',
   'not_host',
   'not_in_lobby',
   'match_in_progress',
