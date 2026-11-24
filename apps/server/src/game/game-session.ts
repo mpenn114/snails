@@ -6,6 +6,7 @@ import {
   type SimEvent,
   type Snail,
   type WeaponDefinition,
+  type MotionSpec,
   type WeaponLaunchSpec,
   getAim,
 } from '@snails/core';
@@ -185,6 +186,12 @@ export class GameSession {
   get activeLaunch(): WeaponLaunchSpec | null {
     const id = this.activeWeaponId;
     return (id ? this.match.weapons.get(id)?.launch : undefined) ?? null;
+  }
+
+  /** Motion parameters of the active team's selected weapon, or null for plain ballistic. */
+  get activeMotion(): MotionSpec | null {
+    const id = this.activeWeaponId;
+    return (id ? this.match.weapons.get(id)?.motion : undefined) ?? null;
   }
 
   /** Current aim (angle, power) of the active snail, or null. */

@@ -19,7 +19,13 @@ export interface RendererPort {
 /** Aim hint surface. */
 export interface AimPort {
   set(
-    aim: { snailId: string; launch?: WeaponLaunchSpec; angle: number; power: number } | null,
+    aim: {
+      snailId: string;
+      launch?: WeaponLaunchSpec;
+      motion?: { kind: string };
+      angle: number;
+      power: number;
+    } | null,
   ): void;
 }
 

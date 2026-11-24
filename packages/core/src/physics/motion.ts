@@ -1,6 +1,11 @@
 import { z } from 'zod';
 import type { Wind } from '../state/types.js';
 import { type ProjectileState, stepProjectile } from './ballistics.js';
+import { BounceMotionSchema, bounceStrategy } from './motion-bounce.js';
+import { DrillMotionSchema, drillStrategy } from './motion-drill.js';
+import type { MotionStrategy } from './motion-types.js';
+
+export type { ContactResponse, MotionStrategy, TerrainContact } from './motion-types.js';
 
 /** Plain gravity-and-wind arc (the default motion). */
 export const BallisticMotionSchema = z.object({ kind: z.literal('ballistic') }).strict();
@@ -9,7 +14,11 @@ export const BallisticMotionSchema = z.object({ kind: z.literal('ballistic') }).
  * Motion of a weapon's projectile, discriminated by `kind`. To add a motion (`bounce`,
  * `guided`, `drill`, ...): add its schema to this union and one entry to {@link motionStrategies}.
  */
-export const MotionSchema = z.discriminatedUnion('kind', [BallisticMotionSchema]);
+export const MotionSchema = z.discriminatedUnion('kind', [
+  BallisticMotionSchema,
+  BounceMotionSchema,
+  DrillMotionSchema,
+]);
 
 /** Motion parameters of a weapon or projectile. */
 export type MotionSpec = z.infer<typeof MotionSchema>;
@@ -17,17 +26,13 @@ export type MotionSpec = z.infer<typeof MotionSchema>;
 /** Discriminator values of {@link MotionSpec}. */
 export type MotionKind = MotionSpec['kind'];
 
-/** How one motion kind advances a projectile by one fixed step. Pure and deterministic. */
-export interface MotionStrategy<M extends MotionSpec = MotionSpec> {
-  /** Returns the projectile state after `dt` seconds. */
-  step(p: ProjectileState, motion: M, wind: Wind, dt: number): ProjectileState;
-}
-
 /** The motion strategy table, keyed by `motion.kind`. Adding a motion is an additive entry. */
 export const motionStrategies: {
   [K in MotionKind]: MotionStrategy<Extract<MotionSpec, { kind: K }>>;
 } = {
   ballistic: { step: (p, _motion, wind, dt) => stepProjectile(p, wind, dt) },
+  bounce: bounceStrategy,
+  drill: drillStrategy,
 };
 
 /** Motion used when a projectile carries none. */
@@ -39,7 +44,15 @@ export function stepMotion(
   wind: Wind,
   dt: number,
 ): ProjectileState {
-  const motion = p.motion ?? DEFAULT_MOTION;
-  const strategy = motionStrategies[motion.kind] as MotionStrategy;
+  const { motion, strategy } = resolveMotion(p.motion);
   return strategy.step(p, motion, wind, dt);
+}
+
+/** The strategy and parameters for a motion (ballistic if unset). */
+export function resolveMotion(motion: MotionSpec | undefined): {
+  motion: MotionSpec;
+  strategy: MotionStrategy<MotionSpec>;
+} {
+  const m = motion ?? DEFAULT_MOTION;
+  return { motion: m, strategy: motionStrategies[m.kind] as MotionStrategy<MotionSpec> };
 }

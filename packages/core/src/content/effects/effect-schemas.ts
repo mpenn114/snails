@@ -4,7 +4,7 @@ const nonNeg = z.number().finite().nonnegative();
 const pos = z.number().finite().positive();
 
 /** Damage and knockback falloff curve. */
-export const FalloffSchema = z.enum(['linear', 'quadratic']);
+export const FalloffSchema = z.enum(['linear', 'quadratic', 'flat']);
 
 /** Hurts (and pushes) living snails inside `radius` of the detonation point. */
 export const DamageEffectSchema = z

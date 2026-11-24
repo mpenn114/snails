@@ -117,10 +117,10 @@ unlocks, crates and match settings.
 | 1 | Pebble Toss | Projectile | Plain stone lobbed with power control. | 15 core, r=1.5 m | Infinite ammo; the default. |
 | 2 | Salt Shaker | Projectile | Cluster of 5 salt grains, spread by power. Salt is the snail's nemesis. | 8 each, r=1 m | Salt does an extra 4 damage per turn to the target for 2 turns (burn-like). |
 | 3 | Slime Grenade | Thrown | 3 s fuse; bursts into sticky goo. | 25, r=3 m | Goo slows snails in radius by 50% for 1 turn. |
-| 4 | Pebble Roller | Bouncing | Heavy round stone; rolls downhill and bounces; 4 s fuse. | 30, r=2.5 m | Great on slopes; terrain-dependent. |
+| 4 | Pebble Roller | Bouncing | Heavy round stone; rolls downhill and bounces; 4 s fuse. | 30, r=2.5 m | Great on slopes; terrain-dependent. Terrain never detonates it (bounce motion); only the fuse or a snail does. |
 | 5 | Radula Missile | Guided | Launches; player steers left/right with the joystick for 4 s. | 35, r=2.5 m | Short guidance window; wind has a strong effect. |
 | 6 | Spore Cloud | Area | Mushroom spore canister. Cloud lingers 3 turns. | 6 per turn start, r=4 m | Ignores shell retreat. Blown by wind. |
-| 7 | Shell Drill | Digger | Spinning drill tunnels 8 m in the aimed direction. | 0 (10 if it hits a snail) | Escape and flank tool. |
+| 7 | Shell Drill | Digger | Spinning drill tunnels 8 m in the aimed direction. | 0 (10 if it hits a snail) | Escape and flank tool. Tube 1.6 m wide; rock stops it (carve power 20 < rock 30). |
 | 8 | Shell Bash | Melee | Headbutt with the shell at point blank. | 20 + heavy knockback | Knocks enemies into puddles. Needs the shell upgraded or intact. |
 | 9 | Slime Rope | Utility | Fires a sticky strand; swing or climb. | 0 | Replaces jumping; 1 per turn. |
 | 10 | Dew Bomb | Area | Water balloon; leaves a temporary puddle for 3 turns. | 5, r=3 m | Floods low pits; extinguishes salt; can drown enemies. |

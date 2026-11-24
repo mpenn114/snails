@@ -51,7 +51,13 @@ To add an effect type: add its schema to `EffectSchema`, add one entry to `effec
 
 ### Motion strategies
 
-`physics/motion.ts` holds `MotionSchema` (discriminated on `kind`) and the `motionStrategies` table. The projectile system calls `stepMotion(p, wind, dt)`, which looks up `p.motion?.kind ?? 'ballistic'`. Only `ballistic` exists. To add `bounce`, `guided` or `drill`: add its schema to the `MotionSchema` union and one `motionStrategies` entry (`step(p, motion, wind, dt)` returns the new position and velocity). Shared projectile code does not change.
+`physics/motion.ts` holds `MotionSchema` (discriminated on `kind`) and the `motionStrategies` table. The projectile system calls `stepMotion(p, wind, dt)`, which looks up `p.motion?.kind ?? 'ballistic'`. To add a motion: add its schema to the `MotionSchema` union and one `motionStrategies` entry. A strategy (`MotionStrategy`, `physics/motion-types.ts`) has a pure `step(p, motion, wind, dt)` (free flight; aim previews call it too) and optional hooks the projectile system calls generically: `prepare` (before contacts; may mutate terrain), `onTerrainContact` (returns `detonate`, `expire` (silent end) or `continue` with a new position and velocity; absent means detonate; snail contacts always detonate), `finished` (silent end, e.g. drill length) and `previewRange` (metres, caps the aim preview). Shared projectile code does not change.
+
+- `ballistic` (default): gravity and wind arc.
+- `bounce` `{ restitution, friction, rollDrag? }` (`motion-bounce.ts`): terrain contact reflects the velocity along the SDF normal (`restitution` keeps that share of the normal speed, `friction` removes that share of the tangential speed). A contact slower than `REST_SPEED` (1.6 m/s) rolls instead: the normal component is dropped, gravity then accelerates the stone down the slope, and `rollDrag` (1/s, default 0.35) slows it. Terrain never detonates it; the fuse or a snail does (Pebble Roller).
+- `drill` `{ length, tubeRadius, power }` (`motion-drill.ts`): constant-speed straight flight, gravity and wind ignored. Every step carves a sphere of `tubeRadius` (so a tube of that radius) at carve `power` and emits `terrainCarved`. Distance is `age * speed`; at `length` metres it ends silently. Terrain left standing after the carve ends it silently too: with `power` 20 below rock's `indestructibleBelowDamage` (30) rock stops the drill, and clay (resistance 0.5) is still cut because the tube is wide. Only a snail contact detonates (Shell Drill: flat 10 damage via the `flat` falloff, then stop).
+
+`predictTrajectory(..., samples, stepsPerSample, motion?)` uses the strategy's `step` and `previewRange`, so a drill previews as a straight line cut off at its length and a roller as its first free arc. The server relays `motion` in `aimPreview`.
 
 ### Statuses
 

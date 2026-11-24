@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { predictTrajectory, type WeaponLaunchSpec } from '@snails/core';
+import { MotionSchema, predictTrajectory, type WeaponLaunchSpec } from '@snails/core';
 import type { ExtraLayer } from '../match-renderer.js';
 import { PALETTE } from '../style/palette.js';
 import { resolveTeamColour } from '../snail-view.js';
@@ -10,6 +10,11 @@ export interface AimHintInput {
   snailId: string;
   /** Launch parameters of the snail's selected weapon, as relayed by the server. */
   launch?: WeaponLaunchSpec;
+  /**
+   * Motion parameters of the selected weapon (a drill previews as a short straight line);
+   * unparseable or omitted means a plain ballistic arc.
+   */
+  motion?: { kind: string };
   /** Pitch in radians. */
   angle: number;
   /** Power 0..1. */
@@ -176,6 +181,7 @@ export function createAimHint(opts: AimHintOptions = {}): AimHint {
         state.snapshot.wind,
         samples,
         opts.stepsPerSample,
+        MotionSchema.safeParse(aim.motion).data,
       );
       const phase = (time * MARCH_SPEED) % spacing;
       const layout = layoutDots(pts, spacing, phase, SKIP, MAX_DOTS, buf, opts.isSolid);

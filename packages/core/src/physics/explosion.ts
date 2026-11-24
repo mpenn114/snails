@@ -7,7 +7,7 @@ import { resolveCollapse } from '../terrain/collapse.js';
 import { SNAIL_RADIUS } from './projectile-system.js';
 
 /** Shape of the damage falloff curve. */
-export type FalloffKind = 'linear' | 'quadratic';
+export type FalloffKind = 'linear' | 'quadratic' | 'flat';
 
 /** Static description of an explosion. */
 export interface ExplosionSpec {
@@ -50,10 +50,11 @@ const KNOCKBACK_UP_BIAS = 0.3;
 
 /**
  * Returns the damage/knockback multiplier in [0, 1] at `distance` from the
- * centre: 1 at 0, 0 at or beyond `radius`.
+ * centre: 1 at 0, 0 at or beyond `radius` (`flat` is 1 everywhere inside `radius`).
  */
 export function computeFalloff(distance: number, radius: number, falloff: FalloffKind): number {
   if (!(radius > 0) || !(distance < radius)) return 0;
+  if (falloff === 'flat') return 1;
   const t = 1 - Math.max(0, distance) / radius;
   return falloff === 'quadratic' ? t * t : t;
 }
