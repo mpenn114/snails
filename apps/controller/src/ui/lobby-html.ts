@@ -1,5 +1,6 @@
 import type { LobbyPlayer, ServerMessage } from '@snails/protocol';
 import { playerTeams } from './lobby-logic';
+import { cpuSummary } from './cpu-controls';
 
 /** The `lobbyState` server message. */
 export type LobbyStateMsg = Extract<ServerMessage, { type: 'lobbyState' }>;
@@ -21,8 +22,13 @@ export function safeColour(c: string | null): string {
  * Roster list items for controllers (name, team, colour, ready, connected, host badge).
  * @param players lobby roster
  * @param hostId host player id
+ * @param canRemoveCpu whether to show a remove button on CPU teams (host only)
  */
-export function rosterHtml(players: readonly LobbyPlayer[], hostId: string | null): string {
+export function rosterHtml(
+  players: readonly LobbyPlayer[],
+  hostId: string | null,
+  canRemoveCpu = false,
+): string {
   return players
     .filter((p) => p.role === 'controller')
     .map((p) => {
@@ -33,6 +39,12 @@ export function rosterHtml(players: readonly LobbyPlayer[], hostId: string | nul
       ].filter(Boolean);
       const dot = `<span style="color:${safeColour(p.colour)}">&#9679;</span>`;
       const tag = badges.length ? ` (${badges.join(', ')})` : '';
+      if (p.cpu) {
+        const rm = canRemoveCpu
+          ? ` <button type="button" class="cpu-remove" data-team="${esc(p.teamId ?? p.id)}" aria-label="Remove ${esc(p.name)}">&#10005;</button>`
+          : '';
+        return `<li>${dot} ${esc(p.name)} <span class="badge cpu">CPU</span> ${esc(cpuSummary(p.cpu))}${rm}</li>`;
+      }
       return `<li>${dot} ${esc(p.name)} [${esc(playerTeams(p).join('+') || '-')}]${tag}</li>`;
     })
     .join('');
