@@ -68,6 +68,16 @@ describe('server messages', () => {
     expect(parseServerMessage(m)).toEqual(m);
     expect(() => parseServerMessage({ ...m, power: 2 })).toThrow();
   });
+  it('parses inventory and rejects negative stock', () => {
+    const m = {
+      type: 'inventory',
+      teams: [{ teamId: 'a', stock: { 'base:x': 2 }, locked: { 'base:y': 'tech' } }],
+    };
+    expect(parseServerMessage(m)).toEqual(m);
+    expect(() =>
+      parseServerMessage({ ...m, teams: [{ teamId: 'a', stock: { 'base:x': -1 }, locked: {} }] }),
+    ).toThrow();
+  });
   it('parses lobby, welcome, error and match start', () => {
     expect(
       parseServerMessage({

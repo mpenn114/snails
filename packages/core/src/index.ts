@@ -23,6 +23,7 @@ export * from './turn/turn-hooks.js';
 export * from './scheduled/scheduled-system.js';
 export * from './sim/lingering.js';
 export * from './combat/pattern.js';
+export * from './combat/inventory.js';
 export * from './rope/rope-system.js';
 export * from './content/registries.js';
 export * from './state/types.js';
