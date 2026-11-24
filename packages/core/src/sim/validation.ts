@@ -109,6 +109,10 @@ export function validateCommand(
   ctx: ValidationContext = {},
 ): ValidationResult {
   if (state.match.status !== 'playing') return reject('MATCH_OVER', 'the match is over');
+  if (cmd.type === 'queueResearch' || cmd.type === 'cancelResearch') {
+    // Placeholder until M5-03 adds research validation (any team, any phase).
+    return reject('WRONG_PHASE', 'research commands are not handled yet');
+  }
   const { turn } = state;
   if (ctx.issuerTeamId !== undefined && ctx.issuerTeamId !== turn.activeTeamId) {
     return reject('NOT_YOUR_TURN', `team ${ctx.issuerTeamId} is not the active team`);

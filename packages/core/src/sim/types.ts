@@ -54,8 +54,29 @@ export interface SteerCommand {
   input: number;
 }
 
+/** Queue a tech for a team (any phase, any team; validated against tiers and Calcium). */
+export interface QueueResearchCommand {
+  type: 'queueResearch';
+  teamId: string;
+  techId: string;
+}
+
+/** Remove a queued tech, or cancel the active one (refunds 50% of what was paid). */
+export interface CancelResearchCommand {
+  type: 'cancelResearch';
+  teamId: string;
+  techId: string;
+}
+
 /** Any player intent fed into the simulation. Validation happens upstream (M1-21). */
-export type Command = MoveCommand | AimCommand | FireCommand | EndTurnCommand | SteerCommand;
+export type Command =
+  | MoveCommand
+  | AimCommand
+  | FireCommand
+  | EndTurnCommand
+  | SteerCommand
+  | QueueResearchCommand
+  | CancelResearchCommand;
 
 /** Command discriminator values. */
 export type CommandType = Command['type'];
