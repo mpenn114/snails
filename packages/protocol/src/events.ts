@@ -97,6 +97,7 @@ const carvedBase = {
   type: z.literal('terrainCarved'),
   centre: V,
   radius: z.number(),
+  power: z.number().optional(),
 };
 
 /** A simulation event as consumers see it (same shape as core's `SimEvent`). */

@@ -20,6 +20,7 @@ function makeGrid(): SdfGrid {
 const copy = (g: SdfGrid): SdfGrid => {
   const c = new SdfGrid(g.nx, g.ny, g.nz, g.cellSize, 1, g.chunkSize);
   c.data.set(g.data);
+  c.materials.set(g.materials);
   return c;
 };
 
@@ -35,6 +36,17 @@ describe('TerrainReplica', () => {
     expect(Array.from(local.data)).toEqual(Array.from(core.data));
     for (const id of res.chunks) expect(dirty).toContain(id);
     expect(local.takeDirtyChunks().length).toBeGreaterThan(0);
+  });
+
+  it('applies per-material resistance and power like core', () => {
+    const core = makeGrid();
+    for (let i = 0; i < core.materials.length; i++) core.materials[i] = i % 5 < 2 ? 3 : 2;
+    const local = copy(core);
+    const centre = { x: 8, y: 9, z: 12 };
+    const res = carveSphere(core, centre, 4, 10);
+    const r = new TerrainReplica({ grid: local });
+    r.applyEvents([{ type: 'terrainCarved', centre, radius: 4, power: 10, chunks: res.chunks }]);
+    expect(Array.from(local.data)).toEqual(Array.from(core.data));
   });
 
   it('ignores irrelevant and duplicate events', () => {

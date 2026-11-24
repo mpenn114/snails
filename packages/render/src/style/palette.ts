@@ -15,6 +15,8 @@ export const PALETTE = {
   grassEdge: 0x5c8a34,
   soil: 0x946a48,
   deepSoil: 0x5e4230,
+  clay: 0xb4684a,
+  sand: 0xd8c27a,
   rock: 0x9a968c,
   scorch: 0x2e2622,
   waterShallow: 0x62c7c9,
@@ -35,6 +37,8 @@ export const TERRAIN_COLOR_NAMES: readonly PaletteName[] = [
   'grassEdge',
   'soil',
   'deepSoil',
+  'clay',
+  'sand',
   'rock',
   'scorch',
 ];

@@ -89,6 +89,8 @@ export interface TerrainCarvedEvent {
   type: 'terrainCarved';
   centre: Vec3;
   radius: number;
+  /** Damage power of the carve (for indestructible materials); omitted = unlimited. */
+  power?: number;
   chunks: ChunkId[];
 }
 

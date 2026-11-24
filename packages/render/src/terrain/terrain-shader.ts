@@ -8,18 +8,22 @@
 
 /** Declarations added to the vertex shader. */
 export const TERRAIN_VERTEX_PARS = /* glsl */ `
+attribute vec4 aMatColour;
+varying vec4 vMatColour;
 varying vec3 vTerrainWorldPos;
 varying vec3 vTerrainWorldNormal;
 `;
 
 /** Statements appended after `<begin_vertex>`. */
 export const TERRAIN_VERTEX_MAIN = /* glsl */ `
+vMatColour = aMatColour;
 vTerrainWorldPos = (modelMatrix * vec4(transformed, 1.0)).xyz;
 vTerrainWorldNormal = normalize(mat3(modelMatrix) * objectNormal);
 `;
 
 /** Declarations added to the fragment shader (needs `TERRAIN_BLASTS` defined). */
 export const TERRAIN_FRAGMENT_PARS = /* glsl */ `
+varying vec4 vMatColour;
 varying vec3 vTerrainWorldPos;
 varying vec3 vTerrainWorldNormal;
 uniform vec3 uTerrainGrass;
@@ -129,7 +133,10 @@ export const TERRAIN_FRAGMENT_COLOR = /* glsl */ `
   vec3 dirt = mix(uTerrainSoil, uTerrainDeep, depth * 0.9) * dDirt;
   vec3 rock = mix(uTerrainRock, uTerrainDeep, depth * 0.35) * dRock;
   vec3 grass = mix(uTerrainGrassEdge, uTerrainGrass, smoothstep(0.7, 0.92, edge)) * dGrass;
-  vec3 col = mix(mix(dirt, rock, rockW), grass, grassW);
+  // Terrain material tint (sand, clay, rock): rgb colour, a = weight (0 for plain soil).
+  dirt = mix(dirt, vMatColour.rgb * dDirt, vMatColour.a);
+  rock = mix(rock, vMatColour.rgb * dRock, vMatColour.a);
+  vec3 col = mix(mix(dirt, rock, rockW * (1.0 - vMatColour.a * 0.6)), grass, grassW);
   gTerrainLayerW = vec3(grassW, (1.0 - grassW) * (1.0 - rockW), (1.0 - grassW) * rockW);
 
   // Large soft blotches break up texture repetition.

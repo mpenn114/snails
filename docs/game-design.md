@@ -64,9 +64,19 @@ Snails are slow and committed.
 The world is a 3D voxel signed distance field (see ADR-0005). Weapons carve spheres or other
 shapes; some add material.
 
-- **Material types:** Soil (diggable), Clay (half damage radius), Stone (indestructible by
-  weak weapons; pebbles are chunky props), Roots (flexible, hold overhangs), Leaf litter (soft
-  landing).
+- **Material types:** every solid cell carries a material (a compact `Uint8Array` beside the
+  SDF, `SdfGrid.materials`; index into `materialTable`, defined in `terrain/materials.ts`).
+  Carving is resistance-scaled per cell: the carve radius in a cell is `radius * (1 - carveResistance)`,
+  so a crater is shaped by every layer it cuts and stops at rock. Base materials: Soil (0,
+  diggable), Sand (-0.2, carves slightly more, soft landing), Clay (0.5, half radius), Stone (0.8,
+  and indestructible by carves whose damage power is below 30, so weak weapons leave it untouched).
+  Resistance may go down to -0.5. Not yet implemented: Roots and Leaf litter.
+- **Material layout:** the generator lays strata deterministically from the map seed: sand on
+  beaches, a metre of soil on top, wobbly clay layers below, rock boulders and bedrock at depth.
+  Clients regenerate the grid from the seed (as for the SDF), so the material layer needs no wire
+  payload; carves and collapses never change materials. The `terrainCarved` event carries the
+  carve's damage `power` so the render replica applies the identical per-cell rule. The renderer
+  tints sand, clay and rock by material (per-vertex colour from the nearest cell).
 - **Collapse:** Unsupported soil fragments fall. Small chunks become debris that deals 5 to 10
   damage; large chunks bury snails (trapped, they must dig out using a tool or wait).
   (Core currently drops each floating cluster rigidly onto its support and lifts snails out of it;

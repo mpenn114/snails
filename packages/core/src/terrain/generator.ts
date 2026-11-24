@@ -2,6 +2,7 @@ import type { Rng } from '../rng.js';
 import type { TerrainDescriptor, Vec3 } from '../state/types.js';
 import { ValueNoise } from './noise.js';
 import { SdfGrid } from './sdf-grid.js';
+import { materialForCell } from './strata.js';
 
 /** Parameters for the procedural terrain generator (lengths in metres). */
 export interface TerrainGenConfig {
@@ -130,6 +131,7 @@ export function generateTerrain(
   const lobes = makeLobes(config, rng);
   const grid = new SdfGrid(nx, ny, nz, cs);
   const band = 4 * cs;
+  const strata = { cellSize: cs, waterLevel: config.waterLevel };
   for (let z = 0; z < nz; z++) {
     for (let x = 0; x < nx; x++) {
       const h = surfaceHeight(config, noise, lobes, x, z);
@@ -138,7 +140,10 @@ export function generateTerrain(
         if (config.caveDensity > 0 && h > config.waterLevel + CAVE_ROOF) {
           v = Math.max(v, caveCarve(config, noise, x, y, z, h));
         }
-        grid.data[grid.index(x, y, z)] = Math.max(-band, Math.min(band, v));
+        const i = grid.index(x, y, z);
+        grid.data[i] = Math.max(-band, Math.min(band, v));
+        // Material is laid out from the pre-cave surface height so strata ignore caves.
+        grid.materials[i] = materialForCell(noise, strata, x, y, z, h);
       }
     }
   }

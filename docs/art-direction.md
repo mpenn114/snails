@@ -23,6 +23,8 @@ Terrain is muted and earthy; shells and UI accents are the saturated things on s
 | Grass edge (dark rim, undersides) | `grassEdge` | `#5c8a34` |
 | Soil | `soil` | `#946a48` |
 | Deep soil | `deepSoil` | `#5e4230` |
+| Clay (terrain material) | `clay` | `#b4684a` |
+| Sand (terrain material) | `sand` | `#d8c27a` |
 | Rock | `rock` | `#9a968c` |
 | Scorch (craters, burn) | `scorch` | `#2e2622` |
 | Water shallow | `waterShallow` | `#62c7c9` |

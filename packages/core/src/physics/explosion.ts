@@ -90,14 +90,14 @@ export function resolveExplosion(
   source: ExplosionSource,
 ): ExplosionResult {
   const carveRadius = spec.carveRadius ?? spec.radius;
-  const carve = carveSphere(ctx.terrain, centre, carveRadius);
+  const carve = carveSphere(ctx.terrain, centre, carveRadius, spec.maxDamage);
   ctx.emit({
     type: 'explosion',
     position: { ...centre },
     radius: spec.radius,
     weaponId: source.weaponId,
   });
-  ctx.emit({ type: 'terrainCarved', ...toCarveEvent(centre, carveRadius, carve) });
+  ctx.emit({ type: 'terrainCarved', ...toCarveEvent(centre, carveRadius, carve, spec.maxDamage) });
   if (spec.collapse === true && carve.cellsChanged > 0)
     collapseAfterCarve(ctx, centre, carveRadius);
 
