@@ -114,8 +114,16 @@ try {
     step(`${weapon} resolved`);
   }
 
-  for (const f of [dFrames, ...phones.map((p) => p.frames)])
-    if (has(f, 'error')) fail(`server error: ${JSON.stringify(f.find((m) => m.type === 'error'))}`);
+  const lists = [['display', dFrames], ...phones.map((p) => [p.name, p.frames])];
+  for (const [who, f] of lists) {
+    const err = f.find((m) => m.type === 'error');
+    if (!err) continue;
+    for (const [name, g] of lists) {
+      const recent = g.sent.filter((m) => m._at <= err._at).slice(-6);
+      console.log(`[e2e] ${name} sent before the error: ${JSON.stringify(recent)}`);
+    }
+    fail(`server error to ${who} at ${err._at}: ${JSON.stringify(err)}`);
+  }
   if (errors.length) fail(`uncaught page errors:\n${errors.join('\n')}`);
   step('PASS');
 } catch (e) {
