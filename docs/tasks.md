@@ -166,10 +166,10 @@ the MG-03 harness to its PR. After the first round looked poor, MG-13 to MG-15 s
 
 | ID | Task | Area | Depends on | Status |
 |---|---|---|---|---|
-| M4-01 | Zod schemas for weapon, material, crate and wind definitions | content | M1-18 | 🚧 |
-| M4-02 | Content pack manifest (id, version, deps) and loader validation | core | M4-01 | ⬜ |
-| M4-03 | Effect vocabulary (damage, carve, status, spawn, move) kept small | core | M4-01, M1-13 | ⬜ |
-| M4-04 | Pebble Toss and Salt Shaker as pure data (cluster, salt status) | content | M4-03, M1-19 | 🚧 |
+| M4-01 | Zod schemas for weapon, material, crate and wind definitions | content | M1-18 | ✅ |
+| M4-02 | Content pack manifest (id, version, deps) and loader validation | core | M4-01 | ✅ |
+| M4-03 | Effect vocabulary (damage, carve, status, spawn, move) kept small | core | M4-01, M1-13 | ✅ |
+| M4-04 | Pebble Toss and Salt Shaker as pure data (cluster, salt status) | content | M4-03, M1-19 | ✅ |
 | M4-05 | Slime Grenade (thrown, fuse, slow status) | content | M4-03 | ⬜ |
 | M4-06 | Pebble Roller (bouncing, fuse) | content | M4-03, M1-08 | ⬜ |
 | M4-07 | Radula Missile (guided steering input) | content | M4-03, M3-21 | ⬜ |
