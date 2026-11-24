@@ -69,6 +69,8 @@ export const WireTeamEntry = z.object({
   id: z.string(),
   researching: z.boolean().optional(),
   research: WireTeamResearch.optional(),
+  /** Flags set by the team's completed techs (public: techs are revealed on completion). */
+  flags: z.array(z.string()).optional(),
 });
 /** Per-team research entry. */
 export type WireTeamEntry = z.infer<typeof WireTeamEntry>;
@@ -79,6 +81,8 @@ export const Snapshot = z.object({
   tick: int.nonnegative(),
   /** `[strength (milli m/s^2), direction (mrad)]`. */
   wind: z.tuple([int, int]),
+  /** Next turn's wind, same format; only sent to viewers with the Weather Vane (or Oracle). */
+  nextWind: z.tuple([int, int]).optional(),
   /** `[activeTeamId, activeSnailId, phaseIndex, timeRemainingMs, turnNumber]`. */
   turn: z.tuple([z.string().nullable(), z.string().nullable(), int.nonnegative(), int, int]),
   snails: z.array(WireSnail),
@@ -167,6 +171,8 @@ export interface CrateState {
 export interface DecodedSnapshot {
   tick: number;
   wind: { strength: number; direction: number };
+  /** Next turn's wind (research on only). */
+  nextWind?: { strength: number; direction: number };
   turn: {
     activeTeamId: string | null;
     activeSnailId: string | null;
@@ -198,6 +204,9 @@ export function encodeSnapshot(s: DecodedSnapshot): Snapshot {
     type: 'snapshot',
     tick: s.tick,
     wind: [q(s.wind.strength), q(s.wind.direction)],
+    ...(s.nextWind
+      ? { nextWind: [q(s.nextWind.strength), q(s.nextWind.direction)] as [number, number] }
+      : {}),
     turn: [
       s.turn.activeTeamId,
       s.turn.activeSnailId,
@@ -264,12 +273,18 @@ function encodeCrate(c: CrateState): z.infer<typeof WireCrate> {
   return [c.id, c.defId, q(c.position.x), q(c.position.y), q(c.position.z), c.grounded ? 1 : 0];
 }
 
+function decodeNextWind(m: Snapshot): Pick<DecodedSnapshot, 'nextWind'> {
+  if (!m.nextWind) return {};
+  return { nextWind: { strength: dq(m.nextWind[0]), direction: dq(m.nextWind[1]) } };
+}
+
 /** Expands a compact snapshot; unknown phase/state codes fall back to `intro`/`dead`. */
 export function decodeSnapshot(m: Snapshot): DecodedSnapshot {
   const [team, snail, phase, time, turnNumber] = m.turn;
   return {
     tick: m.tick,
     wind: { strength: dq(m.wind[0]), direction: dq(m.wind[1]) },
+    ...decodeNextWind(m),
     turn: {
       activeTeamId: team,
       activeSnailId: snail,

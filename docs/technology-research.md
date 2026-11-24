@@ -192,3 +192,29 @@ Stat bases: damage stats are multipliers (base 1), `crawlSpeed` m/s, `maxClimbDe
 Headless AI-vs-AI matches (see [ai.md](ai.md)) log win rate per tech and per branch. Targets:
 no tech picked in over 70% of winning builds, no branch under 15%, and first-turn advantage under
 55%.
+
+## Mobility, Utility and capstone wiring (M5-07)
+
+Data: `packages/content-base/src/techs/*.ts` (one file per tech, `mobilityUtilityTechnologies`).
+Wired in core and server:
+
+- `jumpCharges` (Hop Training): `Snail.jumpsUsed` counts jumps since leaving the ground; a mid-air
+  jump request is honoured while `jumpsUsed < teamStat(jumpCharges, base 1)`. Landing resets it.
+- Citadel: `citadelShield` flag; `consumeCitadelShield` (tech-effects) in `damageAround` absorbs the
+  first damaging hit of each turn on a full-health snail (`Snail.shieldTurn`).
+- Arsenal: `damageDealt x1.2`, `stockBonus +1`, and the `great-spiral-arsenal` hook (registered in
+  content-base) adds +1 to every current stock entry above 0 on completion.
+- Glide: `fallDamageTaken x0`, `moveBudgetSeconds +10`. Slime Rope is already one use per turn.
+- Weather Vane: with research on, `GameState.nextWind` is pre-rolled at each turn start (same wind
+  stream order, so results do not depend on which techs a team owns). The server sends
+  `Snapshot.nextWind` only to viewers whose team has `seeNextWind` or `seeAll`.
+- Scouting Mist (`seeOpponentResearch`) and Oracle (`seeAll`): the snapshot team entries carry the
+  public `flags` of completed techs; the privacy filter keeps opponents' `research` for viewers
+  with either flag. This includes their Calcium, and the private research events stay hidden
+  (the next snapshot carries the state).
+- Flags read by clients only (no client UI yet): `fullAimPreview`, `seeCrates`.
+
+Not implemented (data only, TODO): Burrow (`burrow` ability, once per match, resurface up to 10 m
+away) and Oracle's tech steal (`steal-tech` ability). `anyOf` links to Weaponry/Shell tier-3 ids
+(`beetle-calls`, `crystal-lattice`, `regrowth`) are not cross-validated by pack validation, which
+only checks `prerequisites`.

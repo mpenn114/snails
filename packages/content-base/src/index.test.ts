@@ -10,7 +10,7 @@ describe('basePack', () => {
     expect(order).toEqual(['base']);
     expect(contentHash).toMatch(/^[0-9a-f]{14}$/);
     expect(registries.weapons.get('base:salt-shaker')?.name).toBe('Salt Shaker');
-    expect(registries.technologies.list()).toHaveLength(5);
+    expect(registries.technologies.list()).toHaveLength(18);
     expect(registries.shellUpgrades.get('iron-spiral')).toBeDefined();
     expect(registries.statuses.require('base:salt').perTurnDamage).toBe(4);
     expect(registries.winds.list().map((w) => w.name)).toEqual(['Low', 'Normal', 'Off', 'Storm']);

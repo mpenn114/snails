@@ -96,7 +96,10 @@ export interface TurnWind {
  */
 export function startTurn(state: GameState, config: TurnConfig, emit: Emit, wind?: TurnWind): void {
   if (wind) {
-    state.wind = rollWind(state.wind, wind.rng, wind.config);
+    const preRolled = state.research !== undefined && state.research !== 'off';
+    state.wind =
+      (preRolled ? state.nextWind : undefined) ?? rollWind(state.wind, wind.rng, wind.config);
+    if (preRolled) state.nextWind = rollWind(state.wind, wind.rng, wind.config);
     emit({ type: 'windChanged', strength: state.wind.strength, direction: state.wind.direction });
   }
   const t = state.turn;

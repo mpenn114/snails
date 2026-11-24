@@ -1,7 +1,9 @@
 import type { ShellUpgradeDefinition, TechnologyDefinition } from '@snails/core';
+import { mobilityUtilityTechnologies } from './techs/mobility-utility.js';
 
 /** Base-game technologies. */
 export const technologies: TechnologyDefinition[] = [
+  ...mobilityUtilityTechnologies,
   {
     id: 'salt-refinery',
     name: 'Salt Refinery',
@@ -37,15 +39,6 @@ export const technologies: TechnologyDefinition[] = [
     cost: 60,
     prerequisites: ['salt-refinery'],
     description: 'Unlocks the Beetle Barrage.',
-  },
-  {
-    id: 'snail-mail-network',
-    name: 'Snail Mail Network',
-    branch: 'utility',
-    tier: 1,
-    cost: 30,
-    prerequisites: [],
-    description: 'Unlocks Snail Mail.',
   },
 ];
 
