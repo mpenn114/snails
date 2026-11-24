@@ -18,6 +18,7 @@
     "check-limits": "node scripts/check-limits.mjs",
     "ci": "pnpm lint && pnpm typecheck && pnpm check-limits && pnpm test && pnpm build",
     "build:packages": "pnpm -r --workspace-concurrency=1 --filter \"./packages/*\" --filter @snails/server build",
+    "sim:ai": "pnpm build:packages && node packages/ai/dist/sim-ai/cli.js",
     "sim:balance": "pnpm build:packages && node packages/ai/dist/balance/cli.js",
     "e2e": "node e2e/smoke.mjs && node e2e/demo.mjs",
     "shots": "node e2e/shots.mjs",

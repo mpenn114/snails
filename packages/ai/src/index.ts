@@ -7,3 +7,4 @@ export * from './solver/index.js';
 export * from './movement/index.js';
 export * from './targeting/index.js';
 export * from './research/index.js';
+export * from './sim-ai/index.js';
