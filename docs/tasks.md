@@ -191,6 +191,7 @@ the MG-03 harness to its PR. After the first round looked poor, MG-13 to MG-15 s
 | M4-23 | Snail-to-snail collision and separation in core (crawl, jump, knockback tests) (playtest #9) | core | M1-08 | ✅ |
 | M4-24 | Hot-seat team colours: keep each team's colour readable when one phone controls several teams (playtest #9) | controller | M3-28 | ✅ |
 | M4-25 | Desktop viewing UX pass: an obvious way to open and watch the display view on the host PC (playtest #9) | display | M3-29 | ✅ |
+| M4-26 | Mid-match catch-up replays terrain edits so late or reconnecting displays and phones see current craters | server | M3-29, M4-25 | ⬜ |
 
 ## M5: Research and tech tree
 
