@@ -181,7 +181,7 @@ the MG-03 harness to its PR. After the first round looked poor, MG-13 to MG-15 s
 | M4-13 | Beetle Barrage and Snail Mail (research-unlocked, telegraphed) | content | M4-03 | ⬜ |
 | M4-14 | Crates and pickups (drop rules, health, ammo, weapon crates) | core | M4-01, M1-20 | ⬜ |
 | M4-15 | Ammo and inventory model plus phone weapon picker integration | core | M4-04, M3-22 | ⬜ |
-| M4-16 | Terrain materials (dirt, rock, sand) with differing carve resistance | core | M4-01, M1-05 | ⬜ |
+| M4-16 | Terrain materials (dirt, rock, sand) with differing carve resistance | core | M4-01, M1-05 | ✅ |
 | M4-17 | Match settings model and Classic mode complete | core | M4-14, M3-18 | ⬜ |
 | M4-18 | Sudden death (rising water or health drain) | core | M4-17 | ⬜ |
 | M4-19 | Per-weapon simulation tests and a playable demo map with every weapon | content | M4-05, M4-06, M4-07, M4-08, M4-09, M4-10, M4-11, M4-12 | ⬜ |
