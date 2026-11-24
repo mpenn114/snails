@@ -89,11 +89,15 @@ try {
             m.type === 'eventBatch' &&
             m.events.some((e) => ['projectileFired', 'meleeStruck'].includes(e.type)),
         );
-    for (let tries = 0; tries < 4 && !shotSeen(); tries++) {
+    const turnPassed = () =>
+      dFrames.slice(mark).some((m) => m.type === 'turnStart' && teamOf(m) !== turnTeam);
+    const done = () => shotSeen() || turnPassed();
+    for (let tries = 0; tries < 4 && !done(); tries++) {
       await active.page.waitForTimeout(300);
+      if (done()) break;
       await active.page.evaluate(() => document.querySelector('.ctl-fire')?.click());
       const until10 = Date.now() + 10000;
-      while (!shotSeen() && Date.now() < until10) await active.page.waitForTimeout(250);
+      while (!done() && Date.now() < until10) await active.page.waitForTimeout(250);
     }
     step(`${active.name} fired ${weapon}`);
     await until(
