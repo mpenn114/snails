@@ -75,7 +75,9 @@ export function scoreImpact(
       const dealt = Math.min(dmg, s.health);
       const killed = dmg >= s.health && dmg > 0;
       r.enemyDamage += dealt;
-      r.score += dealt * weights.aggression;
+      const rv = weights.revenge;
+      const grudge = rv && (rv.snailId === s.id || rv.teamId === s.teamId) ? rv.factor : 1;
+      r.score += dealt * weights.aggression * grudge;
       if (killed) {
         r.kills += 1;
         r.score += weights.killBonus;

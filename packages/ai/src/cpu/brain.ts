@@ -10,6 +10,7 @@ import {
 import { planMovement } from '../movement/index.js';
 import type { ScoreWeights } from '../targeting/index.js';
 import { DIFFICULTY_PROFILES, type DifficultyProfile } from './difficulty.js';
+import { planPostShotRetreat } from './retreat.js';
 import { rerankByReply } from './lookahead.js';
 import { PERSONALITY_PROFILES, type PersonalityProfile } from './personalities.js';
 import type { CpuConfig, PlannedCommand, TurnPlan } from './types.js';
@@ -25,6 +26,8 @@ const SETTLE_TICKS = 45;
 const LOOKAHEAD_COUNT = 3;
 /** Preferred distance (m) to the nearest enemy when repositioning. */
 const IDEAL_RANGE = 14;
+/** Metres within which a crate pulls a greedy CPU's movement score. */
+const CRATE_REACH = 12;
 
 /** Standard normal sample (Box-Muller) from `rng`; always consumes two draws. */
 function gauss(rng: Rng): number {
@@ -37,8 +40,15 @@ function endTurnPlan(teamId: string, from: PlannedCommand[], tick: number): Turn
   return { commands: [...from, { atTick: tick, command: { type: 'endTurn', teamId } }] };
 }
 
-function planWeights(p: PersonalityProfile): ScoreWeights {
-  return { aggression: p.aggression, caution: p.caution, killBonus: p.killBonus };
+/** Personality weights; revenge targets the team that last hit one of `teamId`'s snails. */
+function planWeights(p: PersonalityProfile, match: MatchSetup, teamId: string): ScoreWeights {
+  const w: ScoreWeights = { aggression: p.aggression, caution: p.caution, killBonus: p.killBonus };
+  const mine = match.sim.state.teams.find((t) => t.id === teamId);
+  const grudge = mine?.snails.find((s) => s.alive && s.lastHitByTeam !== undefined);
+  if (grudge?.lastHitByTeam && grudge.lastHitByTeam !== teamId) {
+    w.revenge = { teamId: grudge.lastHitByTeam, factor: p.revenge };
+  }
+  return w;
 }
 
 /** Per-turn RNG: same seed and same match moment give the same draws. */
@@ -56,10 +66,16 @@ function withoutWind(match: MatchSetup): MatchSetup {
   return fork;
 }
 
-/** Prefers high ground at a comfortable range from the nearest enemy. */
-function positionScore(_s: Snail, p: Vec3, enemies: readonly Snail[]): number {
-  const near = enemies.length ? Math.min(...enemies.map((e) => distance(p, e.position))) : 0;
-  return 0.3 * p.y - 0.15 * Math.abs(near - IDEAL_RANGE);
+/** Prefers high ground at a comfortable range from enemies, and (greed) spots near crates. */
+function positionScorer(match: MatchSetup, greed: number) {
+  const crates = match.sim.state.crates.filter((c) => c.grounded).map((c) => c.position);
+  return (_s: Snail, p: Vec3, enemies: readonly Snail[]): number => {
+    const near = enemies.length ? Math.min(...enemies.map((e) => distance(p, e.position))) : 0;
+    const crate = crates.length ? Math.min(...crates.map((c) => distance(p, c))) : Infinity;
+    return (
+      0.3 * p.y - 0.15 * Math.abs(near - IDEAL_RANGE) + greed * Math.max(0, CRATE_REACH - crate)
+    );
+  };
 }
 
 /** Applies `commands` to a fork, steps to the end of the script plus settling and returns it. */
@@ -125,7 +141,7 @@ function choosePosition(
   const plan = planMovement(match, teamId, {
     candidates: diff.movementCandidates,
     maxTicks: MOVE_TICKS,
-    scorePosition: positionScore,
+    scorePosition: positionScorer(match, opts.profile.greed),
   });
   if (plan.commands.length === 0) return here;
   const { fork, ticks } = afterMoves(match, plan.commands);
@@ -163,8 +179,8 @@ function shotCommands(
  * Plans one whole turn for `teamId`'s active snail: optionally reposition (when no good shot
  * exists from here), choose the best weapon and target from the resulting spot, add Gaussian aim
  * noise and emit `move` commands, then `aim`, then `fire`. Mastermind additionally re-ranks its
- * top shots by the best predicted enemy reply. Retreat moves are not planned: they are only legal
- * in the retreat phase, whose start depends on projectile flight time. Deterministic for the same
+ * top shots by the best predicted enemy reply. Retreat moves go in `TurnPlan.retreat` (ticks relative
+ * to the retreat phase, which starts after the shot resolves). Deterministic for the same
  * match state and config; never mutates `match`.
  * @param match - Running match in the active team's action phase.
  * @param config - Difficulty, personality and seed.
@@ -176,7 +192,11 @@ export function planTurnFor(match: MatchSetup, config: CpuConfig, teamId: string
   if (!snail || snail.teamId !== teamId) return endTurnPlan(teamId, [], 0);
   const diff = DIFFICULTY_PROFILES[config.difficulty];
   const profile = PERSONALITY_PROFILES[config.personality];
-  const opts: Options = { samples: diff.samples, weights: planWeights(profile), profile };
+  const opts: Options = {
+    samples: diff.samples,
+    weights: planWeights(profile, match, teamId),
+    profile,
+  };
   const rng = turnRng(match, config.seed);
   const noWind = rng.next() < diff.ignoresWindChance;
   const pos = choosePosition(match, teamId, diff, opts, rng, noWind);
@@ -186,5 +206,7 @@ export function planTurnFor(match: MatchSetup, config: CpuConfig, teamId: string
   }
   const pick = ranked.length > 1 && rng.next() < diff.epsilon ? ranked[1] : ranked[0];
   if (!pick || pick.value < 0) return endTurnPlan(teamId, pos.moves, pos.ticks);
-  return { commands: [...pos.moves, ...shotCommands(snail.id, pick, pos.ticks, diff, rng)] };
+  const commands = [...pos.moves, ...shotCommands(snail.id, pick, pos.ticks, diff, rng)];
+  const retreat = planPostShotRetreat(match, teamId, commands, profile, rng);
+  return retreat ? { commands, retreat } : { commands };
 }

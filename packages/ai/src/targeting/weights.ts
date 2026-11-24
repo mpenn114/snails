@@ -6,8 +6,8 @@ export interface ScoreWeights {
   caution: number;
   /** Flat bonus per enemy kill. */
   killBonus: number;
-  /** Extra target value factor for the snail that hit us last (e.g. factor 1.2). */
-  revenge?: { snailId: string; factor: number };
+  /** Extra target value factor for the snail (or every snail of the team) that hit us last. */
+  revenge?: { snailId?: string; teamId?: string; factor: number };
 }
 
 /** Neutral weights. */
