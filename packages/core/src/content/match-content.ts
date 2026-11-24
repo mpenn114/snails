@@ -1,10 +1,17 @@
 import type { SimContext } from '../sim/types.js';
 import { ContentRegistry } from './registry.js';
-import { AreaSchema, CrateSchema, StatusSchema, WeaponSchema } from './schemas.js';
+import {
+  AreaSchema,
+  CrateSchema,
+  StatusSchema,
+  TechnologySchema,
+  WeaponSchema,
+} from './schemas.js';
 import type {
   AreaDefinition,
   CrateDefinition,
   StatusDefinition,
+  TechnologyDefinition,
   WeaponDefinition,
 } from './types.js';
 
@@ -14,6 +21,7 @@ export interface MatchContent {
   statuses: ContentRegistry<StatusDefinition>;
   areas: ContentRegistry<AreaDefinition>;
   crates: ContentRegistry<CrateDefinition>;
+  technologies: ContentRegistry<TechnologyDefinition>;
 }
 
 /** Effect handlers and turn-start hooks get the sim context plus the match content. */
@@ -27,21 +35,25 @@ export function buildMatchContent(defs: {
   statuses?: readonly StatusDefinition[];
   areas?: readonly AreaDefinition[];
   crates?: readonly CrateDefinition[];
+  technologies?: readonly TechnologyDefinition[];
 }): MatchContent {
   const content: MatchContent = {
     weapons: new ContentRegistry('weapon', WeaponSchema),
     statuses: new ContentRegistry('status', StatusSchema),
     areas: new ContentRegistry('area', AreaSchema),
     crates: new ContentRegistry('crate', CrateSchema),
+    technologies: new ContentRegistry('technology', TechnologySchema),
   };
   for (const w of defs.weapons) content.weapons.register(w);
   for (const s of defs.statuses ?? []) content.statuses.register(s);
   for (const a of defs.areas ?? []) content.areas.register(a);
   for (const c of defs.crates ?? []) content.crates.register(c);
+  for (const t of defs.technologies ?? []) content.technologies.register(t);
   content.weapons.freeze();
   content.statuses.freeze();
   content.areas.freeze();
   content.crates.freeze();
+  content.technologies.freeze();
   return content;
 }
 

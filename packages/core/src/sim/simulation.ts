@@ -39,6 +39,8 @@ export interface SimulationOptions {
   rng: SimRng;
   /** Weapon registry used to validate `fire` commands (optional). */
   weapons?: ValidationContext['weapons'];
+  /** Technology registry used to validate research commands (optional). */
+  technologies?: ValidationContext['technologies'];
 }
 
 /** Error thrown on misuse of the driver (not on gameplay conditions). */
@@ -62,6 +64,7 @@ export class Simulation {
   readonly rng: SimRng;
   private readonly queue: QueuedCommand[] = [];
   private readonly weapons?: ValidationContext['weapons'];
+  private readonly technologies?: ValidationContext['technologies'];
   private readonly handlers = new Map<CommandType, CommandHandler<never>>();
   private readonly systems: { name: string; fn: SystemFn }[] = [];
   private readonly turnStartHooks: { name: string; fn: TurnStartHook }[] = [];
@@ -73,6 +76,7 @@ export class Simulation {
     this.terrain = options.terrain;
     this.rng = options.rng;
     this.weapons = options.weapons;
+    this.technologies = options.technologies;
     this.registerCommandHandler('endTurn', (c) => requestEndTurn(c.state, c.emit));
   }
 
@@ -92,7 +96,11 @@ export class Simulation {
   }
 
   private validate(cmd: Command, issuerTeamId?: string): ValidationResult {
-    return validateCommand(this.state, cmd, { weapons: this.weapons, issuerTeamId });
+    return validateCommand(this.state, cmd, {
+      weapons: this.weapons,
+      technologies: this.technologies,
+      issuerTeamId,
+    });
   }
 
   /** Registers (or replaces) the handler for a command type. */

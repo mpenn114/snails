@@ -30,6 +30,14 @@ The two-step split is kept in the data model so other modes can introduce a sepa
 4. Completing a tech fires `researchCompleted`: the shell gets a visible change, a stinger plays on
    the display and weapons or perks unlock.
 5. Queue edits are free until work begins; cancelling in progress refunds 50%.
+6. Rules as built (`packages/core/src/research/`): queueing starts an idle team's tech at once
+   when affordable (so a 1-turn tech queued in your turn completes at your next turn start). Each
+   own turn start counts the active tech down, completes it (it counts immediately), then starts
+   the first valid, affordable queued tech in the same turn start. Queue checks count completed,
+   active and queued techs as "will have" (tier N needs N-1 techs, all `prerequisites`, one
+   `anyOf`, one capstone, max 2 waiting); a queued tech that is invalid when it would start is
+   dropped with `researchCancelled` (refund 0). Fast mode: cost x0.5 rounded up, turns -1 (min 1).
+   Research commands are accepted from the issuing team in any phase.
 
 See [controller-ux.md](controller-ux.md) for the research screen.
 

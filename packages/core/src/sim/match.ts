@@ -6,6 +6,7 @@ import type {
   AreaDefinition,
   CrateDefinition,
   StatusDefinition,
+  TechnologyDefinition,
   WeaponDefinition,
   WindDefinition,
 } from '../content/types.js';
@@ -25,6 +26,7 @@ import {
   type MatchSettings,
   type MatchSettingsInput,
 } from '../rules/match-settings.js';
+import { registerResearch } from '../research/research-system.js';
 import { registerSuddenDeath } from '../rules/sudden-death.js';
 import { createInitialState, type TeamConfig } from '../state/game-state.js';
 import type { Vec3 } from '../state/types.js';
@@ -62,6 +64,8 @@ export interface MatchOptions {
   statuses?: StatusDefinition[];
   /** Area definitions `spawn` effects may refer to. */
   areas?: AreaDefinition[];
+  /** Technology definitions the research queue may use (none = nothing to research). */
+  technologies?: TechnologyDefinition[];
   /** Crate definitions that may drop (none = no crates). */
   crates?: CrateDefinition[];
   /** Drop interval and map cap overrides (default every 3 rounds, up to 2). */
@@ -187,7 +191,13 @@ export function createMatch(options: MatchOptions): MatchSetup {
   if (settings.demo) for (const team of state.teams) team.researched = gatedTechs(options.weapons);
   const content = buildMatchContent(options);
   const weapons = content.weapons;
-  const sim = new Simulation({ state, terrain: grid, rng, weapons });
+  const sim = new Simulation({
+    state,
+    terrain: grid,
+    rng,
+    weapons,
+    technologies: content.technologies,
+  });
   const turnConfig = {
     ...turnConfigFromSettings(settings, DEFAULT_TURN_CONFIG),
     ...options.turn,
@@ -203,6 +213,7 @@ export function createMatch(options: MatchOptions): MatchSetup {
   sim.addSystem('turns', turnSystem(turnConfig, windConfig));
   if (windConfig.changesMidFlight === true) sim.addSystem('wind', midFlightWindSystem(windConfig));
   registerLingeringEffects(sim, content);
+  registerResearch(sim, content);
   registerMatchRules(sim, content, settings, options.crateRules);
   faceEnemies(sim);
   startTurn(state, turnConfig, () => undefined, { rng: rng.wind, config: windConfig });
