@@ -211,7 +211,7 @@ the MG-03 harness to its PR. After the first round looked poor, MG-13 to MG-15 s
 | M5-12 | Phone research screen (tree view, queue, hold-to-reveal for hot-seat) | controller | M5-10, M3-28 | ✅ |
 | M5-13 | Display research feedback (reveal moments, tech unlock VFX) | display | M5-03, M2-09 | ✅ |
 | M5-14 | Headless balance runner and dashboard output (win rates per tech) | ci | M5-07, M6-12 | ✅ |
-| M5-15 | Balance tuning pass; match with research completes under 30 min | docs | M5-14 | ⬜ |
+| M5-15 | Balance tuning pass; match with research completes under 30 min | docs | M5-14 | 🚧 |
 
 ## M6: CPU players
 
