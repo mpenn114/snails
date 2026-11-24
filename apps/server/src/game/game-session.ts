@@ -155,6 +155,7 @@ export class GameSession {
       statuses: content.statuses.list(),
       areas: content.areas.list(),
       crates: content.crates.list(),
+      technologies: content.technologies.list(),
       teams: opts.teams.map((t) => ({
         id: t.id,
         name: t.name,

@@ -117,4 +117,25 @@ describe('research privacy in the match runner', () => {
       reason: 'unknown_player',
     });
   });
+
+  it('a real session registers the base techs: queueing one starts research', () => {
+    const s = new GameSession({
+      settings,
+      teams: [
+        { id: 'a', name: 'A', colour: '#f00', playerIds: ['p1'] },
+        { id: 'b', name: 'B', colour: '#00f', playerIds: ['p2'] },
+      ],
+    });
+    const { state } = (s as unknown as { match: { sim: { state: GameState } } }).match.sim;
+    const team = state.teams.find((t) => t.id === 'a')!;
+    team.research!.calcium = 100;
+    expect(s.applyIntent('p1', { type: 'queueResearch', techId: 'salt-mining' })).toEqual({
+      ok: true,
+    });
+    s.advance(50);
+    // Paid at once; the match's first turn start may already have completed the 1-turn tech.
+    expect(team.research?.calcium).toBe(90);
+    const done = team.researched.includes('salt-mining');
+    expect(done || team.research?.active?.techId === 'salt-mining').toBe(true);
+  });
 });
