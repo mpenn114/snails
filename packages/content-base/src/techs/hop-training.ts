@@ -6,7 +6,7 @@ export const hopTraining: TechnologyDefinition = {
   name: 'Hop Training',
   branch: 'mobility',
   tier: 2,
-  cost: 40,
+  cost: 35,
   researchTurns: 2,
   prerequisites: ['lubricated-foot'],
   description: '+1 jump charge (a mid-air jump); jumps 30% longer.',

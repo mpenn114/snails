@@ -63,7 +63,7 @@ describe('pack data', () => {
   it('has the 10 techs and 4 capstones with valid links', () => {
     expect(mobilityUtilityTechnologies).toHaveLength(14);
     expect(mobilityUtilityTechnologies.filter((t) => t.capstone).map((t) => t.cost)).toEqual([
-      150, 150, 150, 150,
+      100, 100, 100, 100,
     ]);
     expect(registries.weapons.get('base:slime-rope')?.requiresTech).toBe('slime-rope');
     expect(registries.weapons.get('base:snail-mail')?.requiresTech).toBe('snail-mail');

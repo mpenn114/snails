@@ -6,7 +6,7 @@ export const burrow: TechnologyDefinition = {
   name: 'Burrow',
   branch: 'mobility',
   tier: 3,
-  cost: 80,
+  cost: 55,
   researchTurns: 2,
   prerequisites: ['hop-training'],
   description:

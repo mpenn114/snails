@@ -6,7 +6,7 @@ export const radulaGuidance = {
   name: 'Radula Guidance',
   branch: 'weaponry',
   tier: 2,
-  cost: 50,
+  cost: 35,
   researchTurns: 2,
   prerequisites: ['sticky-slime'],
   description: 'Unlocks the Radula Missile (2 stock).',

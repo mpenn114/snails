@@ -9,10 +9,10 @@ One resource, **Calcium**, because shells are made of it. Simple enough to track
 
 | Source | Default amount | Notes |
 |---|---|---|
-| Per turn (per team) | +10 | Base income at the start of the team's turn. |
-| Damage dealt | +1 per 5 damage (cap 15/turn) | Rewards aggression; cap stops one-shot spam. |
-| Kills | +10 | Bonus for finishing a snail. |
-| Calcium crates | +25 | Placed in contested spots. |
+| Per turn (per team) | +15 | Base income at the start of the team's turn. |
+| Damage dealt | +1 per 5 damage (cap 20/turn) | Rewards aggression; cap stops one-shot spam. |
+| Kills | +15 | Bonus for finishing a snail. |
+| Calcium crates | +40 | Placed in contested spots. |
 | Egg Hunt (utility tech) | +5 per turn | Passive. |
 | Catch-up bonus | up to +10 | For teams behind in total health (see anti-snowball). |
 
@@ -54,9 +54,9 @@ See [controller-ux.md](controller-ux.md) for the research screen.
 |---|---|---|---|---|
 | Salt Mining | 1 | 20 | Unlocks Salt Shaker (3 stock). | none |
 | Sticky Slime | 1 | 25 | Unlocks Slime Grenade; slime goo radius +0.5 m. | none |
-| Heavy Pebbles | 2 | 40 | Pebble Toss +25% damage and radius. | Salt Mining or Sticky Slime |
-| Radula Guidance | 2 | 50 | Unlocks Radula Missile (2 stock). | Sticky Slime |
-| Beetle Calls | 3 | 80 | Unlocks Beetle Barrage (1 stock, +1 every 4 rounds). | Heavy Pebbles |
+| Heavy Pebbles | 2 | 35 | Pebble Toss +25% damage and radius. | Salt Mining or Sticky Slime |
+| Radula Guidance | 2 | 35 | Unlocks Radula Missile (2 stock). | Sticky Slime |
+| Beetle Calls | 3 | 55 | Unlocks Beetle Barrage (1 stock, +1 every 4 rounds). | Heavy Pebbles |
 
 ### Shell and Armour
 
@@ -65,10 +65,10 @@ Each of these changes the shell visibly (materials; see [snail-visuals.md](snail
 | Tech | Tier | Cost | Effect | Prereq |
 |---|---|---|---|---|
 | Calcified Shell | 1 | 25 | Shell material chalky to calcified. +15 max health; heals 15 now. | none |
-| Spiked Whorl | 2 | 45 | Spikes on shell. Melee attackers take 10 damage; Shell Bash +30% damage. | Calcified Shell |
-| Iron Plating | 2 | 50 | Shell material iron. -20% blast damage; +10 HP. | Calcified Shell |
-| Crystal Lattice | 3 | 85 | Crystal shell. Retreat blocks 80% damage; reflects 10% of a projectile's damage. | Iron Plating |
-| Regrowth | 3 | 70 | Cracks mend: heals 5 HP per turn if the snail did not move. | Calcified Shell |
+| Spiked Whorl | 2 | 35 | Spikes on shell. Melee attackers take 10 damage; Shell Bash +30% damage. | Calcified Shell |
+| Iron Plating | 2 | 35 | Shell material iron. -20% blast damage; +10 HP. | Calcified Shell |
+| Crystal Lattice | 3 | 55 | Crystal shell. Retreat blocks 80% damage; reflects 10% of a projectile's damage. | Iron Plating |
+| Regrowth | 3 | 40 | Cracks mend: heals 5 HP per turn if the snail did not move. | Calcified Shell |
 
 ### Mobility
 
@@ -76,9 +76,9 @@ Each of these changes the shell visibly (materials; see [snail-visuals.md](snail
 |---|---|---|---|---|
 | Lubricated Foot | 1 | 20 | Move budget +3 s; crawl speed +15%. | none |
 | Sticky Climb | 1 | 25 | Climb slopes up to 80 degrees. | none |
-| Hop Training | 2 | 40 | +1 jump charge; jumps 30% longer. | Lubricated Foot |
-| Slime Rope | 2 | 45 | Unlocks the Slime Rope tool. | Sticky Climb |
-| Burrow | 3 | 80 | Once per match, retreat underground and resurface up to 10 m away next turn. | Hop Training |
+| Hop Training | 2 | 35 | +1 jump charge; jumps 30% longer. | Lubricated Foot |
+| Slime Rope | 2 | 35 | Unlocks the Slime Rope tool. | Sticky Climb |
+| Burrow | 3 | 55 | Once per match, retreat underground and resurface up to 10 m away next turn. | Hop Training |
 
 ### Utility and Intel
 
@@ -86,18 +86,18 @@ Each of these changes the shell visibly (materials; see [snail-visuals.md](snail
 |---|---|---|---|---|
 | Eye Stalk Optics | 1 | 20 | Aim preview shows the full arc with wind (base shows partial). | none |
 | Weather Vane | 1 | 20 | Next turn's wind is shown in advance. | none |
-| Egg Hunt | 2 | 40 | +5 Calcium per turn; crate locations revealed in fog. | Weather Vane |
-| Scouting Mist | 2 | 45 | See opponents' queued research and weapon stock. | Eye Stalk Optics |
-| Snail Mail | 3 | 75 | Unlocks Snail Mail teleport (see [game-design.md](game-design.md)). | Egg Hunt |
+| Egg Hunt | 2 | 35 | +5 Calcium per turn; crate locations revealed in fog. | Weather Vane |
+| Scouting Mist | 2 | 35 | See opponents' queued research and weapon stock. | Eye Stalk Optics |
+| Snail Mail | 3 | 55 | Unlocks Snail Mail teleport (see [game-design.md](game-design.md)). | Egg Hunt |
 
 ### Capstones (Tier 4, one per team)
 
 | Tech | Cost | Effect | Prereq |
 |---|---|---|---|
-| Great Spiral: Arsenal | 150 | Weapons deal +20% and all stocks +1. | Tier 3 Weaponry |
-| Great Spiral: Citadel | 150 | Full-health shell: immune to the first hit each turn. | Tier 3 Shell |
-| Great Spiral: Glide | 150 | Free movement; no fall damage; one rope per turn. | Tier 3 Mobility |
-| Great Spiral: Oracle | 150 | See all hidden info; steal 1 queued tech per round. | Tier 3 Utility |
+| Great Spiral: Arsenal | 100 | Weapons deal +20% and all stocks +1. | Tier 3 Weaponry |
+| Great Spiral: Citadel | 100 | Full-health shell: immune to the first hit each turn. | Tier 3 Shell |
+| Great Spiral: Glide | 100 | Free movement; no fall damage; one rope per turn. | Tier 3 Mobility |
+| Great Spiral: Oracle | 100 | See all hidden info; steal 1 queued tech per round. | Tier 3 Utility |
 
 Any capstone completed counts as the objective in Research race. Implemented as match setting `mode: 'researchRace'` (forces research on, stores the capstone ids in `state.raceCapstones`; the match ends with `reason: 'research'` on `matchEnded`).
 
@@ -153,7 +153,7 @@ As built (`research/anti-snowball.ts`, tunables in `ANTI_SNOWBALL`):
 - **Cost scaling:** `techCost` is base +5% per tech owned (flat, not per tier), rounded up; fast
   mode halves the scaled price afterwards.
 - **Moss Tax:** with `roundsSinceDamage >= 5` the team loses half of the base per-turn income
-  (reason `mossTax`, -5, emitted right after `turnIncome`). Tech income (`calciumPerTurn`) is not taxed.
+  (reason `mossTax`, -7, emitted right after `turnIncome`). Tech income (`calciumPerTurn`) is not taxed.
 - Damage income stays a flat per-turn cap. Golden crates are later work (no crate exists yet).
 - Kill credit is `Snail.lastHitByTeam` in game state, so it survives snapshot restore.
 
@@ -240,3 +240,29 @@ Run it with `pnpm sim:balance [--matches 40] [--mode researchRace] [--snails 2] 
 the CPU aims and fires, and each team picks a focus branch by seed and queues the cheapest valid
 tech (capstone first) through `canResearch`. The JSON report goes to stdout (or `--out`), a
 markdown dashboard with the target flags to stderr. It is not part of CI.
+
+## Balance pass (M5-15)
+
+Tuned data and constants only: per-turn Calcium 10 to 15, damage cap 15 to 20 per turn, kill
+bonus 10 to 15, Calcium crate 25 to 40, tier 2 costs 35, tier 3 costs 55 (Regrowth 40 and 1 turn),
+capstones 100, and tier 3 / capstone research time 3 to 2 turns (Beetle Calls, Crystal Lattice,
+the four capstones). `ANTI_SNOWBALL` and the fast-mode factors are unchanged. The runner policy is
+unchanged.
+
+| 40 matches | Before | After |
+|---|---|---|
+| Elimination: first mover wins | 53% | 53% |
+| Elimination: capstones completed | 0 | 20 (Oracle 14, Citadel 6, Glide 1) |
+| Elimination: Regrowth owned | 3% of builds | 25% |
+| Elimination: top tech share of winning builds | 28% | 39% (Salt Mining, Lubricated Foot) |
+| Elimination: avg length | 51.2 turns, 33 min | 51.3 turns, 33 min |
+| Research race ended by research | 0 of 20 | 17 of 40 |
+| Research race: first mover wins | n/a | 41% |
+
+Targets hold (no tech over 70%, no branch under 15%, first mover under 55%).
+
+Remaining concerns: the headless bot ignores tech effects when shooting, so elimination length and
+win rates barely move with research; the under-30-minute estimate for elimination is therefore
+not reached by Calcium tuning (4 of 40 matches hit the 60-turn cap and inflate the mean; the
+Research race averages 49 turns, about 32 min). Weaponry capstone (Arsenal) is never reached by
+the policy, and Snail Mail / Slime Rope remain niche picks. Confirm length with real play.

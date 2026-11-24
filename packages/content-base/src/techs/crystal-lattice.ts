@@ -6,8 +6,8 @@ export const crystalLattice = {
   name: 'Crystal Lattice',
   branch: 'shell',
   tier: 3,
-  cost: 85,
-  researchTurns: 3,
+  cost: 55,
+  researchTurns: 2,
   prerequisites: ['iron-plating'],
   description: 'Crystal shell: retreat blocks 80% damage; reflects 10% of projectile damage.',
   effects: [

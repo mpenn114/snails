@@ -185,7 +185,7 @@ describe('completion effects', () => {
     teamA(m).research!.calcium = 0;
     endTurn(m);
     endTurn(m);
-    expect(teamA(m).research!.calcium).toBe(15);
+    expect(teamA(m).research!.calcium).toBe(20);
   });
 });
 

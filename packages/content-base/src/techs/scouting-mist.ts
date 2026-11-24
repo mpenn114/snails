@@ -6,7 +6,7 @@ export const scoutingMist: TechnologyDefinition = {
   name: 'Scouting Mist',
   branch: 'utility',
   tier: 2,
-  cost: 45,
+  cost: 35,
   researchTurns: 2,
   prerequisites: ['eye-stalk-optics'],
   description: "See opponents' queued research.",

@@ -6,7 +6,7 @@ export const slimeRope: TechnologyDefinition = {
   name: 'Slime Rope',
   branch: 'mobility',
   tier: 2,
-  cost: 45,
+  cost: 35,
   researchTurns: 2,
   prerequisites: ['sticky-climb'],
   description: 'Unlocks the Slime Rope tool.',

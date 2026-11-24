@@ -6,7 +6,7 @@ export const heavyPebbles = {
   name: 'Heavy Pebbles',
   branch: 'weaponry',
   tier: 2,
-  cost: 40,
+  cost: 35,
   researchTurns: 2,
   prerequisites: [],
   anyOf: ['salt-mining', 'sticky-slime'],

@@ -6,7 +6,7 @@ export const eggHunt: TechnologyDefinition = {
   name: 'Egg Hunt',
   branch: 'utility',
   tier: 2,
-  cost: 40,
+  cost: 35,
   researchTurns: 2,
   prerequisites: ['weather-vane'],
   description: '+5 Calcium per turn; crate locations revealed in fog.',
