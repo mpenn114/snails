@@ -38,7 +38,8 @@ describe('client messages', () => {
       { type: 'selectWeapon', weaponId: 'bazooka' },
       { type: 'fire' },
       { type: 'endTurn' },
-      { type: 'queueResearch', technologyId: 't' },
+      { type: 'queueResearch', techId: 't', seq: 3 },
+      { type: 'cancelResearch', techId: 't' },
       { type: 'ping', t: 1 },
     ])
       expect(parseClientMessage(m).type).toBe(m.type);
@@ -169,5 +170,41 @@ describe('checkHello', () => {
     expect(parseServerMessage(t)).toEqual(t);
     expect(parseServerMessage({ ...t, activePlayerId: undefined }).type).toBe('turnStart');
     expect(parseClientMessage({ type: 'toggleTeam', teamId: 'A' }).type).toBe('toggleTeam');
+  });
+});
+
+describe('research snapshot fields', () => {
+  const base = {
+    type: 'snapshot',
+    tick: 1,
+    wind: [0, 0],
+    turn: [null, null, 0, 0, 1],
+    snails: [],
+    projectiles: [],
+  };
+  it('parses the optional research setting and per-team entries', () => {
+    const m = parseServerMessage({
+      ...base,
+      research: 'fast',
+      teams: [
+        { id: 'a', researching: true },
+        {
+          id: 'b',
+          research: {
+            calcium: 4,
+            queue: ['x'],
+            active: { techId: 'y', turnsLeft: 1, paid: 3 },
+            damageCalciumThisTurn: 0,
+            roundsSinceDamage: 0,
+          },
+        },
+      ],
+    });
+    expect(m.type).toBe('snapshot');
+    expect(parseServerMessage(base).type).toBe('snapshot');
+  });
+  it('rejects a bad research setting and a research intent without techId', () => {
+    expect(() => parseServerMessage({ ...base, research: 'turbo' })).toThrow();
+    expect(() => parseClientMessage({ type: 'queueResearch' })).toThrow();
   });
 });

@@ -40,3 +40,16 @@ export function mayCommandTurn(
   if (!teamPlayers.includes(playerId)) return false;
   return mode === 'hotSeat' || activePlayerId === undefined || activePlayerId === playerId;
 }
+
+/**
+ * The team a research intent acts for: the active team when the sender controls it (hot-seat),
+ * else the sender's first team; undefined for an unknown player.
+ */
+export function researchTeamFor(
+  teamPlayers: ReadonlyMap<string, readonly string[]>,
+  playerId: string,
+  activeTeamId: string | null,
+): string | undefined {
+  const own = [...teamPlayers].filter(([, ids]) => ids.includes(playerId)).map(([t]) => t);
+  return activeTeamId !== null && own.includes(activeTeamId) ? activeTeamId : own[0];
+}

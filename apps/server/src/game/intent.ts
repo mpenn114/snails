@@ -2,10 +2,16 @@ import type { Command, Snail } from '@snails/core';
 import type { ClientMessage } from '@snails/protocol';
 
 /** Intent messages a controller may send during a match (a validated protocol subset). */
-export type GameIntent = Extract<
+export type TurnIntent = Extract<
   ClientMessage,
   { type: 'move' | 'jump' | 'aim' | 'steer' | 'selectWeapon' | 'fire' | 'endTurn' }
 >;
+
+/** Research intents; legal in any phase, not only on the sender's turn. */
+export type ResearchIntent = Extract<ClientMessage, { type: 'queueResearch' | 'cancelResearch' }>;
+
+/** Every in-match intent. */
+export type GameIntent = TurnIntent | ResearchIntent;
 
 /** Result of applying an intent. */
 export type IntentResult = { ok: true } | { ok: false; reason: string };
@@ -31,7 +37,7 @@ export function clamp(v: number, lo: number, hi: number): number {
  * Returns null for intents that only change controller state (selectWeapon).
  */
 export function intentToCommand(
-  intent: GameIntent,
+  intent: TurnIntent,
   snail: Snail,
   teamId: string,
   control: TeamControlState,

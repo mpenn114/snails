@@ -122,3 +122,7 @@ macOS shows a similar "accept incoming connections" prompt; Linux may need `ufw 
 ## Optional: mDNS (later)
 
 Advertise `_snails._tcp` and a hostname like `snails.local` via `bonjour-service` so players can type `snails.local:8080`. Android Chrome resolves `.local` on most networks but not all, so the QR/IP URL remains the primary path. A future "Find games" screen could browse mDNS from a native wrapper; out of scope for the web controller.
+
+## Private research state (M5)
+
+Research is private. The server filters every outgoing message per recipient (`apps/server/src/game/privacy.ts`): snapshots carry `research` (preset) and `teams[]` with a public `researching` flag, but the per-team `research` object (Calcium, queue, active job) only goes to controllers of that team; displays get none, and a hot-seat phone (one phone, several teams) gets all of its teams. `calciumChanged`, `researchQueued`, `researchStarted` and `researchCancelled` events follow the same rule; `researchCompleted` is public. Catch-up snapshots on reconnect use the same filter. `queueResearch`/`cancelResearch {techId, seq?}` are accepted in any phase and routed to the sender team (the active team when the sender controls it).

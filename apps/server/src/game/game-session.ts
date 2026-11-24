@@ -4,7 +4,6 @@ import {
   DEFAULT_TERRAIN_CONFIG,
   type MatchSetup,
   type SimEvent,
-  type GameState,
   type Snail,
   type WeaponDefinition,
   type MotionSpec,
@@ -16,13 +15,11 @@ import {
 import {
   encodeEventBatch,
   encodeSnapshot,
-  type CrateState,
   type DecodedSnapshot,
   type EventBatch,
   type Inventory,
   MatchSettings,
   type MatchSettingsInput,
-  type ScheduledState,
   type Snapshot,
   type TerrainParams,
   type WirePhase,
@@ -31,11 +28,15 @@ import {
   intentToCommand,
   type GameIntent,
   type IntentResult,
+  type ResearchIntent,
   type TeamControlState,
+  type TurnIntent,
 } from './intent.js';
 
 import { loadServerContent } from './server-content.js';
-import { mayCommandTurn, pickActivePlayer } from './rotation.js';
+import { snailWireState, wireCrates, wireScheduled } from './wire-views.js';
+import { researchFields } from './privacy.js';
+import { mayCommandTurn, researchTeamFor, pickActivePlayer } from './rotation.js';
 
 export type { GameIntent, IntentResult } from './intent.js';
 
@@ -295,6 +296,25 @@ export class GameSession {
 
   /** Applies a controller intent for `playerId`; returns a rejection reason when refused. */
   applyIntent(playerId: string, intent: GameIntent): IntentResult {
+    if (intent.type === 'queueResearch' || intent.type === 'cancelResearch')
+      return this.applyResearch(playerId, intent);
+    return this.applyTurnIntent(playerId, intent);
+  }
+
+  /**
+   * Routes a research intent to the sim for the sender's team (the active team when the sender
+   * controls it, else their first team). Allowed in any phase, not only on the team's turn.
+   */
+  private applyResearch(playerId: string, intent: ResearchIntent): IntentResult {
+    const state = this.match.sim.state;
+    const teamId = researchTeamFor(this.teamPlayers, playerId, state.turn.activeTeamId);
+    if (!teamId) return { ok: false, reason: 'unknown_player' };
+    if (this.ended || state.match.status !== 'playing') return { ok: false, reason: 'match_over' };
+    const res = this.match.sim.submit({ type: intent.type, teamId, techId: intent.techId }, teamId);
+    return res.ok ? { ok: true } : { ok: false, reason: res.reason.toLowerCase() };
+  }
+
+  private applyTurnIntent(playerId: string, intent: TurnIntent): IntentResult {
     const state = this.match.sim.state;
     const teamId = state.turn.activeTeamId;
     if (![...this.teamPlayers.values()].some((ids) => ids.includes(playerId)))
@@ -428,6 +448,7 @@ export class GameSession {
           aim: n.aim ?? { angle: 0, power: 0 },
         })),
       ),
+      ...researchFields(s),
       projectiles: s.projectiles.map((p) => ({
         id: p.id,
         weaponId: p.weaponId,
@@ -456,31 +477,4 @@ export class GameSession {
       waterLevel: s.terrain.waterLevel,
     };
   }
-}
-
-/** Wire view of the telegraphed scheduled effects. */
-function wireScheduled(list: GameState['scheduled']): ScheduledState[] {
-  return list.map((e) => ({
-    id: e.id,
-    groupId: e.groupId,
-    position: e.position,
-    radius: e.telegraph.radius,
-    turnsLeft: e.turnsLeft,
-    style: e.telegraph.style,
-  }));
-}
-
-/** Wire view of the crates. */
-function wireCrates(list: GameState['crates']): CrateState[] {
-  return list.map((c) => ({
-    id: c.id,
-    defId: c.defId,
-    position: c.position,
-    grounded: c.grounded,
-  }));
-}
-
-function snailWireState(n: Snail): 'dead' | 'grounded' | 'airborne' {
-  if (!n.alive) return 'dead';
-  return n.grounded === false ? 'airborne' : 'grounded';
 }

@@ -46,6 +46,33 @@ export const WireScheduled = z.tuple([z.string(), z.string(), int, int, int, int
 /** Wire crate: `[id, defId, px,py,pz (mm), grounded (0 or 1)]`. */
 export const WireCrate = z.tuple([z.string(), z.string(), int, int, int, int]);
 
+/** Research presets (mirrors core's `ResearchSetting`). */
+export const WireResearchSetting = z.enum(['off', 'on', 'fast']);
+
+/** Private research state of one team (mirrors core's `TeamResearch`). */
+export const WireTeamResearch = z.object({
+  calcium: z.number(),
+  queue: z.array(z.string()),
+  active: z.object({ techId: z.string(), turnsLeft: z.number(), paid: z.number() }).nullable(),
+  damageCalciumThisTurn: z.number(),
+  roundsSinceDamage: z.number(),
+  abilityUses: z.record(z.string(), z.number()).optional(),
+});
+/** Private research state of one team. */
+export type WireTeamResearch = z.infer<typeof WireTeamResearch>;
+
+/**
+ * Per-team research entry. `researching` is public (opponents show a shimmer); `research` is
+ * private: the server strips it for every viewer but the owning team's controllers.
+ */
+export const WireTeamEntry = z.object({
+  id: z.string(),
+  researching: z.boolean().optional(),
+  research: WireTeamResearch.optional(),
+});
+/** Per-team research entry. */
+export type WireTeamEntry = z.infer<typeof WireTeamEntry>;
+
 /** Compact authoritative snapshot (sent to display and controllers alike, ADR-0008). */
 export const Snapshot = z.object({
   type: z.literal('snapshot'),
@@ -66,6 +93,10 @@ export const Snapshot = z.object({
   crates: z.array(WireCrate).optional(),
   /** Water surface height in mm; absent = the level announced in `matchStarted` (sudden death raises it). */
   water: int.optional(),
+  /** Research preset; absent = off. */
+  research: WireResearchSetting.optional(),
+  /** Per-team research entries; absent = research off. */
+  teams: z.array(WireTeamEntry).optional(),
 });
 /** Compact snapshot message. */
 export type Snapshot = z.infer<typeof Snapshot>;
@@ -151,6 +182,10 @@ export interface DecodedSnapshot {
   crates: CrateState[];
   /** Water surface height in metres; absent = unchanged from the terrain parameters. */
   waterLevel?: number;
+  /** Research preset; absent = off. */
+  research?: z.infer<typeof WireResearchSetting>;
+  /** Per-team research entries (private `research` only where the viewer may see it). */
+  teams?: WireTeamEntry[];
 }
 
 const q = (v: number): number => Math.round(v * 1000);
@@ -207,6 +242,8 @@ export function encodeSnapshot(s: DecodedSnapshot): Snapshot {
     scheduled: s.scheduled.map(encodeScheduled),
     crates: s.crates.map(encodeCrate),
     ...(s.waterLevel === undefined ? {} : { water: q(s.waterLevel) }),
+    ...(s.research === undefined ? {} : { research: s.research }),
+    ...(s.teams === undefined ? {} : { teams: s.teams }),
   };
 }
 
@@ -283,5 +320,7 @@ export function decodeSnapshot(m: Snapshot): DecodedSnapshot {
       grounded: grounded === 1,
     })),
     ...(m.water === undefined ? {} : { waterLevel: dq(m.water) }),
+    ...(m.research === undefined ? {} : { research: m.research }),
+    ...(m.teams === undefined ? {} : { teams: m.teams }),
   };
 }
