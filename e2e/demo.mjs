@@ -111,11 +111,26 @@ try {
       while (!done() && Date.now() < until10) await active.page.waitForTimeout(250);
     }
     step(`${active.name} fired ${weapon}`);
+    const t0 = dFrames[mark - 1]?._at ?? 0;
     await until(
       `${weapon} resolved and the turn passed`,
       () => dFrames.slice(mark).some((m) => m.type === 'turnStart' && teamOf(m) !== turnTeam),
       45000,
-    );
+    ).catch((e) => {
+      // Diagnostics for CI-only failures: what the phone sent and what came back.
+      const sent = active.frames.sent.filter((m) => m._at >= t0 && m.type !== 'aim');
+      const back = active.frames.filter(
+        (m) => m._at >= t0 && !['snapshot', 'eventBatch', 'turnTimer', 'pong'].includes(m.type),
+      );
+      const evs = dFrames
+        .slice(mark)
+        .filter((m) => m.type === 'eventBatch')
+        .flatMap((m) => m.events.map((x) => x.type).filter((t) => t !== 'tick'));
+      console.log(`[e2e] ${active.name} sent: ${JSON.stringify(sent)}`);
+      console.log(`[e2e] ${active.name} got: ${JSON.stringify(back).slice(0, 2000)}`);
+      console.log(`[e2e] display events: ${evs.join(',')}`);
+      throw e;
+    });
     const batches = dFrames.slice(mark).filter((m) => m.type === 'eventBatch');
     if (
       weapon !== 'Shell Bash' &&
