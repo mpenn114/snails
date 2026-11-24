@@ -11,6 +11,8 @@ import type {
   WindDefinition,
 } from '../content/types.js';
 import { DEFAULT_CRATE_RULES, type CrateRules } from '../crate/crate-rules.js';
+import { emptyTeamResearch } from '../research/calcium.js';
+import { registerResearch } from '../research/research-system.js';
 import { registerCrates } from '../crate/crate-system.js';
 import { moveCommandHandler, movementSystem } from '../movement/movement.js';
 import { snailSeparationSystem } from '../movement/snail-collision.js';
@@ -26,7 +28,6 @@ import {
   type MatchSettings,
   type MatchSettingsInput,
 } from '../rules/match-settings.js';
-import { registerResearch } from '../research/research-system.js';
 import { registerSuddenDeath } from '../rules/sudden-death.js';
 import { createInitialState, type TeamConfig } from '../state/game-state.js';
 import type { Vec3 } from '../state/types.js';
@@ -188,6 +189,10 @@ export function createMatch(options: MatchOptions): MatchSetup {
   });
   const loadout = { ...demoLoadout(options.weapons, settings), ...options.loadout };
   for (const team of state.teams) team.inventory = initialInventory(options.weapons, loadout);
+  if (settings.research !== 'off') {
+    state.research = settings.research;
+    for (const team of state.teams) team.research = emptyTeamResearch();
+  }
   if (settings.demo) for (const team of state.teams) team.researched = gatedTechs(options.weapons);
   const content = buildMatchContent(options);
   const weapons = content.weapons;
@@ -213,8 +218,8 @@ export function createMatch(options: MatchOptions): MatchSetup {
   sim.addSystem('turns', turnSystem(turnConfig, windConfig));
   if (windConfig.changesMidFlight === true) sim.addSystem('wind', midFlightWindSystem(windConfig));
   registerLingeringEffects(sim, content);
-  registerResearch(sim, content);
   registerMatchRules(sim, content, settings, options.crateRules);
+  registerResearch(sim, content);
   faceEnemies(sim);
   startTurn(state, turnConfig, () => undefined, { rng: rng.wind, config: windConfig });
   return { sim, weapons, content, turnConfig };

@@ -24,8 +24,7 @@ export function researchMatch(
   setting: ResearchSetting = 'on',
   calcium = 100,
 ): MatchSetup {
-  const m = createMatch({ ...testMatchOptions(5), technologies });
-  m.sim.state.research = setting;
+  const m = createMatch({ ...testMatchOptions(5), technologies, settings: { research: setting } });
   for (const t of m.sim.state.teams) {
     t.research ??= {
       calcium,

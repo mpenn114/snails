@@ -64,14 +64,16 @@ export function pickDropSite(ctx: SimContext): Vec3 | null {
 }
 
 /**
- * Picks a crate definition by weight from the `crates` stream. Calcium crates are skipped (the
- * research resource arrives in M5). Returns null when nothing can drop.
+ * Picks a crate definition by weight from the `crates` stream. Calcium crates are skipped unless
+ * research is on. Returns null when nothing can drop.
  */
 export function pickCrateDefinition(
   ctx: SimContext,
   registry: ContentRegistry<CrateDefinition>,
 ): CrateDefinition | null {
-  const defs = registry.list().filter((d) => d.kind !== 'calcium');
+  const defs = registry
+    .list()
+    .filter((d) => d.kind !== 'calcium' || (ctx.state.research ?? 'off') !== 'off');
   const total = defs.reduce((n, d) => n + d.weight, 0);
   if (defs.length === 0 || !(total > 0)) return null;
   let roll = ctx.rng.crates.next() * total;

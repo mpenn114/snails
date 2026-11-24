@@ -1,6 +1,7 @@
 import type { MatchContent } from '../content/match-content.js';
 import type { CrateDefinition } from '../content/types.js';
 import { applyDamage, heal } from '../entities/snail.js';
+import { addCalcium } from '../research/calcium.js';
 import type { SimContext } from '../sim/types.js';
 import { applyStatus } from '../status/status-system.js';
 import type { Crate, Snail, Team } from '../state/types.js';
@@ -55,8 +56,8 @@ function resolveOutcome(ctx: SimContext, def: CrateDefinition): Outcome {
 
 /**
  * Applies a crate's contents to `snail` and emits `crateCollected` (and `snailDamaged` for a
- * bad mystery outcome). The caller removes the crate. Calcium is schema-only until M5: it is
- * ignored here.
+ * bad mystery outcome). The caller removes the crate. Calcium contents go to the team's
+ * research bank (no-op when research is off).
  */
 export function collectCrate(
   ctx: SimContext,
@@ -83,6 +84,7 @@ export function collectCrate(
   }
   const team = ctx.state.teams.find((t) => t.id === snail.teamId);
   if (team) grantWeapons(team, out.weapons);
+  if (def.contents.calcium) addCalcium(ctx, snail.teamId, def.contents.calcium, 'crate');
   const status = out.statusId ? content.statuses.get(out.statusId) : undefined;
   if (status) {
     applyStatus(ctx, snail, status, {

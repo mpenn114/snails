@@ -26,6 +26,9 @@ function tallyDamage(state: GameState, e: SimEvent): void {
   tally[source.teamId] = (tally[source.teamId] ?? 0) + e.amount;
 }
 
+/** Callback for {@link Simulation.registerEventObserver}. */
+export type EventObserver = (ctx: SimContext, event: SimEvent) => void;
+
 interface QueuedCommand {
   cmd: Command;
   /** Present only for commands that went through {@link Simulation.submit}. */
@@ -68,6 +71,7 @@ export class Simulation {
   private readonly handlers = new Map<CommandType, CommandHandler<never>>();
   private readonly systems: { name: string; fn: SystemFn }[] = [];
   private readonly turnStartHooks: { name: string; fn: TurnStartHook }[] = [];
+  private readonly eventObservers: { name: string; fn: EventObserver }[] = [];
   /** Last turn number whose hooks ran (0 = none yet, so turn 1 fires hooks on the first step). */
   private hookedTurn = 0;
 
@@ -122,6 +126,15 @@ export class Simulation {
     this.turnStartHooks.push({ name, fn });
   }
 
+  /**
+   * Registers an observer called, in registration order, for every emitted event right after it
+   * is recorded. Observers may emit further events (which are observed too), so they must not
+   * re-emit the kind they react to.
+   */
+  registerEventObserver(name: string, fn: EventObserver): void {
+    this.eventObservers.push({ name, fn });
+  }
+
   /** Names of registered turn-start hooks in execution order. */
   turnStartHookNames(): string[] {
     return this.turnStartHooks.map((h) => h.name);
@@ -150,6 +163,7 @@ export class Simulation {
       emit: (e) => {
         events.push(e);
         tallyDamage(this.state, e);
+        for (const o of this.eventObservers) o.fn(ctx, e);
       },
     };
     for (const { cmd, validate } of this.queue.splice(0)) {

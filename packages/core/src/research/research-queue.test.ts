@@ -20,7 +20,8 @@ const types = (e: SimEvent[]) => e.map((x) => x.type);
 
 function ready(setting: 'on' | 'fast' = 'on', calcium = 100): MatchSetup {
   const m = researchMatch(TECHS, setting, calcium);
-  m.sim.step();
+  m.sim.step(); // the first turn start pays income; reset so tests start from `calcium`
+  for (const t of m.sim.state.teams) t.research!.calcium = calcium;
   return m;
 }
 /** Submits as team a and runs one step. */
@@ -91,11 +92,10 @@ describe('research queue', () => {
     run(m, q('t1'));
     expect(teamA(m).research?.active).toBeNull();
     expect(teamA(m).research?.queue).toEqual(['t1']);
-    teamA(m).research!.calcium = 10;
     endTurn(m);
-    endTurn(m); // a's turn start picks it up
+    endTurn(m); // a's turn start: +10 income (5 + 10 = 15), then t1 starts
     expect(teamA(m).research?.active?.techId).toBe('t1');
-    expect(teamA(m).research?.calcium).toBe(0);
+    expect(teamA(m).research?.calcium).toBe(5);
   });
 
   it('enforces the tier gate (tier N needs N-1 techs, queued ones count)', () => {
@@ -132,7 +132,8 @@ describe('research queue', () => {
     endTurn(m);
     endTurn(m);
     expect(teamA(m).researched).toEqual(['t2']);
-    expect(teamA(m).research).toMatchObject({ calcium: 87, active: { techId: 'cap1', paid: 3 } });
+    // 90 + 10 turn income - 3
+    expect(teamA(m).research).toMatchObject({ calcium: 97, active: { techId: 'cap1', paid: 3 } });
   });
 
   it('rejects invalid commands', () => {
