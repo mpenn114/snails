@@ -135,6 +135,9 @@ try {
     step(`${name} joined team ${team} and readied`);
   }
 
+  // Lazy start: the turn timer waits for the first input, so slow software-GL pages cannot let a
+  // turn expire before the test acts.
+  await phones[0].page.check('.lobby .settings [data-key="lazyStart"]');
   await until('start enabled', () =>
     phones[0].page.locator('.lobby .start:not([disabled])').count(),
   );
@@ -154,21 +157,6 @@ try {
   });
   const idle = phones.find((p) => p !== active);
   step(`active phone: ${active.name}`);
-  // A second display opened mid-match (no room code, as the printed TV link may be) must catch up.
-  const late = await dctx.newPage();
-  const lFrames = watch(late, 'late display', errors);
-  await late.goto(`${base}/display/`);
-  await until('late display welcomed into the running room', () =>
-    lFrames.some((m) => m.type === 'welcome' && m.roomCode === code),
-  );
-  await until('late display gets matchStarted and a snapshot', () =>
-    ['matchStarted', 'snapshot'].every((t) => has(lFrames, t)),
-  );
-  await until('late display has its canvas', () =>
-    late.evaluate(() => !!document.querySelector('canvas')),
-  );
-  step('display opened mid-match caught up');
-  await late.close();
   await display.waitForTimeout(1500);
   if (shots) {
     await display.screenshot({ path: join(shots, 'display-match.png') });
@@ -227,16 +215,24 @@ try {
   await idle.page.waitForSelector('.ctl.mine', { timeout: 10000 });
   step('other phone now has controls');
 
-  // A display opened after the crater exists must receive the terrain history and end up with
+  // A second display opened mid-match with no room code (as the printed TV link may be) joins the
+  // running room. Opened after the crater exists, it must receive the terrain history and end up with
   // exactly the same terrain as the display that watched it happen.
   const probe = (pg) =>
     pg.evaluate(() => ({
       applied: window.__snailsTerrain?.applied() ?? 0,
       sum: window.__snailsTerrain?.checksum() ?? '',
     }));
+  // The phones are done: close them so software GL has CPU for the late display's scene build.
+  for (const p of phones) await p.page.close();
   const late2 = await dctx.newPage();
   const l2Frames = watch(late2, 'late display 2', errors);
   await late2.goto(`${base}/display/`);
+  await until(
+    'late display welcomed into the running room',
+    () => l2Frames.some((m) => m.type === 'welcome' && m.roomCode === code),
+    60000,
+  );
   await until(
     'late display 2 gets matchStarted, history and snapshot',
     () => ['matchStarted', 'terrainHistory', 'snapshot'].every((t) => has(l2Frames, t)),

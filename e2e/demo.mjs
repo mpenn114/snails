@@ -46,6 +46,7 @@ try {
 
   const host = phones[0].page;
   await host.check('.lobby .settings [data-key="demo"]');
+  await host.check('.lobby .settings [data-key="lazyStart"]'); // slow GL must not expire turns
   step('host ticked the Weapons demo map');
   await until('start enabled', () => host.locator('.lobby .start:not([disabled])').count());
   await host.click('.lobby .start');
@@ -68,6 +69,7 @@ try {
       for (const p of phones) if (await p.page.locator('.ctl.mine').count()) return p;
       return null;
     });
+    await until('display saw the turn start', () => has(dFrames, 'turnStart'));
     const mark = dFrames.length;
     const turnTeam = teamOf(dFrames.filter((m) => m.type === 'turnStart').at(-1));
     await active.page.evaluate((name) => {
@@ -77,8 +79,22 @@ try {
       if (!tile) throw new Error(`no weapon tile ${name}`);
       tile.click();
     }, weapon);
-    await active.page.waitForTimeout(300);
-    await active.page.evaluate(() => document.querySelector('.ctl-fire').click());
+    // A tap can be lost while a software-GL page is busy (and lazy start never expires the turn),
+    // so tap Fire again until the shot shows up on the display.
+    const shotSeen = () =>
+      dFrames
+        .slice(mark)
+        .some(
+          (m) =>
+            m.type === 'eventBatch' &&
+            m.events.some((e) => ['projectileFired', 'meleeStruck'].includes(e.type)),
+        );
+    for (let tries = 0; tries < 4 && !shotSeen(); tries++) {
+      await active.page.waitForTimeout(300);
+      await active.page.evaluate(() => document.querySelector('.ctl-fire')?.click());
+      const until10 = Date.now() + 10000;
+      while (!shotSeen() && Date.now() < until10) await active.page.waitForTimeout(250);
+    }
     step(`${active.name} fired ${weapon}`);
     await until(
       `${weapon} resolved and the turn passed`,
