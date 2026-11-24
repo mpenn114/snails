@@ -1,12 +1,18 @@
 import type { MatchContent } from '../content/match-content.js';
 import type { SimEvent } from '../sim/events.js';
 import type { Simulation } from '../sim/simulation.js';
+import type { Snail } from '../state/types.js';
 import type { SimContext } from '../sim/types.js';
+import { applyMossTax, grantCatchUp } from './anti-snowball.js';
 import { addCalcium, CALCIUM_INCOME } from './calcium.js';
 import { advanceResearch, cancelResearchHandler, queueResearchHandler } from './research-queue.js';
 
 function teamOf(ctx: SimContext, snailId: string): string | undefined {
   return ctx.state.teams.find((t) => t.snails.some((s) => s.id === snailId))?.id;
+}
+
+function allSnails(ctx: SimContext): Snail[] {
+  return ctx.state.teams.flatMap((t) => t.snails);
 }
 
 /** Turn start, step 1: per-turn counters (Moss Tax bookkeeping) and income for the owning team. */
@@ -17,6 +23,8 @@ function turnIncome(ctx: SimContext, teamId: string | null): void {
   research.damagedSinceTurnStart = false;
   research.damageCalciumThisTurn = 0;
   addCalcium(ctx, teamId, CALCIUM_INCOME.perTurn, 'turnIncome');
+  applyMossTax(ctx, teamId, research.roundsSinceDamage);
+  grantCatchUp(ctx, teamId);
 }
 
 /** Converts damage to an enemy into Calcium (1 per 5, remainder carried, capped per turn). */
@@ -45,8 +53,6 @@ export function registerResearch(sim: Simulation, content: MatchContent): void {
   const techs = content.technologies;
   sim.registerCommandHandler('queueResearch', (ctx, cmd) => queueResearchHandler(ctx, cmd, techs));
   sim.registerCommandHandler('cancelResearch', (ctx, cmd) => cancelResearchHandler(ctx, cmd));
-  /** Team that last damaged each snail (for kill credit); cleared on death. */
-  const lastEnemyHit = new Map<string, string>();
   sim.registerTurnStartHook('research-income', (ctx, info) => turnIncome(ctx, info.teamId));
   sim.registerTurnStartHook('research-progress', (ctx, info) =>
     advanceResearch(ctx, info.teamId, techs),
@@ -56,11 +62,13 @@ export function registerResearch(sim: Simulation, content: MatchContent): void {
       const dealer = teamOf(ctx, e.sourceSnailId);
       const victim = teamOf(ctx, e.snailId);
       if (!dealer || !victim || dealer === victim) return;
-      lastEnemyHit.set(e.snailId, dealer);
+      const hurt = allSnails(ctx).find((s) => s.id === e.snailId);
+      if (hurt) hurt.lastHitByTeam = dealer;
       damageIncome(ctx, dealer, e.amount);
     } else if (e.type === 'snailDied') {
-      const killer = lastEnemyHit.get(e.snailId);
-      lastEnemyHit.delete(e.snailId);
+      const dead = allSnails(ctx).find((s) => s.id === e.snailId);
+      const killer = dead?.lastHitByTeam;
+      if (dead) delete dead.lastHitByTeam;
       if (killer) addCalcium(ctx, killer, CALCIUM_INCOME.perKill, 'kill');
     }
   });

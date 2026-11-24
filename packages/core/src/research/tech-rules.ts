@@ -1,5 +1,6 @@
 import type { TechnologyDefinition } from '../content/types.js';
 import type { GameState, Team } from '../state/types.js';
+import { costScale } from './anti-snowball.js';
 
 /** Most techs that may wait in a team's queue (the active tech is not counted). */
 export const MAX_QUEUED = 2;
@@ -26,9 +27,13 @@ export type ResearchRejection =
 export type ResearchCheck =
   { ok: true } | { ok: false; reason: ResearchRejection; message: string };
 
-/** Calcium a team pays to start `def` (fast mode halves it, rounded up). */
-export function techCost(state: GameState, _team: Team, def: TechnologyDefinition): number {
-  return state.research === 'fast' ? Math.ceil(def.cost * 0.5) : def.cost;
+/**
+ * Calcium a team pays to start `def`: base cost +5% per tech the team owns (flat across tiers),
+ * rounded up; fast mode then halves it, rounded up.
+ */
+export function techCost(state: GameState, team: Team, def: TechnologyDefinition): number {
+  const scaled = Math.ceil(def.cost * costScale(team.researched.length) - 1e-9);
+  return state.research === 'fast' ? Math.ceil(scaled * 0.5) : scaled;
 }
 
 /** Team turns `def` takes (fast mode: one fewer, never below 1). */

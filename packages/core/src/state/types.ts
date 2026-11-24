@@ -45,6 +45,8 @@ export interface Snail {
   statuses?: StatusInstance[];
   /** Set while the snail is being reeled along a slime strand (see `rope/rope-system.ts`). */
   rope?: RopeState;
+  /** Team that last damaged this snail (research kill credit); cleared on death. */
+  lastHitByTeam?: string;
 }
 
 /** A snail being reeled from `from` to `to` over `seconds`; `elapsed` advances each step. */

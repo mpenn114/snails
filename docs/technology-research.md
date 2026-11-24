@@ -138,6 +138,17 @@ antenna scout.
   5 rounds, its income halves ("Moss Tax").
 - **Capture the capstone:** the Oracle can steal techs, making a runaway lead brittle.
 
+As built (`research/anti-snowball.ts`, tunables in `ANTI_SNOWBALL`):
+
+- **Comeback Calcium** (`catchUp`): at its turn start a team under 60% of the leader's total living
+  health gets `ceil(10 * (0.6 - own/leader) / 0.6)` Calcium (0 at the threshold, 10 at no health).
+- **Cost scaling:** `techCost` is base +5% per tech owned (flat, not per tier), rounded up; fast
+  mode halves the scaled price afterwards.
+- **Moss Tax:** with `roundsSinceDamage >= 5` the team loses half of the base per-turn income
+  (reason `mossTax`, -5, emitted right after `turnIncome`). Tech income (`calciumPerTurn`) is not taxed.
+- Damage income stays a flat per-turn cap. Golden crates are later work (no crate exists yet).
+- Kill credit is `Snail.lastHitByTeam` in game state, so it survives snapshot restore.
+
 ## Data definition
 
 Techs are typed definitions validated by zod and registered in the `ContentRegistry`, never code
