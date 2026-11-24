@@ -13,6 +13,7 @@ export { satisfiesRange, parseSemver } from './content/semver.js';
 export * from './physics/motion.js';
 export * from './status/status-system.js';
 export * from './area/area-system.js';
+export * from './area/water-area.js';
 export * from './turn/turn-hooks.js';
 export * from './sim/lingering.js';
 export * from './combat/pattern.js';

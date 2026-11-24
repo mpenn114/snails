@@ -22,4 +22,19 @@ describe('AreaLayer', () => {
     expect(layer.group.children[0]?.scale.x).toBeCloseTo(4, 0);
     layer.dispose();
   });
+
+  it('gives puddles a flat water disc at the surface and goo a squashed blob', () => {
+    const layer = new AreaLayer();
+    layer.sync([
+      { ...area('p', 2), kind: 'base:puddle', radius: 2.5, position: { x: 2, y: 6.4, z: 3 } },
+      { ...area('g', 7), kind: 'base:goo-splat', radius: 2 },
+    ]);
+    const [puddle, goo] = layer.group.children;
+    expect(puddle?.type).toBe('Group');
+    expect(puddle?.position.y).toBeCloseTo(6.4, 1);
+    expect(puddle?.children[0]?.scale.x).toBeCloseTo(2.5);
+    expect(goo?.children).toHaveLength(2);
+    expect(goo?.children[1]?.scale.y).toBeLessThan(0.3);
+    layer.dispose();
+  });
 });

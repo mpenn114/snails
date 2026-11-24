@@ -61,11 +61,15 @@ To add an effect type: add its schema to `EffectSchema`, add one entry to `effec
 
 - Applied by the `status` effect (or an area) through `applyStatus`, which emits `statusApplied`. Re-applying the same status refreshes it (longest duration, largest magnitude) and never stacks. `cures` removes other statuses first.
 - Processed at the **start of each turn of the afflicted snail's team**: damage `round(perTurnDamage * magnitude)` (cause `status`), then `turnsLeft -= 1`; at 0 the status is removed with `statusExpired`. A status of N turns ticks N times. If the active snail dies, its turn is skipped.
-- `moveSpeedMultiplier` is exposed through `statusMoveSpeedMultiplier(snail, registry)`; the movement system does not consume it yet (the slow-status job wires it).
+- `moveSpeedMultiplier` is exposed through `statusMoveSpeedMultiplier(snail, registry)` and consumed by `movementSystem(config, statuses)` (`createMatch` passes the registry): it scales the crawl speed only, not jumps. Because a status ticks down at the start of its team's turns, `turns: 2` slows a snail for exactly one full turn of its own (`base:goo`).
 
 ### Areas
 
-`AreaDefinition`: `id`, `name`, `defaultRadius`, `defaultTurns`, `perTurnDamage?`, `applyStatus?`, `windDrift?`, `drowns?`. Instances live in `GameState.areas` (`id`, `kind`, `position`, `radius`, `turnsLeft`, `sourceSnailId`, `params?`), created by a `spawn` effect (`spawnArea`, event `areaCreated`). At **every turn start** (`area/area-system.ts`), in creation order: drift downwind by `windDrift` metres per unit of wind strength (`areaMoved`), affect every living snail inside (damage with cause `area`, a status, or drowning), then `turnsLeft -= 1` and remove at 0 (`areaExpired`).
+`AreaDefinition`: `id`, `name`, `defaultRadius`, `defaultTurns`, `perTurnDamage?`, `applyStatus?`, `windDrift?`, `drowns?`, `waterDepth?`, `extinguishes?`. Instances live in `GameState.areas` (`id`, `kind`, `position`, `radius`, `turnsLeft`, `sourceSnailId`, `params?`), created by a `spawn` effect (`spawnArea`, event `areaCreated`). At **every turn start** (`area/area-system.ts`), in creation order: drift downwind by `windDrift` metres per unit of wind strength (`areaMoved`), affect every living snail inside (damage with cause `area`, a status, or drowning), then `turnsLeft -= 1` and remove at 0 (`areaExpired`).
+
+**Water areas** (`waterDepth` set, `area/water-area.ts`; base: `base:puddle`). `spawnArea` settles the centre to the lowest terrain within the radius (`findLowPoint`: the centre plus two rings of 8 probe columns, ties keep the centre) and puts the surface `waterDepth` metres above it; the instance's `position.y` IS the surface height, so clients need no extra field. A snail touches the water when it is within `radius + 0.5` horizontally and its feet are below the surface: it loses the statuses in `extinguishes`. With `drowns`, a snail within `radius` whose centre is below the surface drowns (`snailDrowned`, `snailDied` cause `drown`, the same events as the sea). This runs when the area spawns, every simulation step (`water-areas` system, registered by `registerLingeringEffects`) and at turn start. Note: a snail resting on ground has its centre 0.5 m up, so the 0.9 m puddle drowns snails on flat ground too, not only in pits.
+
+Views: `packages/render/src/effects/area-views.ts` has one `AreaViewFactory` per area kind in `areaViewFactories`; unknown kinds fall back to the translucent dome.
 
 ### Turn-start hooks
 

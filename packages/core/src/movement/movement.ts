@@ -3,6 +3,9 @@ import { add, dot, normalize, scale, sub } from '../math/vec3.js';
 import type { CommandHandler, SimContext, SystemFn } from '../sim/types.js';
 import type { Snail, Vec3 } from '../state/types.js';
 import { findGround, groundNormal, isSphereColliding, sphereSweep } from '../terrain/collision.js';
+import type { ContentRegistry } from '../content/registry.js';
+import type { StatusDefinition } from '../content/types.js';
+import { statusMoveSpeedMultiplier } from '../status/status-system.js';
 import { DEFAULT_MOVEMENT_CONFIG, type MovementConfig } from './movement-config.js';
 
 const UP: Vec3 = { x: 0, y: 1, z: 0 };
@@ -22,13 +25,24 @@ export const moveCommandHandler: CommandHandler<'move'> = (ctx, cmd) => {
 /**
  * Creates the movement system: crawling on terrain, slope limiting, jumping, falling.
  * Emits `{ type: 'snailLanded', snailId, impactSpeed, fallDistance }` on touchdown.
+ * With `statuses`, crawl speed is scaled by the snail's `moveSpeedMultiplier` statuses (jumps are not).
  * A jump goes along facing (scaled by direction; straight forward when direction is 0).
  */
-export function movementSystem(config: MovementConfig = DEFAULT_MOVEMENT_CONFIG): SystemFn {
+export function movementSystem(
+  config: MovementConfig = DEFAULT_MOVEMENT_CONFIG,
+  statuses?: ContentRegistry<StatusDefinition>,
+): SystemFn {
   return (ctx) => {
     for (const snail of livingSnails(ctx.state)) {
       if (snail.grounded === false) stepAirborne(ctx, snail, config);
-      else stepGrounded(ctx, snail, config);
+      else {
+        const slow = statuses ? statusMoveSpeedMultiplier(snail, statuses) : 1;
+        stepGrounded(
+          ctx,
+          snail,
+          slow === 1 ? config : { ...config, crawlSpeed: config.crawlSpeed * slow },
+        );
+      }
     }
   };
 }

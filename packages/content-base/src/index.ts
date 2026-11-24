@@ -1,11 +1,12 @@
 import type { ContentPack } from '@snails/core';
+import { areas } from './areas.js';
 import { crates } from './crates.js';
 import { shellUpgrades, technologies } from './definitions.js';
 import { statuses } from './statuses/index.js';
 import { weapons } from './weapons/index.js';
 import { winds } from './winds.js';
 
-export { crates, shellUpgrades, statuses, technologies, weapons, winds };
+export { areas, crates, shellUpgrades, statuses, technologies, weapons, winds };
 
 /** The base content pack: load it with `loadContentPacks([basePack])`. */
 export const basePack: ContentPack = {
@@ -16,6 +17,7 @@ export const basePack: ContentPack = {
   crates,
   winds,
   statuses,
+  areas,
 };
 
 /** Manifest of the base content pack. */

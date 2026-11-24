@@ -1,4 +1,5 @@
 import { processAreasAtTurnStart } from '../area/area-system.js';
+import { waterAreaSystem } from '../area/water-area.js';
 import type { MatchContent } from '../content/match-content.js';
 import { processStatusesAtTurnStart } from '../status/status-system.js';
 import type { Simulation } from './simulation.js';
@@ -10,5 +11,6 @@ import type { Simulation } from './simulation.js';
  */
 export function registerLingeringEffects(sim: Simulation, content: MatchContent): void {
   sim.registerTurnStartHook('statuses', (ctx) => processStatusesAtTurnStart(ctx, content.statuses));
+  sim.addSystem('water-areas', waterAreaSystem(content.areas));
   sim.registerTurnStartHook('areas', (ctx) => processAreasAtTurnStart(ctx, content));
 }
