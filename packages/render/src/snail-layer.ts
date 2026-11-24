@@ -1,6 +1,11 @@
 import * as THREE from 'three';
 import type { FrameUpdater, RenderState } from './render-loop.js';
-import { SnailAssets, canvasLabelFactory, type LabelTextureFactory } from './snail-assets.js';
+import {
+  BAR_WIDTH,
+  SnailAssets,
+  canvasLabelFactory,
+  type LabelTextureFactory,
+} from './snail-assets.js';
 import { declutterLabels, type LabelBox } from './label-declutter.js';
 import { hashShellSeed } from './snail/shell-geometry.js';
 import type { QualityTier } from './quality.js';
@@ -118,7 +123,12 @@ export class SnailLayer {
     mesh.setLabelScale(labelScaleForDistance(cam.position.distanceTo(mesh.group.position)));
   }
 
-  /** Hides or lifts name tags that would overlap on screen; nearer snails win. */
+  /**
+   * Keeps each snail's label stack (health bar plus name tag) clear of its neighbours: nearer
+   * snails win, the others are lifted by whole stack heights, and a name tag with no free slot is
+   * hidden. The bar itself is never hidden. Lifts live on the mesh so the per-frame re-billboard
+   * keeps them.
+   */
   private declutter(): void {
     const cam = this.camera;
     if (!(cam instanceof THREE.PerspectiveCamera)) return;
@@ -127,20 +137,31 @@ export class SnailLayer {
     const boxes: LabelBox[] = [];
     const tmp = new THREE.Vector3();
     for (const [id, mesh] of this.meshes) {
-      if (!mesh.nameTag.visible) continue;
-      mesh.nameTag.getWorldPosition(tmp);
+      mesh.setLabelLift(0);
+      if (!mesh.barGroup.visible) continue;
+      const f = mesh.labelScale;
+      const tag = mesh.nameTag.visible;
+      tmp.copy(mesh.group.position).y += mesh.barGroup.position.y;
       const d = cam.position.distanceTo(tmp);
       const ndc = tmp.project(cam);
       const unit = 1 / (d * tanHalf); // world metres -> NDC height
-      const s = mesh.nameTag.scale;
-      const width = (s.x * unit) / cam.aspect;
-      boxes.push({ id, x: ndc.x, y: ndc.y, width, height: s.y * unit, distance: d });
+      const wide = (tag ? 2.4 : BAR_WIDTH + 0.06) * f;
+      const high = (tag ? 0.8 : 0.26) * f;
+      boxes.push({
+        id,
+        x: ndc.x,
+        y: ndc.y,
+        width: (wide * unit) / cam.aspect,
+        height: high * unit,
+        distance: d,
+      });
     }
     for (const p of declutterLabels(boxes)) {
       const mesh = this.meshes.get(p.id)!;
-      const d = boxes.find((b) => b.id === p.id)!.distance;
-      mesh.nameTag.visible = !p.hidden;
-      mesh.nameTag.position.y += p.offsetY * d * tanHalf;
+      const box = boxes.find((b) => b.id === p.id)!;
+      const steps = p.hidden ? 3 : Math.round(p.offsetY / box.height);
+      if (p.hidden) mesh.nameTag.visible = false;
+      mesh.setLabelLift(steps * box.height * box.distance * tanHalf);
     }
   }
 

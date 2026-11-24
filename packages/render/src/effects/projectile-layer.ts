@@ -2,9 +2,9 @@ import * as THREE from 'three';
 import type { Projectile } from '@snails/core';
 import type { FrameUpdater, RenderState } from '../render-loop.js';
 import { createToonMaterial } from '../style/materials.js';
-import { puffScale } from './blast-params.js';
+import { wispAlpha, wispScale } from './blast-params.js';
 import type { ChunkPhysics } from './chunk-pool.js';
-import { InstancedChunks } from './instanced-chunks.js';
+import { SoftPuffs } from './soft-puffs.js';
 import { TRAIL_COLOUR, buildPebbleGeometry } from './pebble-geometry.js';
 import { createTrailState, emitTrail, type TrailSpec, type TrailState } from './trail-emitter.js';
 
@@ -27,10 +27,10 @@ const PEBBLE_SCALE = 1.9;
 /** Pebble tumble rate, rad/s (subtle). */
 const SPIN_RATE = 7;
 /** Seconds one trail puff lives. */
-const PUFF_LIFE = 0.45;
+const PUFF_LIFE = 0.9;
 /** Simultaneous projectiles the trail pool is sized for. */
 const POOL_PROJECTILES = 3;
-const PUFF_PHYSICS: ChunkPhysics = { gravity: -0.3, drag: 1, restitution: 0 };
+const PUFF_PHYSICS: ChunkPhysics = { gravity: -0.25, drag: 1.2, restitution: 0 };
 
 const FORWARD = new THREE.Vector3(0, 0, 1);
 const tmpDir = new THREE.Vector3();
@@ -83,9 +83,7 @@ export class ProjectileLayer {
     flat: true,
     vertexColors: true,
   });
-  private readonly puffGeo = new THREE.IcosahedronGeometry(1, 0);
-  private readonly puffMat = createToonMaterial({ color: 0xffffff, flat: true });
-  private readonly puffs: InstancedChunks;
+  private readonly puffs: SoftPuffs;
   private readonly radiusScale: number;
   private readonly shadows: boolean;
   private readonly spacing: number;
@@ -93,18 +91,15 @@ export class ProjectileLayer {
   /** Creates an empty layer. */
   constructor(opts: ProjectileLayerOptions = {}) {
     const q = Math.min(1, Math.max(0.1, opts.quality ?? 1));
-    const perProjectile = Math.max(4, Math.floor((opts.trailLength ?? 48) * q));
-    this.spacing = 0.2 / Math.sqrt(q);
+    const perProjectile = Math.max(4, Math.floor((opts.trailLength ?? 64) * q));
+    this.spacing = 0.12 / Math.sqrt(q);
     this.radiusScale = opts.radiusScale ?? 1;
     this.shadows = opts.shadows ?? false;
     this.group.name = 'projectiles';
-    this.puffs = new InstancedChunks(
-      this.puffGeo,
-      this.puffMat,
-      perProjectile * POOL_PROJECTILES,
-      PUFF_PHYSICS,
-      { scale: puffScale },
-    );
+    this.puffs = new SoftPuffs(perProjectile * POOL_PROJECTILES, PUFF_PHYSICS, {
+      scale: wispScale,
+      alpha: wispAlpha,
+    });
     this.group.add(this.puffs.mesh);
     const select =
       opts.selectProjectiles ?? ((s: RenderState): readonly Projectile[] => s.snapshot.projectiles);
@@ -144,7 +139,7 @@ export class ProjectileLayer {
       mesh.apply(p, this.radiusScale);
       const spec: TrailSpec = {
         spacing: this.spacing,
-        size: Math.max(0.05, p.radius) * this.radiusScale * PEBBLE_SCALE * 0.55,
+        size: Math.max(0.05, p.radius) * this.radiusScale * PEBBLE_SCALE * 0.5,
         life: PUFF_LIFE,
         colour: TRAIL_COLOUR,
       };
@@ -165,8 +160,6 @@ export class ProjectileLayer {
     this.puffs.dispose();
     this.pebbleGeo.dispose();
     this.pebbleMat.dispose();
-    this.puffGeo.dispose();
-    this.puffMat.dispose();
     this.group.removeFromParent();
   }
 }

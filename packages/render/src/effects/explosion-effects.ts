@@ -18,7 +18,8 @@ import {
   smokeScale,
 } from './blast-params.js';
 import { emitChunk, type ChunkPhysics } from './chunk-pool.js';
-import { InstancedChunks, withInstanceAlpha } from './instanced-chunks.js';
+import { InstancedChunks } from './instanced-chunks.js';
+import { SoftPuffs } from './soft-puffs.js';
 import {
   aliveCount,
   createParticleData,
@@ -48,7 +49,7 @@ export interface ExplosionEffectsOptions {
 const SMOKE_CAP = 64;
 const DEBRIS_CAP = 96;
 
-const SMOKE: ChunkPhysics = { gravity: -1.4, drag: 2.2, restitution: 0 };
+const SMOKE: ChunkPhysics = { gravity: -0.9, drag: 1.8, restitution: 0 };
 const DEBRIS: ChunkPhysics = { gravity: 14, drag: 0.15, restitution: 0.45 };
 const SPARKS: ParticlePhysics = { gravity: 9, drag: 0.8 };
 /** Seconds the dust ring (and so the slot) lives; the flash ball and light end at FLASH_LIFE. */
@@ -116,17 +117,15 @@ export class ExplosionEffects {
   readonly updater: FrameUpdater;
   private readonly slots: FlashSlot[] = [];
   private lights = 0;
-  private readonly smoke: InstancedChunks;
+  private readonly smoke: SoftPuffs;
   private readonly cubes: InstancedChunks;
   private readonly wedges: InstancedChunks;
   private readonly sparks: SparkPool;
   private readonly sprite = createSoftSpriteTexture(32);
   private readonly ballGeo = new THREE.IcosahedronGeometry(1, 1);
-  private readonly smokeGeo = new THREE.IcosahedronGeometry(1, 2);
   private readonly cubeGeo = new THREE.BoxGeometry(1, 1, 1);
   private readonly wedgeGeo = new THREE.TetrahedronGeometry(0.8);
   private readonly ringGeo = new THREE.RingGeometry(0.8, 1, 24).rotateX(-Math.PI / 2);
-  private readonly smokeMat = withInstanceAlpha(createToonMaterial({ color: 0xffffff, rim: 0.6 }));
   private readonly debrisMat = createToonMaterial({ color: 0xffffff, flat: true });
   private readonly quality: number;
   private readonly random: () => number;
@@ -140,7 +139,7 @@ export class ExplosionEffects {
     const q = Math.max(0.1, this.quality);
     const cap = (base: number): number => Math.max(8, Math.floor(base * q));
     this.group.name = 'explosions';
-    this.smoke = new InstancedChunks(this.smokeGeo, this.smokeMat, cap(SMOKE_CAP), SMOKE, {
+    this.smoke = new SoftPuffs(cap(SMOKE_CAP), SMOKE, {
       scale: smokeScale,
       colour: smokeColour,
       alpha: smokeAlpha,
@@ -218,10 +217,9 @@ export class ExplosionEffects {
     }
     this.slots.length = 0;
     for (const c of [this.smoke, this.cubes, this.wedges]) c.dispose();
-    for (const g of [this.ballGeo, this.smokeGeo, this.cubeGeo, this.wedgeGeo, this.ringGeo]) {
+    for (const g of [this.ballGeo, this.cubeGeo, this.wedgeGeo, this.ringGeo]) {
       g.dispose();
     }
-    this.smokeMat.dispose();
     this.debrisMat.dispose();
     this.sprite.dispose();
     this.sparks.dispose();
@@ -247,9 +245,9 @@ export class ExplosionEffects {
         sx: 0,
         sy: 0,
         sz: 0,
-        size: radius * (0.05 + 0.2 * r() * r()),
+        size: radius * (0.12 + 0.3 * r() * r()),
         colour: PALETTE.uiPaper,
-        life: 0.9 + 0.55 * r(),
+        life: 1.1 + 0.8 * r(),
         floorY: 0,
       });
     }

@@ -36,10 +36,10 @@ describe('blastCounts', () => {
 });
 
 describe('curves', () => {
-  it('smoke grows then shrinks to nothing', () => {
-    expect(smokeScale(0)).toBeCloseTo(0.3);
+  it('smoke keeps swelling while it fades out', () => {
+    expect(smokeScale(0)).toBeCloseTo(0.45);
     expect(smokeScale(0.5)).toBeGreaterThan(smokeScale(0.1));
-    expect(smokeScale(1)).toBeCloseTo(0);
+    expect(smokeScale(1)).toBeGreaterThan(smokeScale(0.5));
   });
   it('debris holds size then shrinks; puff and ring end at zero', () => {
     expect(debrisScale(0.5)).toBe(1);
@@ -59,7 +59,9 @@ describe('curves', () => {
     expect(a[0]).toBeGreaterThan(0.9);
     expect((b[0] ?? 1) + (b[1] ?? 1) + (b[2] ?? 1)).toBeLessThan((a[0] ?? 0) * 3 * 0.9);
     expect(Math.abs((b[0] ?? 0) - (b[2] ?? 0))).toBeLessThan(0.15);
-    expect(smokeAlpha(0)).toBeGreaterThan(0.8);
+    expect(smokeAlpha(0.1)).toBeGreaterThan(0.4);
+    expect(smokeAlpha(0.1)).toBeLessThan(0.7);
+    expect(smokeAlpha(0)).toBeCloseTo(0);
     expect(smokeAlpha(1)).toBeCloseTo(0);
   });
 });

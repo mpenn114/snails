@@ -56,6 +56,8 @@ export class SnailMesh {
   private baseColour = 0xc98b4a;
   private labelText: string | null = null;
   private labelTexture: THREE.Texture | null = null;
+  private labelFactor = 1;
+  private labelLiftM = 0;
 
   /**
    * @param shellColour - Team shell colour as a hex number.
@@ -160,13 +162,33 @@ export class SnailMesh {
 
   /**
    * Scales the health bar and name tag by `factor` (1 = base size) and re-stacks them above
-   * the snail, so they keep a readable on-screen size at distance.
+   * the snail (plus any declutter lift), so they keep a readable on-screen size at distance.
    */
   setLabelScale(factor: number): void {
+    this.labelFactor = factor;
     this.barGroup.scale.setScalar(factor);
-    this.barGroup.position.y = LABEL_BASE_Y + 0.1 * factor;
+    this.barGroup.position.y = LABEL_BASE_Y + 0.1 * factor + this.labelLiftM;
     this.nameTag.scale.set(2.4 * factor, 0.6 * factor, 1);
     this.nameTag.position.y = this.barGroup.position.y + 0.35 * factor;
+  }
+
+  /**
+   * Lifts the whole bar and name-tag stack by `metres` (declutter). Persists across
+   * {@link setLabelScale} so the per-frame re-billboard cannot undo it.
+   */
+  setLabelLift(metres: number): void {
+    this.labelLiftM = Math.max(0, metres);
+    this.setLabelScale(this.labelFactor);
+  }
+
+  /** Current declutter lift in metres. */
+  get labelLift(): number {
+    return this.labelLiftM;
+  }
+
+  /** Current label scale factor. */
+  get labelScale(): number {
+    return this.labelFactor;
   }
 
   /** Sets the shell tint as a hex number. */

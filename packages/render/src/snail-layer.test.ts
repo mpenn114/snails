@@ -137,6 +137,39 @@ describe('SnailLayer', () => {
     expect(far.visible === false || far.position.y > near.position.y).toBe(true);
   });
 
+  it('separates the bars of snails standing together, and the lift survives re-billboarding', () => {
+    const { layer } = makeLayer();
+    const cam = new THREE.PerspectiveCamera(50, 1.6, 0.1, 500);
+    cam.position.set(0, 2, 8);
+    cam.lookAt(0, 2, 0);
+    layer.setCamera(cam);
+    layer.sync([
+      view('a', { position: { x: 0, y: 0, z: 0 } }),
+      view('b', { position: { x: 0.3, y: 0, z: 0.2 } }),
+    ]);
+    const a = layer.get('a')!;
+    const b = layer.get('b')!;
+    // Exactly one bar (back + fill) and one name tag per snail, however often we sync.
+    for (let i = 0; i < 3; i++) layer.sync([view('a', { position: { x: 0, y: 0, z: 0 } })]);
+    expect(a.barGroup.children).toHaveLength(2);
+    expect(a.group.children.filter((o) => o === a.nameTag)).toHaveLength(1);
+    layer.sync([
+      view('a', { position: { x: 0, y: 0, z: 0 } }),
+      view('b', { position: { x: 0.3, y: 0, z: 0.2 } }),
+    ]);
+    expect(b.group).not.toBe(a.group);
+    // The render-time billboard (matrix update) must not undo the declutter lift.
+    a.barGroup.updateMatrixWorld(true);
+    b.barGroup.updateMatrixWorld(true);
+    const near = a.labelLift === 0 ? a : b;
+    const far = near === a ? b : a;
+    expect(near.labelLift).toBe(0);
+    expect(far.labelLift).toBeGreaterThan(0);
+    expect(far.barGroup.position.y - near.barGroup.position.y).toBeGreaterThanOrEqual(
+      0.26 * far.labelScale - 1e-6,
+    );
+  });
+
   it('toggles shadow casting on existing meshes', () => {
     const { layer } = makeLayer();
     layer.sync([view('a')]);

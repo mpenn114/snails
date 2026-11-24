@@ -43,12 +43,9 @@ export function blastCounts(radius: number, quality: number): BlastCounts {
   };
 }
 
-/** Smoke ball radius multiplier over normalised age: eases out to full size, shrinks at the end. */
+/** Smoke puff radius multiplier over normalised age: billows out and keeps swelling as it thins. */
 export function smokeScale(t: number): number {
-  const c = clamp(t, 0, 1);
-  const grow = 0.3 + 0.7 * easeOutCubic(c / 0.7);
-  const shrink = 1 - easeInCubic((c - 0.65) / 0.35);
-  return grow * shrink;
+  return 0.45 + 0.75 * easeOutCubic(t);
 }
 
 /** Debris scale over normalised age: full size, then shrinks away over the last 25%. */
@@ -101,10 +98,23 @@ export function smokeColour(t: number, out: Float32Array | number[]): void {
   out[2] = (PAPER_B + (GREY_B - PAPER_B) * m) / 255;
 }
 
-/** Smoke ball opacity over normalised age: nearly opaque puff that thins out as it rises. */
+/** Smoke puff opacity over normalised age: fades in fast, peaks soft (0.6), then dissolves. */
 export function smokeAlpha(t: number): number {
   const c = clamp(t, 0, 1);
-  return 0.92 * (1 - easeInCubic((c - 0.2) / 0.8));
+  const f = 1 - c * c;
+  return 0.6 * Math.min(1, c / 0.08) * f * f;
+}
+
+/** Trail wisp radius multiplier over normalised age: a small puff that swells as it drifts off. */
+export function wispScale(t: number): number {
+  return 0.5 + 1.1 * easeOutCubic(t);
+}
+
+/** Trail wisp opacity over normalised age: soft peak (0.45) near the start, then a long fade. */
+export function wispAlpha(t: number): number {
+  const c = clamp(t, 0, 1);
+  const f = 1 - c;
+  return 0.45 * Math.min(1, c / 0.06 + 0.3) * f * f;
 }
 
 /** Weighted terrain colours debris is tinted with (soil heavy, some grass turf, rock). */
