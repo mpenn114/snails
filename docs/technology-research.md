@@ -234,3 +234,9 @@ Not implemented (data only, TODO): Burrow (`burrow` ability, once per match, res
 away) and Oracle's tech steal (`steal-tech` ability). `anyOf` links to Weaponry/Shell tier-3 ids
 (`beetle-calls`, `crystal-lattice`, `regrowth`) are not cross-validated by pack validation, which
 only checks `prerequisites`.
+
+Run it with `pnpm sim:balance [--matches 40] [--mode researchRace] [--snails 2] [--turns 60]
+[--out report.json]` (code in `packages/ai/src/balance/`). Seeds `1..N`, 2 teams, research on,
+the CPU aims and fires, and each team picks a focus branch by seed and queues the cheapest valid
+tech (capstone first) through `canResearch`. The JSON report goes to stdout (or `--out`), a
+markdown dashboard with the target flags to stderr. It is not part of CI.
