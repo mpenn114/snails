@@ -80,7 +80,7 @@ Views: `packages/render/src/effects/area-views.ts` has one `AreaViewFactory` per
 
 ### Turn-start hooks
 
-`sim.registerTurnStartHook(name, (ctx, { teamId, snailId, turnNumber }) => void)`. Hooks run in registration order in the step where `turn.turnNumber` changes, after the `turnStarted` event. `registerLingeringEffects(sim, content)` registers `statuses` then `areas`; crates and sudden death register theirs after. Use `ctx.rng` streams for randomness. `skipTurnIfActiveDead(ctx)` ends the turn when a hook killed the active snail. The very first turn starts before the sim exists and does not trigger hooks.
+`sim.registerTurnStartHook(name, (ctx, { teamId, snailId, turnNumber }) => void)`. Hooks run in registration order in the step where `turn.turnNumber` changes, after the `turnStarted` event. They also run for turn 1, in the first step the simulation takes (the first turn starts before the sim exists, so the sim remembers the last turn it hooked and runs hooks whenever `turnNumber` differs from it). `registerLingeringEffects(sim, content)` registers `statuses` then `areas`; `registerCrates` registers `crates` after them, and sudden death will register theirs after that. Use `ctx.rng` streams for randomness. `skipTurnIfActiveDead(ctx)` ends the turn when a hook killed the active snail.
 
 ### Crate and wind
 
@@ -89,7 +89,19 @@ Views: `packages/render/src/effects/area-views.ts` has one `AreaViewFactory` per
 { id: 'base:storm', name: 'Storm', minStrength: 5, maxStrength: 10, changesMidFlight: true }
 ```
 
-`CrateDefinition.kind` is `supply | health | utility | calcium | mystery`; `weight` is the relative drop chance; `contents` may hold `heal`, `weapons: [{ weaponId, count }]`, `calcium`, `statusId`. Wind presets Off, Low, Normal, Storm live in `content-base/src/winds.ts`. Crate drops and mid-flight wind are sim features of later jobs; the data is already validated.
+`CrateDefinition.kind` is `supply | health | utility | calcium | mystery`; `weight` is the relative drop chance; `contents` may hold `heal`, `weapons: [{ weaponId, count }]`, `calcium`, `statusId`. Wind presets Off, Low, Normal, Storm live in `content-base/src/winds.ts`. Crate drops are described below; mid-flight wind is a later job. The data is validated when the pack loads.
+
+### Crates and pickups
+
+`GameState.crates: Crate[]` (`id` `c<n>`, `defId`, `position` (box centre), `velocity`, `grounded`), `nextCrateId`. `createMatch({ crates: CrateDefinition[], crateRules?: { intervalRounds, maxOnMap } })` registers them (`registerCrates(sim, content, rules)`, `crate/crate-system.ts`); the server passes the pack's crates. No crate definitions means no drops.
+
+- **Schedule.** A round is one turn per team (`roundOf(state)`). On the first turn of every `intervalRounds`-th round (default 3, so rounds 3, 6, 9; turn 5, 11, ... with two teams) the `crates` turn-start hook drops one crate, unless `maxOnMap` (default 2) crates are already out.
+- **Which crate.** Weighted by `CrateDefinition.weight` from the `crates` RNG stream (`pickCrateDefinition`). `calcium` crates are schema-only until M5 and never drop.
+- **Where.** `pickDropSite` tries up to 40 random columns from the `crates` stream: topmost ground, at least 1.5 m above the water line, ground normal at least 0.8 vertical, 3.5 m from any living snail and 4 m from other crates. The crate appears 14 m above that spot (`crateSpawned`) and parachutes down at a terminal speed of 2.5 m/s, then rests on terrain (`grounded`). If the ground is carved away it drops again; one that sinks below the water line or out of the world is destroyed (`crateDestroyed`, reason `water`). The turn's `settle` phase waits until every crate is grounded, so crates are at rest before the next turn.
+- **Pickup.** A living snail within 1 m of a crate collects it at once (`crateCollected`, event carries `healed`, `damage`, `weapons`, `statusId`). The design's "free turn action to open" is not implemented: collection is immediate and free. Contents: `heal` (capped at max health), `weapons` (added to `Team.inventory[weaponId]`), `statusId` (applied for the status's default turns). Kinds `supply` and `utility` differ only in content and look. A `mystery` crate rolls the `crates` stream over a small table built from its contents: heal (`heal ?? 25`), lose 15 health (never lethal, `snailDamaged` cause `crate`), the weapon stock if any, the status if any.
+- **Inventory hook for M4-15.** `Team.inventory?: Record<weaponId, number>` is the stock granted by crates; `grantWeapons(team, grants)` is the single writer. The ammo and inventory job owns the real model (consuming stock on fire, the picker) and should adopt this field.
+- **Destruction.** `damageAround`/`resolveExplosion` call `destroyCratesInRadius`, so any weapon with a `damage` effect (or classic explosion) destroys crates in its radius and emits `crateDestroyed` (reason `explosion`). Crates are not nudged or drifted by explosions or slopes yet, and a projectile passing through one does not hit it.
+- **View.** `render/src/effects/crate-layer.ts` (`CrateLayer`): wooden box with a colour band chosen by the kind word in the definition id, a leaf parachute while falling, and a pooled pop for `crateCollected` / `crateDestroyed`. Protocol: snapshot `crates` (`[id, defId, px, py, pz (mm), grounded]`) and the three events.
 
 ## Planned: technologies, shell upgrades and hooks
 

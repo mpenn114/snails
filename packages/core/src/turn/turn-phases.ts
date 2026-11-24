@@ -121,11 +121,13 @@ export function requestEndTurn(state: GameState, emit: Emit = () => undefined): 
 }
 
 function allAtRest(state: GameState, eps: number): boolean {
-  return state.teams.every((t) =>
-    t.snails.every((s) => {
-      const v = s.velocity;
-      return !s.alive || Math.hypot(v.x, v.y, v.z) < eps;
-    }),
+  return (
+    state.teams.every((t) =>
+      t.snails.every((s) => {
+        const v = s.velocity;
+        return !s.alive || Math.hypot(v.x, v.y, v.z) < eps;
+      }),
+    ) && state.crates.every((c) => c.grounded)
   );
 }
 

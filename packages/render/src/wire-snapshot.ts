@@ -78,6 +78,14 @@ export class WireSnapshotMapper {
         sourceSnailId: '',
       })),
       nextAreaId: 0,
+      crates: s.crates.map((c) => ({
+        id: c.id,
+        defId: c.defId,
+        position: c.position,
+        velocity: { x: 0, y: 0, z: 0 },
+        grounded: c.grounded,
+      })),
+      nextCrateId: 0,
       match: { status: 'playing', winnerTeamId: null },
     };
   }

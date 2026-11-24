@@ -1,7 +1,14 @@
 import { registerCombat } from '../combat/combat.js';
 import { buildMatchContent, type MatchContent } from '../content/match-content.js';
 import type { ContentRegistry } from '../content/registry.js';
-import type { AreaDefinition, StatusDefinition, WeaponDefinition } from '../content/types.js';
+import type {
+  AreaDefinition,
+  CrateDefinition,
+  StatusDefinition,
+  WeaponDefinition,
+} from '../content/types.js';
+import type { CrateRules } from '../crate/crate-rules.js';
+import { registerCrates } from '../crate/crate-system.js';
 import { moveCommandHandler, movementSystem } from '../movement/movement.js';
 import { facingToward } from '../entities/snail.js';
 import { RngStreams } from '../rng-streams.js';
@@ -40,6 +47,10 @@ export interface MatchOptions {
   statuses?: StatusDefinition[];
   /** Area definitions `spawn` effects may refer to. */
   areas?: AreaDefinition[];
+  /** Crate definitions that may drop (none = no crates). */
+  crates?: CrateDefinition[];
+  /** Drop interval and map cap overrides (default every 3 rounds, up to 2). */
+  crateRules?: Partial<CrateRules>;
 }
 
 /** Result of {@link createMatch}. */
@@ -111,6 +122,7 @@ export function createMatch(options: MatchOptions): MatchSetup {
   registerHazards(sim);
   sim.addSystem('turns', turnSystem(turnConfig, windConfig));
   registerLingeringEffects(sim, content);
+  registerCrates(sim, content, options.crateRules);
   faceEnemies(sim);
   startTurn(state, turnConfig, () => undefined, { rng: rng.wind, config: windConfig });
   return { sim, weapons, content, turnConfig };

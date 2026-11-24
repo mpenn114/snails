@@ -6,6 +6,7 @@ import { ExplosionEffects } from './effects/explosion-effects.js';
 import { SplashEffects } from './effects/splash-effects.js';
 import { createWindParticles, type WindParticles } from './environment/wind-particles.js';
 import { AreaLayer } from './effects/area-layer.js';
+import { CrateLayer } from './effects/crate-layer.js';
 import { ProjectileLayer } from './effects/projectile-layer.js';
 import { SnapshotBuffer } from './interpolation.js';
 import { createGltfModelLoader, type ModelLoader } from './props/model-loader.js';
@@ -101,6 +102,7 @@ interface Built {
   snails: SnailLayer;
   projectiles: ProjectileLayer;
   areas: AreaLayer;
+  crates: CrateLayer;
   props: PropLayer | null;
   explosions: ExplosionEffects;
   splashes: SplashEffects;
@@ -179,6 +181,60 @@ export class MatchRenderer {
   private build(view: GameView, source: SdfGrid, waterLevel: number): Built {
     const q = view.quality;
     const grid = cloneGrid(source);
+    const { terrain, replica, material } = this.makeTerrain(view, source, grid);
+
+    const snails = new SnailLayer({
+      camera: view.camera,
+      tier: view.tier,
+      shadows: q.shadows,
+      selectViews: (s: RenderState) => snailViewsFromSnapshot(s.snapshot),
+      ...(this.deps.labelFactory ? { labelFactory: this.deps.labelFactory } : {}),
+    });
+    const projectiles = new ProjectileLayer({ shadows: q.shadows, quality: q.particleScale });
+    const areas = new AreaLayer();
+    const crates = new CrateLayer();
+    const explosions = new ExplosionEffects({
+      quality: q.particleScale,
+      maxLights: q.maxDynamicLights,
+      ...(this.deps.random ? { random: this.deps.random } : {}),
+    });
+    view.roots.entities.add(snails.group);
+    const props = this.makeProps(grid, waterLevel, q.propCount, q.shadows);
+    if (props) view.roots.entities.add(props.group);
+    const splashes = this.makeSplashes(view, source, waterLevel);
+    view.roots.effects.add(
+      projectiles.group,
+      areas.group,
+      crates.group,
+      explosions.group,
+      splashes.group,
+    );
+
+    const rig = createRig(view.camera, grid, this.deps.rigOptions);
+    const wind = this.makeWind(grid, q.particleScale);
+    view.roots.effects.add(wind.object);
+    const built: Built = {
+      view,
+      terrain,
+      replica,
+      snails,
+      projectiles,
+      areas,
+      crates,
+      props,
+      explosions,
+      splashes,
+      rig,
+      wind,
+      material,
+      removers: [],
+    };
+    this.registerUpdaters(built);
+    return built;
+  }
+
+  private makeTerrain(view: GameView, source: SdfGrid, grid: SdfGrid) {
+    const q = view.quality;
     const transport = this.deps.makeTransport?.() ?? createWorkerPool(2);
     const material = createTerrainMaterialForTier(view.tier, {
       originalGrid: source,
@@ -195,47 +251,7 @@ export class MatchRenderer {
     const replica = new TerrainReplica({ grid });
     terrain.markAllDirty();
     view.roots.terrain.add(terrain.group);
-
-    const snails = new SnailLayer({
-      camera: view.camera,
-      tier: view.tier,
-      shadows: q.shadows,
-      selectViews: (s: RenderState) => snailViewsFromSnapshot(s.snapshot),
-      ...(this.deps.labelFactory ? { labelFactory: this.deps.labelFactory } : {}),
-    });
-    const projectiles = new ProjectileLayer({ shadows: q.shadows, quality: q.particleScale });
-    const areas = new AreaLayer();
-    const explosions = new ExplosionEffects({
-      quality: q.particleScale,
-      maxLights: q.maxDynamicLights,
-      ...(this.deps.random ? { random: this.deps.random } : {}),
-    });
-    view.roots.entities.add(snails.group);
-    const props = this.makeProps(grid, waterLevel, q.propCount, q.shadows);
-    if (props) view.roots.entities.add(props.group);
-    const splashes = this.makeSplashes(view, source, waterLevel);
-    view.roots.effects.add(projectiles.group, areas.group, explosions.group, splashes.group);
-
-    const rig = createRig(view.camera, grid, this.deps.rigOptions);
-    const wind = this.makeWind(grid, q.particleScale);
-    view.roots.effects.add(wind.object);
-    const built: Built = {
-      view,
-      terrain,
-      replica,
-      snails,
-      projectiles,
-      areas,
-      props,
-      explosions,
-      splashes,
-      rig,
-      wind,
-      material,
-      removers: [],
-    };
-    this.registerUpdaters(built);
-    return built;
+    return { terrain, replica, material };
   }
 
   private makeWind(grid: SdfGrid, particleScale: number): WindParticles {
@@ -270,6 +286,7 @@ export class MatchRenderer {
     if (b.props) add(b.props.updater);
     add(b.projectiles.updater);
     add(b.areas.updater);
+    add(b.crates.updater);
     add(b.explosions.updater);
     add(b.splashes.updater);
     add((dt) => b.material.scorch.advance(dt));
@@ -292,6 +309,7 @@ export class MatchRenderer {
     this.built?.replica.applyEvents(events);
     this.built?.explosions.handleEvents(events);
     this.built?.snails.handleEvents(events);
+    this.built?.crates.handleEvents(events);
     const scorch = this.built?.material.scorch;
     if (!scorch) return;
     for (const e of events) {
@@ -346,6 +364,7 @@ export class MatchRenderer {
     b.props?.dispose();
     b.projectiles.dispose();
     b.areas.dispose();
+    b.crates.dispose();
     b.explosions.dispose();
     b.splashes.dispose();
     b.wind.dispose();

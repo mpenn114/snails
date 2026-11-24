@@ -52,6 +52,7 @@ const snap: DecodedSnapshot = {
   projectiles: [],
   statuses: [],
   areas: [],
+  crates: [],
 };
 
 function setup() {

@@ -12,16 +12,18 @@ function stepToAction(sim: Simulation): void {
 }
 
 describe('turn-start hooks', () => {
-  it('run in registration order, once per new turn, after the turn changes', () => {
+  it('run in registration order, once per turn including the first', () => {
     const { sim } = createMatch(testMatchOptions(5));
     const calls: string[] = [];
     sim.registerTurnStartHook('one', (_ctx, info) => calls.push(`one:${info.turnNumber}`));
     sim.registerTurnStartHook('two', (_ctx, info) => calls.push(`two:${info.teamId}`));
     expect(sim.turnStartHookNames()).toContain('one');
+    sim.step();
+    expect(calls).toEqual(['one:1', 'two:a']);
     stepToAction(sim);
     sim.enqueue({ type: 'endTurn', teamId: 'a' });
-    for (let i = 0; i < 2000 && calls.length < 2; i++) sim.step();
-    expect(calls).toEqual(['one:2', 'two:b']);
+    for (let i = 0; i < 2000 && calls.length < 4; i++) sim.step();
+    expect(calls).toEqual(['one:1', 'two:a', 'one:2', 'two:b']);
   });
 
   it('process statuses at the start of the afflicted team turn (integration)', () => {

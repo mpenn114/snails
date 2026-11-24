@@ -71,6 +71,20 @@ export interface AreaInstance {
   params?: Record<string, number>;
 }
 
+/** A supply crate in the world (serialisable). Definition lives in the `crates` registry. */
+export interface Crate {
+  /** Deterministic id `c<counter>`. */
+  id: string;
+  /** Crate definition id, e.g. `base:health-crate`. */
+  defId: string;
+  /** Centre of the box. */
+  position: Vec3;
+  /** Falling speed lives in `y`; zero once resting. */
+  velocity: Vec3;
+  /** True once resting on terrain; false while parachuting down. */
+  grounded: boolean;
+}
+
 /** A touchdown waiting to be resolved by the hazard system (serialisable). */
 export interface PendingLanding {
   /** Speed at impact in m/s. */
@@ -107,6 +121,11 @@ export interface Team {
    * Advanced by `selectNextActive`; dead snails are skipped at selection time.
    */
   nextSnailIndex: number;
+  /**
+   * Weapon stock granted by crates, `weaponId -> extra uses`; absent means none. M4-15 (ammo
+   * and inventory) owns the full model and should adopt this field as the stock counter.
+   */
+  inventory?: Record<string, number>;
 }
 
 /** Wind: `direction` radians about +Y, `strength` in m/s^2 (>= 0). */
@@ -185,6 +204,10 @@ export interface GameState {
   areas: AreaInstance[];
   /** Counter used to assign deterministic area ids. */
   nextAreaId: number;
+  /** Crates on the map in drop order. */
+  crates: Crate[];
+  /** Counter used to assign deterministic crate ids. */
+  nextCrateId: number;
   match: MatchStatus;
 }
 

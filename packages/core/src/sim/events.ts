@@ -108,7 +108,7 @@ export interface TerrainCollapsedEvent {
 }
 
 /** Why a snail took damage. */
-export type DamageCause = 'explosion' | 'fall' | 'status' | 'area';
+export type DamageCause = 'explosion' | 'fall' | 'status' | 'area' | 'crate';
 
 /** A snail lost health. `sourceSnailId` is null for environmental damage. */
 export interface SnailDamagedEvent {
@@ -201,6 +201,39 @@ export interface SnailMovedEvent {
   to: Vec3;
 }
 
+/** A crate appeared in the sky and starts parachuting down. */
+export interface CrateSpawnedEvent {
+  type: 'crateSpawned';
+  crateId: string;
+  defId: string;
+  position: Vec3;
+}
+
+/** A snail picked a crate up (contents already applied). */
+export interface CrateCollectedEvent {
+  type: 'crateCollected';
+  crateId: string;
+  defId: string;
+  snailId: string;
+  position: Vec3;
+  /** Health actually restored. */
+  healed: number;
+  /** Health lost to a bad mystery outcome (never lethal). */
+  damage: number;
+  /** Weapon stock added to the snail's team inventory. */
+  weapons: { weaponId: string; count: number }[];
+  /** Status applied to the snail, if any. */
+  statusId?: string;
+}
+
+/** A crate was destroyed. */
+export interface CrateDestroyedEvent {
+  type: 'crateDestroyed';
+  crateId: string;
+  position: Vec3;
+  reason: 'explosion' | 'water';
+}
+
 /** Every event the simulation can emit. Plain JSON data only. */
 export type SimEvent =
   | TickEvent
@@ -225,7 +258,10 @@ export type SimEvent =
   | AreaCreatedEvent
   | AreaExpiredEvent
   | AreaMovedEvent
-  | SnailMovedEvent;
+  | SnailMovedEvent
+  | CrateSpawnedEvent
+  | CrateCollectedEvent
+  | CrateDestroyedEvent;
 
 /** Discriminator values of {@link SimEvent}. */
 export type SimEventType = SimEvent['type'];
@@ -258,6 +294,9 @@ export const SIM_EVENT_TYPES: readonly SimEventType[] = [
   'areaExpired',
   'areaMoved',
   'snailMoved',
+  'crateSpawned',
+  'crateCollected',
+  'crateDestroyed',
 ];
 
 /** Type guard: is `type` a known simulation event type? */

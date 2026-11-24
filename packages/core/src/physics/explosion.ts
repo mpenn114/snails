@@ -1,3 +1,4 @@
+import { destroyCratesInRadius } from '../crate/crate-destroy.js';
 import { applyDamage, livingSnails } from '../entities/snail.js';
 import { distance, normalize, sub } from '../math/vec3.js';
 import type { SimContext } from '../sim/types.js';
@@ -116,6 +117,7 @@ export function damageAround(
       weaponId: source.weaponId,
     });
   }
+  destroyCratesInRadius(ctx, centre, spec.radius);
   const damaged: ExplosionHit[] = [];
   const killed: string[] = [];
   for (const snail of livingSnails(ctx.state)) {

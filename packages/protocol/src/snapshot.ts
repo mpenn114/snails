@@ -38,6 +38,9 @@ export const WireStatus = z.tuple([z.string(), z.string(), int, int]);
 /** Wire area: `[id, kind, px,py,pz (mm), radius (mm), turnsLeft]`. */
 export const WireArea = z.tuple([z.string(), z.string(), int, int, int, int, int]);
 
+/** Wire crate: `[id, defId, px,py,pz (mm), grounded (0 or 1)]`. */
+export const WireCrate = z.tuple([z.string(), z.string(), int, int, int, int]);
+
 /** Compact authoritative snapshot (sent to display and controllers alike, ADR-0008). */
 export const Snapshot = z.object({
   type: z.literal('snapshot'),
@@ -52,6 +55,8 @@ export const Snapshot = z.object({
   statuses: z.array(WireStatus).optional(),
   /** Lingering areas (absent from older servers = none). */
   areas: z.array(WireArea).optional(),
+  /** Crates on the map (absent from older servers = none). */
+  crates: z.array(WireCrate).optional(),
 });
 /** Compact snapshot message. */
 export type Snapshot = z.infer<typeof Snapshot>;
@@ -99,6 +104,15 @@ export interface AreaState {
   turnsLeft: number;
 }
 
+/** Decoded crate. */
+export interface CrateState {
+  id: string;
+  defId: string;
+  position: Vec3;
+  /** True once resting on terrain; false while parachuting. */
+  grounded: boolean;
+}
+
 /** Decoded snapshot (metres, seconds, radians). */
 export interface DecodedSnapshot {
   tick: number;
@@ -114,6 +128,7 @@ export interface DecodedSnapshot {
   projectiles: ProjectileState[];
   statuses: StatusState[];
   areas: AreaState[];
+  crates: CrateState[];
 }
 
 const q = (v: number): number => Math.round(v * 1000);
@@ -167,6 +182,14 @@ export function encodeSnapshot(s: DecodedSnapshot): Snapshot {
       q(a.radius),
       a.turnsLeft,
     ]),
+    crates: s.crates.map((c) => [
+      c.id,
+      c.defId,
+      q(c.position.x),
+      q(c.position.y),
+      q(c.position.z),
+      c.grounded ? 1 : 0,
+    ]),
   };
 }
 
@@ -210,6 +233,12 @@ export function decodeSnapshot(m: Snapshot): DecodedSnapshot {
       position: dv(px, py, pz),
       radius: dq(radius),
       turnsLeft,
+    })),
+    crates: (m.crates ?? []).map(([id, defId, px, py, pz, grounded]) => ({
+      id,
+      defId,
+      position: dv(px, py, pz),
+      grounded: grounded === 1,
     })),
   };
 }

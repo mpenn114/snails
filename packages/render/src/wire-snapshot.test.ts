@@ -51,6 +51,9 @@ function snap(
     areas: [
       { id: 'a1', kind: 'base:cloud', position: { x: 1, y: 2, z: 3 }, radius: 2, turnsLeft: 3 },
     ],
+    crates: [
+      { id: 'c1', defId: 'base:health-crate', position: { x: 4, y: 5, z: 6 }, grounded: true },
+    ],
   };
 }
 
@@ -70,6 +73,7 @@ describe('WireSnapshotMapper', () => {
     expect(m.projectiles[0]?.ownerSnailId).toBe('s1');
     expect(s?.statuses?.[0]).toMatchObject({ id: 'base:salt', turnsLeft: 2 });
     expect(m.areas[0]).toMatchObject({ id: 'a1', kind: 'base:cloud', radius: 2 });
+    expect(m.crates[0]).toMatchObject({ id: 'c1', defId: 'base:health-crate', grounded: true });
   });
 
   it('tracks max health and marks dead snails', () => {
