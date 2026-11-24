@@ -54,6 +54,8 @@ export class Simulation {
   private readonly handlers = new Map<CommandType, CommandHandler<never>>();
   private readonly systems: { name: string; fn: SystemFn }[] = [];
   private readonly turnStartHooks: { name: string; fn: TurnStartHook }[] = [];
+  /** Last turn number whose hooks ran (0 = none yet, so turn 1 fires hooks on the first step). */
+  private hookedTurn = 0;
 
   constructor(options: SimulationOptions) {
     this.state = options.state;
@@ -95,7 +97,7 @@ export class Simulation {
   /**
    * Registers a turn-start hook. Hooks run in registration order in the step where
    * `state.turn.turnNumber` changes, after all systems (so after `turnStarted`). The first
-   * turn begins before the simulation exists and does not trigger hooks.
+   * turn begins before the simulation exists, so its hooks run on the first step.
    */
   registerTurnStartHook(name: string, fn: TurnStartHook): void {
     this.turnStartHooks.push({ name, fn });
@@ -139,9 +141,9 @@ export class Simulation {
       const handler = this.handlers.get(cmd.type) as CommandHandler | undefined;
       handler?.(ctx, cmd as never);
     }
-    const turnBefore = this.state.turn.turnNumber;
     for (const sys of this.systems) sys.fn(ctx);
-    if (this.state.turn.turnNumber !== turnBefore) {
+    if (this.state.turn.turnNumber !== this.hookedTurn) {
+      this.hookedTurn = this.state.turn.turnNumber;
       const info = {
         teamId: this.state.turn.activeTeamId,
         snailId: this.state.turn.activeSnailId,

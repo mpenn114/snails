@@ -53,6 +53,7 @@ const snap: DecodedSnapshot = {
   statuses: [],
   areas: [],
   scheduled: [],
+  crates: [],
 };
 
 function setup() {

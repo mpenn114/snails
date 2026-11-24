@@ -81,6 +81,8 @@ export function createInitialState(options: InitialStateOptions): GameState {
     nextAreaId: 1,
     scheduled: [],
     nextScheduledId: 1,
+    crates: [],
+    nextCrateId: 1,
     match: { status: 'playing', winnerTeamId: null },
   };
 }

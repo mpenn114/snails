@@ -141,6 +141,7 @@ export class GameSession {
       weapons: defs,
       statuses: content.statuses.list(),
       areas: content.areas.list(),
+      crates: content.crates.list(),
       teams: opts.teams.map((t) => ({
         id: t.id,
         name: t.name,
@@ -415,6 +416,12 @@ export class GameSession {
         radius: e.telegraph.radius,
         turnsLeft: e.turnsLeft,
         style: e.telegraph.style,
+      })),
+      crates: s.crates.map((c) => ({
+        id: c.id,
+        defId: c.defId,
+        position: c.position,
+        grounded: c.grounded,
       })),
     };
   }

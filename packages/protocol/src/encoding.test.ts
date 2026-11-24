@@ -69,6 +69,14 @@ function makeSnapshot(count: number): DecodedSnapshot {
         style: 'arrival',
       },
     ],
+    crates: [
+      {
+        id: 'c1',
+        defId: 'base:health-crate',
+        position: { x: 7.0004, y: 9, z: 2 },
+        grounded: false,
+      },
+    ],
   };
 }
 
@@ -96,6 +104,8 @@ describe('snapshot encoding', () => {
       turnsLeft: 3,
       radius: 3.5,
     });
+    expect(d.crates[0]).toMatchObject({ id: 'c1', defId: 'base:health-crate', grounded: false });
+    expect(d.crates[0]?.position.x).toBeCloseTo(7.0004, 3);
     expect(parseServerMessage(wire).type).toBe('snapshot');
   });
   it('is smaller than naive JSON for 16 snails', () => {

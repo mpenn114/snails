@@ -71,7 +71,7 @@ const plain = [
     amount: z.number(),
     remaining: z.number(),
     sourceSnailId: z.string().nullable(),
-    cause: z.enum(['explosion', 'fall', 'status', 'area']),
+    cause: z.enum(['explosion', 'fall', 'status', 'area', 'crate']),
   }),
   z.object({
     type: z.literal('snailDied'),
@@ -139,6 +139,29 @@ const plain = [
     snailId: z.string(),
     weaponId: z.string(),
     position: V,
+  }),
+  z.object({
+    type: z.literal('crateSpawned'),
+    crateId: z.string(),
+    defId: z.string(),
+    position: V,
+  }),
+  z.object({
+    type: z.literal('crateCollected'),
+    crateId: z.string(),
+    defId: z.string(),
+    snailId: z.string(),
+    position: V,
+    healed: z.number(),
+    damage: z.number(),
+    weapons: z.array(z.object({ weaponId: z.string(), count: z.number() })),
+    statusId: z.string().optional(),
+  }),
+  z.object({
+    type: z.literal('crateDestroyed'),
+    crateId: z.string(),
+    position: V,
+    reason: z.enum(['explosion', 'water']),
   }),
 ] as const;
 

@@ -133,8 +133,9 @@ unlocks, crates and match settings.
 - **Types:** Supply (random weapon stock), Calcium (research resource, see
   [technology-research.md](technology-research.md)), Health (heal 25), Utility (one-use tool such as
   Slime Rope), and rarely a Mystery crate (random good-or-bad effect).
-- Crates are picked up by crawling over them; they take a free turn action to open, which
-  can be interrupted by damage.
+- Crates are picked up by crawling over them. Design intent: opening takes a free turn action
+  that damage can interrupt; currently (M4-14) pickup is immediate on contact. See
+  [extensibility.md](extensibility.md#crates-and-pickups) for the drop rules as built.
 - Shooting a crate destroys it; crates can be nudged by explosions and drift downhill.
 - Rare **Golden Crates** carry a research jump (instant tier advance) and are announced by the
   display with a sound cue. They are placed away from the leader.

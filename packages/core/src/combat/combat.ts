@@ -250,6 +250,7 @@ export function registerCombat(
     weapons: registries.weapons,
     statuses: registries.statuses ?? empty.statuses,
     areas: registries.areas ?? empty.areas,
+    crates: registries.crates ?? empty.crates,
   };
   sim.registerCommandHandler('aim', aimCommandHandler);
   sim.registerCommandHandler('fire', fireCommandHandler(content));

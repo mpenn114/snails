@@ -8,6 +8,7 @@ import { createWindParticles, type WindParticles } from './environment/wind-part
 import { ScheduledLayer } from './effects/scheduled-layer.js';
 import { AreaLayer } from './effects/area-layer.js';
 import { StrandEffects } from './effects/strand-effects.js';
+import { CrateLayer } from './effects/crate-layer.js';
 import { ProjectileLayer } from './effects/projectile-layer.js';
 import { SnapshotBuffer } from './interpolation.js';
 import { createGltfModelLoader, type ModelLoader } from './props/model-loader.js';
@@ -105,6 +106,7 @@ interface Built {
   areas: AreaLayer;
   strands: StrandEffects;
   scheduled: ScheduledLayer;
+  crates: CrateLayer;
   props: PropLayer | null;
   explosions: ExplosionEffects;
   splashes: SplashEffects;
@@ -209,12 +211,13 @@ export class MatchRenderer {
     const areas = new AreaLayer();
     const strands = this.makeStrands(q.particleScale);
     const scheduled = new ScheduledLayer();
+    const crates = new CrateLayer();
     const explosions = this.makeExplosions(q.particleScale, q.maxDynamicLights);
     const props = this.makeProps(grid, waterLevel, q.propCount, q.shadows);
     view.roots.entities.add(snails.group, ...(props ? [props.group] : []));
     const splashes = this.makeSplashes(view, source, waterLevel);
     const wind = this.makeWind(grid, q.particleScale);
-    const effects = [projectiles, areas, scheduled, explosions, splashes, strands].map(
+    const effects = [projectiles, areas, scheduled, explosions, splashes, strands, crates].map(
       (l) => l.group,
     );
     view.roots.effects.add(...effects, wind.object);
@@ -228,6 +231,7 @@ export class MatchRenderer {
       areas,
       strands,
       scheduled,
+      crates,
       props,
       explosions,
       splashes,
@@ -289,6 +293,7 @@ export class MatchRenderer {
     add(b.areas.updater);
     add(b.strands.updater);
     add(b.scheduled.updater);
+    add(b.crates.updater);
     add(b.explosions.updater);
     add(b.splashes.updater);
     add((dt) => b.material.scorch.advance(dt));
@@ -311,6 +316,7 @@ export class MatchRenderer {
     this.built?.replica.applyEvents(events);
     this.built?.explosions.handleEvents(events);
     this.built?.strands.handleEvents(events);
+    this.built?.crates.handleEvents(events);
     this.built?.snails.handleEvents(events);
     const scorch = this.built?.material.scorch;
     if (!scorch) return;
@@ -368,6 +374,7 @@ export class MatchRenderer {
     b.areas.dispose();
     b.strands.dispose();
     b.scheduled.dispose();
+    b.crates.dispose();
     b.explosions.dispose();
     b.splashes.dispose();
     b.wind.dispose();
