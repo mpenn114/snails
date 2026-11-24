@@ -68,6 +68,25 @@ export function computeFalloff(distance: number, radius: number, falloff: Fallof
   return falloff === 'quadratic' ? t * t : t;
 }
 
+/**
+ * Damage and knockback a blast of `spec` centred at `centre` deals to a snail at `position`,
+ * using the same distance (minus the snail radius), falloff and rounding as {@link damageAround}.
+ * Pure; `multiplier` is the combined tech/friendly-fire factor (default 1).
+ */
+export function blastEffect(
+  spec: DamageSpec,
+  centre: Vec3,
+  position: Vec3,
+  multiplier = 1,
+): { damage: number; knockback: number } {
+  const dist = Math.max(0, distance(centre, position) - SNAIL_RADIUS);
+  const f = computeFalloff(dist, spec.radius, spec.falloff);
+  return {
+    damage: f > 0 ? Math.round(spec.maxDamage * f * multiplier) : 0,
+    knockback: spec.knockback * f,
+  };
+}
+
 function knockbackDir(from: Vec3, to: Vec3): Vec3 {
   const dir = normalize(sub(to, from));
   return normalize({ x: dir.x, y: dir.y + KNOCKBACK_UP_BIAS, z: dir.z });

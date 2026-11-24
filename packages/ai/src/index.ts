@@ -5,3 +5,4 @@ export * from './balance/index.js';
 export * from './cpu/index.js';
 export * from './solver/index.js';
 export * from './movement/index.js';
+export * from './targeting/index.js';
