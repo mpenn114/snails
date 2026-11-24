@@ -9,6 +9,11 @@ import type { GameView, QualityTier, ViewEnvironment } from '@snails/render';
 import { decodeEventBatch, decodeSnapshot } from '@snails/protocol';
 import type { ServerMessage } from '@snails/protocol';
 import type { SimEvent } from '@snails/core';
+import { weapons } from '@snails/content-base';
+import type { AimStore } from '../controls/aim-store';
+import { bindAimMode } from './aim-binding';
+import { AimView } from './aim-view';
+import { AIM_MIN_PITCH } from './camera-math';
 import type { MatchStarted } from './wire-types';
 import { BatterySaverState, watchBattery } from './battery-saver';
 import type { BatteryNavigator } from './battery-saver';
@@ -27,7 +32,12 @@ import { TERRAIN_TEXTURES } from '../terrain-textures';
  * Phone follow camera: three-quarter view (about 40 degrees to the side, a little higher) so the
  * round shell shows its spiral face instead of reading as a capsule from directly behind.
  */
-const PHONE_RIG_OPTIONS = { followYawOffset: 0.7, followPitch: 0.55 } as const;
+const PHONE_RIG_OPTIONS = {
+  followYawOffset: 0.7,
+  followPitch: 0.55,
+  // The aim camera looks up along the shot: the camera sits below its look-at point.
+  limits: { minPitch: AIM_MIN_PITCH },
+} as const;
 
 /** Subset of the WebGL renderer touched when scaling resolution. */
 interface PixelRatioTarget {
@@ -55,6 +65,9 @@ export class PhoneView {
   private mapper: WireSnapshotMapper | null = null;
   private overlay: MatchOverlay | null = null;
   private aiming = false;
+  private aimStore: AimStore | null = null;
+  private aimView: AimView | null = null;
+  private stopAim: (() => void) | null = null;
   private canvas: HTMLCanvasElement | null = null;
   private container: HTMLElement | null = null;
   private glRenderer: PixelRatioTarget | null = null;
@@ -145,6 +158,7 @@ export class PhoneView {
       const snap = this.mapper.map(decodeSnapshot(msg));
       r.pushSnapshot(snap);
       this.overlay?.onSnapshot(snap);
+      this.aimView?.onSnapshot(snap);
     } else if (msg.type === 'eventBatch') {
       const events = decodeEventBatch(msg) as unknown as SimEvent[];
       r.handleEvents(events);
@@ -183,6 +197,32 @@ export class PhoneView {
     if (this.aiming) overlay.camera.setAiming(true);
     r.view.addUpdater(() => overlay.update());
     this.overlay = overlay;
+    this.startAimView(r, overlay);
+  }
+
+  /** Attaches the 3D aim view (arc, target, reticle) and links the aim store to the camera. */
+  private startAimView(r: MatchRenderer, overlay: MatchOverlay): void {
+    this.stopAim?.();
+    this.stopAim = null;
+    const store = this.aimStore;
+    if (!store) return;
+    const view = new AimView({
+      renderer: r,
+      store,
+      weapon: (id) => weapons.find((w) => w.id === id),
+    });
+    const unbind = bindAimMode(overlay.camera, store);
+    this.aimView = view;
+    this.stopAim = (): void => {
+      unbind();
+      view.dispose();
+      this.aimView = null;
+    };
+  }
+
+  /** The shared aim state (Aim button, drag, weapon) driving the aim camera and 3D aim view. */
+  setAimStore(store: AimStore): void {
+    this.aimStore = store;
   }
 
   /** Releases GPU resources, listeners and the canvas. Safe to call twice. */
@@ -198,6 +238,8 @@ export class PhoneView {
     this.notice?.remove();
     this.notice = null;
     this.stopBattery?.();
+    this.stopAim?.();
+    this.stopAim = null;
     this.overlay?.dispose();
     this.overlay = null;
     this.renderer?.dispose();

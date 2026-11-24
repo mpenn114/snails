@@ -1,5 +1,6 @@
 import type { ControlMode } from '@snails/protocol';
 import { weapons } from '@snails/content-base';
+import { createAimStore } from '../controls/aim-store';
 import { mountControls } from '../controls/mount-controls';
 import { trackScreenFacing } from '../controls/facing-tracker';
 import { mountDebugOverlay } from '../debug/debug-overlay';
@@ -29,8 +30,8 @@ function slot(id: string, parent: HTMLElement): void {
   parent.appendChild(el);
 }
 
-/** Mounts the layers and every in-match module once; returns a disposer for all of it. */
-function mountSession(client: ControllerClient, screen: HTMLElement, playerId: string): () => void {
+/** Creates the stylesheet and the four overlay layers (with their slots) in the body. */
+function mountLayers(): Record<'style' | 'hud' | 'controls' | 'banners' | 'modal', HTMLElement> {
   const style = document.createElement('style');
   style.textContent = SHELL_CSS;
   const [hud, controls, banners, modal] = (['hud', 'controls', 'banners', 'modal'] as const).map(
@@ -40,14 +41,21 @@ function mountSession(client: ControllerClient, screen: HTMLElement, playerId: s
   slot(SLOT_TOP, banners);
   slot(SLOT_RIGHT, banners);
   document.body.append(style, hud, controls, banners, modal);
+  return { style, hud, controls, banners, modal };
+}
 
-  const phone = mountPhoneView(client);
+/** Mounts the layers and every in-match module once; returns a disposer for all of it. */
+function mountSession(client: ControllerClient, screen: HTMLElement, playerId: string): () => void {
+  const { style, hud, controls, banners, modal } = mountLayers();
+  const aimStore = createAimStore();
+  const phone = mountPhoneView(client, document, aimStore);
   const disposeDebug = mountDebugOverlay(client);
   const facing = trackScreenFacing(client, () => phone.handle.cameraYaw());
   // Mounted before lobbyState arrives so the controls learn our team.
   const disposeControls = mountControls(controls, client, {
     playerId,
     weapons,
+    aimStore,
     screenFacing: facing.screenFacing,
     onAimingChange: (a) => phone.handle.setAiming(a),
   });

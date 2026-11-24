@@ -159,6 +159,7 @@ export function bindAim(
   client: ControllerClient,
   facing: () => ScreenFacing,
   onAiming?: (aiming: boolean) => void,
+  onAim?: (aim: { angle: number; power: number }) => void,
 ): Gestures {
   const throttle = createThrottle<{ angle: number; power: number }>(
     (a) => client.send({ type: 'aim', ...a }),
@@ -177,7 +178,10 @@ export function bindAim(
     },
     move(dx, dy) {
       const a = dragToAim(dx, dy, facing(), AIM_MAX_DRAG);
-      if (a) throttle.push(a);
+      if (a) {
+        onAim?.(a);
+        throttle.push(a);
+      }
     },
     up() {
       marker.style.display = 'none';

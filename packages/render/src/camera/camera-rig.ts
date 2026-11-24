@@ -176,6 +176,18 @@ export class CameraRig {
     if (this.bounds) clampPoint(p.target, this.bounds);
   }
 
+  /**
+   * Sets the free-mode pose directly (an authored view such as a snail's point of view); the
+   * camera still glides to it with the free smoothing. Ignored in other modes. Unlike
+   * `applyInput` it can also move the look-at point vertically.
+   */
+  setFreePose(pose: CameraPose): void {
+    if (this.currentMode !== 'free') return;
+    this.freePose = clonePose(pose);
+    clampPose(this.freePose, this.limits);
+    if (this.bounds) clampPoint(this.freePose.target, this.bounds);
+  }
+
   /** Per-frame update for the render loop. */
   readonly updater: FrameUpdater = (dt, state) => this.update(dt, state);
 

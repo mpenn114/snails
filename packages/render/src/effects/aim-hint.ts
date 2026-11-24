@@ -36,6 +36,12 @@ export interface AimHintOptions {
    * and a landing ring marks it; without it the whole arc shows and there is no ring.
    */
   isSolid?: (p: DotPoint) => boolean;
+  /**
+   * Draw the dots on top of terrain and snails instead of depth-testing them (default false).
+   * Used by the phone's behind-the-snail aim view, where the arc would otherwise vanish behind
+   * the shell and the slope in front of the camera.
+   */
+  seeThrough?: boolean;
 }
 
 /** A point in metres. */
@@ -80,16 +86,20 @@ interface Parts {
   disposables: { dispose(): void }[];
 }
 
-function buildParts(): Parts {
+function buildParts(seeThrough: boolean): Parts {
   const dotGeo = new THREE.IcosahedronGeometry(1, 1);
   const ringGeo = new THREE.RingGeometry(0.72, 1, 32).rotateX(-Math.PI / 2);
   const inkRingGeo = new THREE.RingGeometry(0.62, 1.12, 32).rotateX(-Math.PI / 2);
-  const dotMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+  const dotMat = new THREE.MeshBasicMaterial({
+    color: 0xffffff,
+    ...(seeThrough ? { depthTest: false, depthWrite: false, transparent: true } : {}),
+  });
   const haloMat = new THREE.MeshBasicMaterial({
     color: PALETTE.uiInk,
     transparent: true,
     opacity: 0.55,
     depthWrite: false,
+    ...(seeThrough ? { depthTest: false } : {}),
   });
   const markMat = (color: number, opacity: number): THREE.MeshBasicMaterial =>
     new THREE.MeshBasicMaterial({
@@ -157,7 +167,7 @@ function writeDots(parts: Parts, layout: DotLayout, buf: Float32Array): void {
 export function createAimHint(opts: AimHintOptions = {}): AimHint {
   const samples = opts.samples ?? 28;
   const spacing = opts.dotSpacing ?? 1;
-  const parts = buildParts();
+  const parts = buildParts(opts.seeThrough ?? false);
   const buf = new Float32Array(MAX_DOTS * 4);
   let aim: AimHintInput | null = null;
   let time = 0;

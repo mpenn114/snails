@@ -1,4 +1,5 @@
 import type { ServerMessage } from '@snails/protocol';
+import type { AimStore } from '../controls/aim-store';
 import type { ControllerClient } from '../net/client';
 
 /** What the loader needs from the lazily loaded phone view. */
@@ -10,6 +11,8 @@ export interface PhoneViewLike {
   setAiming?(aiming: boolean): void;
   /** Current camera yaw of the render rig (radians), if a rig exists. */
   cameraYaw?(): number | null;
+  /** Shared aim state driving the aim camera and the 3D aim view (set before `mount`). */
+  setAimStore?(store: AimStore): void;
 }
 
 /** Loads the view module; the default is a dynamic import so three.js stays out of the entry chunk. */
@@ -45,6 +48,7 @@ export function attachPhoneView(
   client: ControllerClient,
   container: HTMLElement,
   factory: PhoneViewFactory = loadPhoneView,
+  aimStore?: AimStore,
 ): PhoneViewHandle {
   let view: PhoneViewLike | null = null;
   let disposed = false;
@@ -64,6 +68,7 @@ export function attachPhoneView(
       v.dispose();
       return;
     }
+    if (aimStore) v.setAimStore?.(aimStore);
     v.mount(container);
     if (saver !== null) v.setBatterySaver?.(saver);
     view = v;

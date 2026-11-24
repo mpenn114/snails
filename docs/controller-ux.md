@@ -60,10 +60,18 @@ Every in-match screen is the 3D scene filling the phone, with HUD and controls d
 | Mode | Behaviour | How to enter |
 |---|---|---|
 | Follow my snail | Smooth third-person follow of the active snail. Default during movement. | Auto at turn start; "target" button |
-| Aim cam | Closer over-the-shoulder view that tracks aim yaw/pitch; shows arc preview. | Auto when you start dragging to aim |
+| Aim view | Snail's point of view: the camera sits behind and above the active snail looking along its facing (so "forward" is screen-up). A crosshair marks the aimed direction and a dotted initial-trajectory arc ends in a landing ring (drawn on top of terrain so it never hides). Joystick left/right turns the snail, which the camera follows. | The big **Aim** button beside Fire (pulses until first used), or just start an aim drag. Stays on after releasing the drag; **Exit aim** (same button) or firing leaves it |
 | Free | One-finger drag pans, two-finger pinch zooms, two-finger twist rotates. Recentres after 3 s idle if enabled. | Any drag outside the aim zone |
 | Follow projectile | Cuts to the projectile and then the explosion; returns to the follow mode. | Auto on fire; tap to skip |
 | Cinematic (spectating) | Auto-director follows the action, same logic as the big screen. | Default while waiting |
+
+Aim view details: entering it (button, drag, or the `Camera:` cycle button) switches the rig to a free
+pose computed from the snail's position, facing and aim elevation (`aimPose` in
+`apps/controller/src/view/camera-math.ts`); the crosshair and arc are the render package's
+`createAimReticle` / `createAimHint` layers, driven locally from the selected weapon's own data
+(launch, motion, melee reach), so drill, melee, bouncing and missile weapons preview the way they
+fly. The mode is latched in `CameraModeMachine` and dropped when a projectile is in flight, the
+turn ends, or a camera gesture takes over.
 
 Camera is a pure client-side view; it never affects rules. The player can switch freely at any
 time, even on other players' turns.
@@ -117,6 +125,8 @@ Controls:
   follow view stick-left does) and the snail turns at a limited rate while crawling or standing, so
   a diagonal stick crawls and turns at once. While a guided Radula Missile is in flight the stick
   steers the missile instead (no move).
+- **Aim button:** large button left of Fire (above it in portrait). Tap to enter the aim view,
+  tap again (it reads "Exit aim") to leave. Starting an aim drag enters it automatically.
 - **Jump:** button (right thumb); tap for hop, swipe up for backflip.
 - **Aim by drag:** touch and drag anywhere on the scene (outside buttons) from the snail: direction
   sets yaw/pitch (in a side view the drag direction is the shot direction; behind the snail drag up =
