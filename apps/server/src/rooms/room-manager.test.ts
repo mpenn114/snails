@@ -196,4 +196,12 @@ describe('RoomManager', () => {
     room.endMatch();
     expect(room.lobbyState()).toMatchObject({ phase: 'lobby' });
   });
+
+  it('keeps a default room for code-less displays', () => {
+    const m = new RoomManager();
+    const room = m.createRoom();
+    expect(m.getDefaultRoom()).toBeUndefined();
+    m.setDefaultRoom(room.code.toLowerCase());
+    expect(m.getDefaultRoom()).toBe(room);
+  });
 });

@@ -201,7 +201,9 @@ export class Connection {
     }
     const { role, name, roomCode } = check.hello;
     const { rooms } = this.opts;
-    const code = roomCode ?? (role === 'display' ? rooms.createRoom().code : undefined);
+    const code =
+      roomCode ??
+      (role === 'display' ? (rooms.getDefaultRoom() ?? rooms.createRoom()).code : undefined);
     if (!code) return this.fail('no_room');
     const detach = (): void => this.supersede();
     const res = rooms.join(code, name, role, (m) => this.send(m), {

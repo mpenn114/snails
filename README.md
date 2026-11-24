@@ -14,7 +14,9 @@ pnpm dev
 ```
 
 `pnpm dev` starts the server, the display (big screen) and the controller (phone UI). The server
-prints a join URL such as `http://192.168.1.20:3000/?room=ABCD`.
+prints a join URL such as `http://192.168.1.20:3000/?room=ABCD` and the TV view for the host PC,
+`http://localhost:3000/display/?room=ABCD` (with `pnpm dev` use `http://localhost:5173/` for the
+display). Open the TV view in a desktop browser at any time, even mid-match, to watch the game.
 
 ## How phones join
 

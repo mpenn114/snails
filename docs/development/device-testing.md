@@ -53,7 +53,17 @@ On the host or TV browser, open:
 http://<host-lan-ip>:3000/display/
 ```
 
-The lobby shows the QR code and the four-letter room code.
+The server also prints a ready-made link on start, for the host PC:
+
+```
+TV view (host PC): http://localhost:3000/display/?room=ABCD
+```
+
+The lobby shows the QR code and the four-letter room code. A display opened without `?room=`
+attaches to that same startup room. A display opened after the match has started is caught up
+(match info, snapshot, turn state) like a spectator, in per-player and hot-seat mode alike. The
+phone lobby also has an "Open TV view" link. With `pnpm dev` the display runs on Vite instead
+(`http://localhost:5173/`), proxied to the server on port 3000.
 
 ### 1.4 Join the phones
 

@@ -19,8 +19,8 @@ export function passPhoneText(teamName: string): string {
 
 /** Handle to the interstitial overlay. */
 export interface PassPhone {
-  /** Shows the overlay for `teamName`; `onContinue` fires once on tap. */
-  show(teamName: string, onContinue?: () => void): void;
+  /** Shows the overlay for `teamName`; `onContinue` fires once on tap; `colour` frames the overlay in the team colour. */
+  show(teamName: string, onContinue?: () => void, colour?: string): void;
   hide(): void;
   destroy(): void;
 }
@@ -65,7 +65,8 @@ export function mountPassPhone(root: HTMLElement): PassPhone {
     f?.();
   });
   return {
-    show(teamName, onContinue) {
+    show(teamName, onContinue, colour) {
+      el.style.boxShadow = colour ? `inset 0 0 0 1.2rem ${colour}` : '';
       label.textContent = `${passPhoneText(teamName)} (tap to continue)`;
       cont = onContinue;
       el.style.display = 'flex';

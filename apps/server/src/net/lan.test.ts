@@ -88,3 +88,10 @@ describe('primaryLanIp and detection', () => {
     expect(joinUrl('1.2.3.4', 3000, 'ABCD')).toBe('http://1.2.3.4:3000/?room=ABCD');
   });
 });
+
+describe('displayUrl', () => {
+  it('points the host PC at the display for a room', async () => {
+    const { displayUrl } = await import('./lan.js');
+    expect(displayUrl(3000, 'ABCD')).toBe('http://localhost:3000/display/?room=ABCD');
+  });
+});

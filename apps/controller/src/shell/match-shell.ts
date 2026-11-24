@@ -62,7 +62,7 @@ function mountSession(client: ControllerClient, screen: HTMLElement, playerId: s
 
   let myTeams: readonly string[] = [];
   let mode: ControlMode = 'perPlayer';
-  const teamNames = new Map<string, string>();
+  const teams = new Map<string, { name: string; colour: string }>();
   const offs = [
     client.on('lobbyState', (s) => {
       const me = s.players.find((p) => p.id === playerId);
@@ -70,13 +70,13 @@ function mountSession(client: ControllerClient, screen: HTMLElement, playerId: s
       lobby.update(s);
     }),
     client.on('turnStart', (t) => {
-      if (shouldPassPhone(mode, myTeams, t.teamId)) pass.show(teamNames.get(t.teamId) ?? t.teamId);
-      else pass.hide();
+      if (!shouldPassPhone(mode, myTeams, t.teamId)) return pass.hide();
+      pass.show(teams.get(t.teamId)?.name ?? t.teamId, undefined, teams.get(t.teamId)?.colour);
     }),
     client.on('error', (e) => lobby.showError(lobbyErrorText(e.code, e.message))),
     client.on('matchStarted', (m) => {
       mode = m.settings.controlMode;
-      for (const t of m.teams) teamNames.set(t.id, t.name);
+      for (const t of m.teams) teams.set(t.id, { name: t.name, colour: t.colour });
       lobby.destroy();
     }),
   ];
