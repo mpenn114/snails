@@ -50,6 +50,8 @@ const snap: DecodedSnapshot = {
     aim: { angle: 0, power: 0 },
   })),
   projectiles: [],
+  statuses: [],
+  areas: [],
 };
 
 function setup() {

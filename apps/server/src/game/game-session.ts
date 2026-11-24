@@ -9,7 +9,6 @@ import {
   type WeaponLaunchSpec,
   getAim,
 } from '@snails/core';
-import { weapons as baseWeapons } from '@snails/content-base';
 import {
   encodeEventBatch,
   encodeSnapshot,
@@ -27,6 +26,7 @@ import {
   type TeamControlState,
 } from './intent.js';
 
+import { loadServerContent } from './server-content.js';
 import { mayCommandTurn, pickActivePlayer } from './rotation.js';
 
 export type { GameIntent, IntentResult } from './intent.js';
@@ -123,7 +123,8 @@ export class GameSession {
     this.snapshotEvery = Math.max(1, Math.round(1 / (FIXED_DT * (opts.snapshotHz ?? 20))));
     this.maxSteps = Math.max(1, opts.maxStepsPerFrame ?? 8);
     this.terrainParams = { ...DEFAULT_TERRAIN_CONFIG, ...opts.terrain };
-    const defs = opts.weapons ?? baseWeapons;
+    const content = loadServerContent().registries;
+    const defs = opts.weapons ?? content.weapons.list();
     const defaultWeapon = defs[0]?.id ?? '';
     for (const t of opts.teams) {
       this.teamPlayers.set(t.id, [...t.playerIds]);
@@ -134,6 +135,8 @@ export class GameSession {
       terrain: this.terrainParams,
       turn: { actionDuration: opts.settings.turnTimeSeconds },
       weapons: defs,
+      statuses: content.statuses.list(),
+      areas: content.areas.list(),
       teams: opts.teams.map((t) => ({
         id: t.id,
         name: t.name,
@@ -370,6 +373,23 @@ export class GameSession {
         weaponId: p.weaponId,
         position: p.position,
         velocity: p.velocity,
+      })),
+      statuses: s.teams.flatMap((t) =>
+        t.snails.flatMap((n) =>
+          (n.statuses ?? []).map((st) => ({
+            snailId: n.id,
+            statusId: st.id,
+            turnsLeft: st.turnsLeft,
+            magnitude: st.magnitude,
+          })),
+        ),
+      ),
+      areas: s.areas.map((a) => ({
+        id: a.id,
+        kind: a.kind,
+        position: a.position,
+        radius: a.radius,
+        turnsLeft: a.turnsLeft,
       })),
     };
   }

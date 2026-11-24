@@ -15,10 +15,13 @@ import { TEAM_COLORS, hexToCss } from '@snails/render';
 export const HARNESS_WEAPON: WeaponDefinition = {
   id: 'harness:lobber',
   name: 'Lobber',
-  kind: 'projectile',
+  category: 'projectile',
   launch: { minSpeed: 5, maxSpeed: 24, gravityScale: 1, windScale: 1, projectileRadius: 0.15 },
   fuseSeconds: 0,
-  explosion: { radius: 4, maxDamage: 45, knockback: 6, falloff: 'linear' },
+  effects: [
+    { type: 'carve', radius: 4 },
+    { type: 'damage', radius: 4, maxDamage: 45, knockback: 6, falloff: 'linear' },
+  ],
   ammo: 'infinite',
 };
 

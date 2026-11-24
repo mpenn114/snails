@@ -42,7 +42,7 @@ export class WireSnapshotMapper {
       nextSnailIndex: 0,
       snails: t.snails.flatMap((r) => {
         const n = byId.get(r.id);
-        return n ? [this.snail(t, r.name, n)] : [];
+        return n ? [this.snail(t, r.name, n, s.statuses)] : [];
       }),
     }));
     return {
@@ -69,11 +69,26 @@ export class WireSnapshotMapper {
         windScale: 1,
       })),
       nextProjectileId: 0,
+      areas: s.areas.map((a) => ({
+        id: a.id,
+        kind: a.kind,
+        position: a.position,
+        radius: a.radius,
+        turnsLeft: a.turnsLeft,
+        sourceSnailId: '',
+      })),
+      nextAreaId: 0,
       match: { status: 'playing', winnerTeamId: null },
     };
   }
 
-  private snail(team: WireTeamInfo, name: string, n: DecodedSnapshot['snails'][number]): Snail {
+  private snail(
+    team: WireTeamInfo,
+    name: string,
+    n: DecodedSnapshot['snails'][number],
+    allStatuses: DecodedSnapshot['statuses'],
+  ): Snail {
+    const own = allStatuses.filter((t) => t.snailId === n.id);
     const prev = this.maxHealth.get(n.id) ?? this.info.initialMaxHealth ?? DEFAULT_MAX_HEALTH;
     const maxHealth = Math.max(prev, n.health);
     this.maxHealth.set(n.id, maxHealth);
@@ -90,6 +105,16 @@ export class WireSnapshotMapper {
       shell: { upgradeId: null, colour: team.colour },
       aim: { ...n.aim },
       grounded: n.state === 'grounded',
+      ...(own.length > 0
+        ? {
+            statuses: own.map((t) => ({
+              id: t.statusId,
+              turnsLeft: t.turnsLeft,
+              magnitude: t.magnitude,
+              sourceSnailId: '',
+            })),
+          }
+        : {}),
     };
   }
 }

@@ -1,8 +1,10 @@
+import { runEffects } from '../content/effects/handlers.js';
+import { buildMatchContent, withContent, type MatchContent } from '../content/match-content.js';
 import type { WeaponDefinition, WeaponLaunchSpec } from '../content/types.js';
 import type { ContentRegistry } from '../content/registry.js';
 import { findSnail, setFacing } from '../entities/snail.js';
 import { FIXED_DT, stepProjectile, type ProjectileState } from '../physics/ballistics.js';
-import { resolveExplosion } from '../physics/explosion.js';
+import { patternOffsets } from './pattern.js';
 import {
   createProjectileSystem,
   spawnProjectile,
@@ -107,7 +109,7 @@ export function predictTrajectory(
   return out;
 }
 
-/** Creates the `fire` handler: spawns the weapon's projectile and notifies the turn machine. */
+/** Creates the `fire` handler: spawns the weapon's projectile(s) and notifies the turn machine. */
 export function fireCommandHandler(
   weapons: ContentRegistry<WeaponDefinition>,
 ): (ctx: SimContext, cmd: FireCommand) => void {
@@ -115,38 +117,49 @@ export function fireCommandHandler(
     const weapon = weapons.get(cmd.weaponId);
     const snail = findSnail(ctx.state, cmd.snailId);
     if (!weapon || !snail || !snail.alive) return;
-    const shot = computeLaunch(snail.position, snail.facing, getAim(snail), weapon.launch);
-    const p = spawnProjectile(ctx.state, {
-      position: shot.position,
-      velocity: shot.velocity,
-      ownerSnailId: snail.id,
-      weaponId: weapon.id,
-      radius: weapon.launch.projectileRadius,
-      gravityScale: weapon.launch.gravityScale,
-      windScale: weapon.launch.windScale,
-      ...(weapon.fuseSeconds > 0 ? { maxAge: weapon.fuseSeconds } : {}),
-    });
-    ctx.emit({
-      type: 'projectileFired',
-      projectileId: p.id,
-      weaponId: weapon.id,
-      snailId: snail.id,
-      position: { ...p.position },
-      velocity: { ...p.velocity },
-    });
+    const aim = getAim(snail);
+    for (const off of patternOffsets(weapon.pattern, aim.power)) {
+      const angle = clamp(aim.angle + off.angle, -Math.PI / 2, Math.PI / 2);
+      const facing = snail.facing + off.yaw;
+      const shot = computeLaunch(
+        snail.position,
+        facing,
+        { angle, power: aim.power },
+        weapon.launch,
+      );
+      const p = spawnProjectile(ctx.state, {
+        position: shot.position,
+        velocity: shot.velocity,
+        ownerSnailId: snail.id,
+        weaponId: weapon.id,
+        radius: weapon.launch.projectileRadius,
+        gravityScale: weapon.launch.gravityScale,
+        windScale: weapon.launch.windScale,
+        ...(weapon.fuseSeconds > 0 ? { maxAge: weapon.fuseSeconds } : {}),
+        ...(weapon.motion ? { motion: weapon.motion } : {}),
+      });
+      ctx.emit({
+        type: 'projectileFired',
+        projectileId: p.id,
+        weaponId: weapon.id,
+        snailId: snail.id,
+        position: { ...p.position },
+        velocity: { ...p.velocity },
+      });
+    }
     notifyFired(ctx.state, (e) => ctx.emit(e));
   };
 }
 
-/** Creates the detonation handler: resolves the weapon's explosion on impact or fuse expiry. */
+/** Creates the detonation handler: runs the weapon's effects on impact or fuse expiry. */
 export function createDetonationHandler(
-  weapons: ContentRegistry<WeaponDefinition>,
+  content: MatchContent,
 ): (ctx: SimContext, d: Detonation) => void {
   return (ctx, d) => {
-    const weapon = weapons.get(d.weaponId);
+    const weapon = content.weapons.get(d.weaponId);
     if (!weapon) return;
     if (d.cause === 'fuse' && !(weapon.fuseSeconds > 0)) return;
-    resolveExplosion(ctx, d.position, weapon.explosion, {
+    runEffects(withContent(ctx, content), weapon.effects, d.position, {
       weaponId: weapon.id,
       ownerSnailId: d.ownerSnailId,
     });
@@ -155,13 +168,20 @@ export function createDetonationHandler(
 
 /**
  * Registers aim/fire handlers and the projectile system (which detonates weapons inline, so
- * explosions resolve in the same step as the hit). Call once per simulation.
+ * effects resolve in the same step as the hit). Call once per simulation. `statuses` and `areas`
+ * default to empty registries.
  */
 export function registerCombat(
   sim: Simulation,
-  registries: { weapons: ContentRegistry<WeaponDefinition> },
+  registries: { weapons: ContentRegistry<WeaponDefinition> } & Partial<MatchContent>,
 ): void {
+  const empty = buildMatchContent({ weapons: [] });
+  const content: MatchContent = {
+    weapons: registries.weapons,
+    statuses: registries.statuses ?? empty.statuses,
+    areas: registries.areas ?? empty.areas,
+  };
   sim.registerCommandHandler('aim', aimCommandHandler);
-  sim.registerCommandHandler('fire', fireCommandHandler(registries.weapons));
-  sim.addSystem('projectiles', createProjectileSystem(createDetonationHandler(registries.weapons)));
+  sim.registerCommandHandler('fire', fireCommandHandler(content.weapons));
+  sim.addSystem('projectiles', createProjectileSystem(createDetonationHandler(content)));
 }

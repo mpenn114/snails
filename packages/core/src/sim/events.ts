@@ -108,7 +108,7 @@ export interface TerrainCollapsedEvent {
 }
 
 /** Why a snail took damage. */
-export type DamageCause = 'explosion' | 'fall';
+export type DamageCause = 'explosion' | 'fall' | 'status' | 'area';
 
 /** A snail lost health. `sourceSnailId` is null for environmental damage. */
 export interface SnailDamagedEvent {
@@ -121,7 +121,7 @@ export interface SnailDamagedEvent {
 }
 
 /** Why a snail died. */
-export type DeathCause = 'explosion' | 'fall' | 'drown' | 'void';
+export type DeathCause = 'explosion' | 'fall' | 'drown' | 'void' | 'status' | 'area';
 
 /** A snail died. */
 export interface SnailDiedEvent {
@@ -152,6 +152,55 @@ export interface CommandRejectedEvent {
   reason: RejectionReason;
 }
 
+/** A status was applied to (or refreshed on) a snail. */
+export interface StatusAppliedEvent {
+  type: 'statusApplied';
+  snailId: string;
+  statusId: string;
+  turnsLeft: number;
+  magnitude: number;
+  sourceSnailId: string;
+}
+
+/** A status ran out (or its snail died) and was removed. */
+export interface StatusExpiredEvent {
+  type: 'statusExpired';
+  snailId: string;
+  statusId: string;
+}
+
+/** An area was created. */
+export interface AreaCreatedEvent {
+  type: 'areaCreated';
+  areaId: string;
+  kind: string;
+  position: Vec3;
+  radius: number;
+  turnsLeft: number;
+}
+
+/** An area ran out and was removed. */
+export interface AreaExpiredEvent {
+  type: 'areaExpired';
+  areaId: string;
+  kind: string;
+}
+
+/** An area drifted with the wind to a new position. */
+export interface AreaMovedEvent {
+  type: 'areaMoved';
+  areaId: string;
+  position: Vec3;
+}
+
+/** A snail was repositioned by a `move` effect. */
+export interface SnailMovedEvent {
+  type: 'snailMoved';
+  snailId: string;
+  from: Vec3;
+  to: Vec3;
+}
+
 /** Every event the simulation can emit. Plain JSON data only. */
 export type SimEvent =
   | TickEvent
@@ -170,7 +219,13 @@ export type SimEvent =
   | SnailDiedEvent
   | SnailDrownedEvent
   | SnailLandedEvent
-  | CommandRejectedEvent;
+  | CommandRejectedEvent
+  | StatusAppliedEvent
+  | StatusExpiredEvent
+  | AreaCreatedEvent
+  | AreaExpiredEvent
+  | AreaMovedEvent
+  | SnailMovedEvent;
 
 /** Discriminator values of {@link SimEvent}. */
 export type SimEventType = SimEvent['type'];
@@ -197,6 +252,12 @@ export const SIM_EVENT_TYPES: readonly SimEventType[] = [
   'snailDrowned',
   'snailLanded',
   'commandRejected',
+  'statusApplied',
+  'statusExpired',
+  'areaCreated',
+  'areaExpired',
+  'areaMoved',
+  'snailMoved',
 ];
 
 /** Type guard: is `type` a known simulation event type? */

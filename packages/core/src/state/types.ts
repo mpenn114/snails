@@ -1,3 +1,5 @@
+import type { MotionSpec } from '../physics/motion.js';
+
 /** 3D vector. */
 export interface Vec3 {
   x: number;
@@ -37,6 +39,36 @@ export interface Snail {
    * same step (systems run in order). Unset when there is no unprocessed landing.
    */
   pendingLanding?: PendingLanding;
+  /** Active statuses (salt, goo, ...) in application order; absent means none. */
+  statuses?: StatusInstance[];
+}
+
+/** A status active on a snail (serialisable). Definition lives in the `statuses` registry. */
+export interface StatusInstance {
+  /** Status definition id, e.g. `base:salt`. */
+  id: string;
+  /** Remaining ticks; one is spent at the start of each of the snail's team's turns. */
+  turnsLeft: number;
+  /** Strength multiplier (1 = as defined). */
+  magnitude: number;
+  /** Snail that applied it, for kill credit. */
+  sourceSnailId: string;
+}
+
+/** A lingering area (spore cloud, puddle, goo) in the world (serialisable). */
+export interface AreaInstance {
+  /** Deterministic id `a<counter>`. */
+  id: string;
+  /** Area definition id, e.g. `base:spore-cloud`. */
+  kind: string;
+  position: Vec3;
+  radius: number;
+  /** Remaining turn starts; the area is removed when it reaches 0. */
+  turnsLeft: number;
+  /** Snail whose weapon created it, for kill credit. */
+  sourceSnailId: string;
+  /** Free-form numeric parameters for area kinds that need them. */
+  params?: Record<string, number>;
 }
 
 /** A touchdown waiting to be resolved by the hazard system (serialisable). */
@@ -126,6 +158,8 @@ export interface Projectile {
   gravityScale: number;
   /** Wind multiplier, 0..1. */
   windScale: number;
+  /** Motion strategy parameters; absent means ballistic. */
+  motion?: MotionSpec;
 }
 
 /** Match outcome. */
@@ -145,6 +179,10 @@ export interface GameState {
   projectiles: Projectile[];
   /** Counter used to assign deterministic projectile ids. */
   nextProjectileId: number;
+  /** Lingering areas in creation order. */
+  areas: AreaInstance[];
+  /** Counter used to assign deterministic area ids. */
+  nextAreaId: number;
   match: MatchStatus;
 }
 

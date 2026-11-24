@@ -1,6 +1,6 @@
 import type { GameState, Projectile, Snail, Vec3 } from '../state/types.js';
 import type { SimContext } from '../sim/types.js';
-import { stepProjectile } from './ballistics.js';
+import { stepMotion, type MotionSpec } from './motion.js';
 import { sphereSweep } from '../terrain/collision.js';
 import { add, distance, dot, normalize, scale, sub } from '../math/vec3.js';
 
@@ -21,6 +21,8 @@ export interface ProjectileInit {
   maxAge?: number;
   gravityScale?: number;
   windScale?: number;
+  /** Motion strategy parameters; omitted = ballistic. */
+  motion?: MotionSpec;
 }
 
 /** Adds a projectile to the state with id `p<counter>`; emits nothing. */
@@ -36,6 +38,7 @@ export function spawnProjectile(state: GameState, init: ProjectileInit): Project
     maxAge: init.maxAge ?? 30,
     gravityScale: init.gravityScale ?? 1,
     windScale: init.windScale ?? 1,
+    ...(init.motion ? { motion: { ...init.motion } } : {}),
   };
   state.nextProjectileId += 1;
   state.projectiles.push(p);
@@ -122,7 +125,7 @@ export function createProjectileSystem(onDetonate?: DetonationHandler): (ctx: Si
   return (ctx) => {
     const gone = new Set<string>();
     for (const p of [...ctx.state.projectiles].sort(byId)) {
-      const next = stepProjectile(p, ctx.state.wind, ctx.dt);
+      const next = stepMotion(p, ctx.state.wind, ctx.dt);
       const contact = findContact(ctx, p, next.position);
       if (contact) {
         gone.add(p.id);

@@ -1,6 +1,7 @@
 import { registerCombat } from '../combat/combat.js';
-import { ContentRegistry } from '../content/registry.js';
-import type { WeaponDefinition } from '../content/types.js';
+import { buildMatchContent, type MatchContent } from '../content/match-content.js';
+import type { ContentRegistry } from '../content/registry.js';
+import type { AreaDefinition, StatusDefinition, WeaponDefinition } from '../content/types.js';
 import { moveCommandHandler, movementSystem } from '../movement/movement.js';
 import { facingToward } from '../entities/snail.js';
 import { RngStreams } from '../rng-streams.js';
@@ -15,6 +16,7 @@ import {
   turnSystem,
   type TurnConfig,
 } from '../turn/turn-phases.js';
+import { registerLingeringEffects } from './lingering.js';
 import { Simulation } from './simulation.js';
 import { DEFAULT_WIND_CONFIG, type WindConfig } from './wind.js';
 
@@ -34,12 +36,18 @@ export interface MatchOptions {
   turn?: Partial<TurnConfig>;
   wind?: WindConfig;
   weapons: WeaponDefinition[];
+  /** Status definitions effects and areas may refer to. */
+  statuses?: StatusDefinition[];
+  /** Area definitions `spawn` effects may refer to. */
+  areas?: AreaDefinition[];
 }
 
 /** Result of {@link createMatch}. */
 export interface MatchSetup {
   sim: Simulation;
   weapons: ContentRegistry<WeaponDefinition>;
+  /** All frozen match registries (weapons, statuses, areas). */
+  content: MatchContent;
   turnConfig: TurnConfig;
 }
 
@@ -92,18 +100,18 @@ export function createMatch(options: MatchOptions): MatchSetup {
     teams: buildTeams(options.teams, points),
     terrain: descriptor,
   });
-  const weapons = new ContentRegistry<WeaponDefinition>();
-  for (const w of options.weapons) weapons.register(w);
-  weapons.freeze();
+  const content = buildMatchContent(options);
+  const weapons = content.weapons;
   const sim = new Simulation({ state, terrain: grid, rng, weapons });
   const turnConfig = { ...DEFAULT_TURN_CONFIG, ...options.turn };
   const windConfig = options.wind ?? DEFAULT_WIND_CONFIG;
   sim.registerCommandHandler('move', moveCommandHandler);
   sim.addSystem('movement', movementSystem());
-  registerCombat(sim, { weapons });
+  registerCombat(sim, content);
   registerHazards(sim);
   sim.addSystem('turns', turnSystem(turnConfig, windConfig));
+  registerLingeringEffects(sim, content);
   faceEnemies(sim);
   startTurn(state, turnConfig, () => undefined, { rng: rng.wind, config: windConfig });
-  return { sim, weapons, turnConfig };
+  return { sim, weapons, content, turnConfig };
 }
