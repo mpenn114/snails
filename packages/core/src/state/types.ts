@@ -254,6 +254,8 @@ export interface Projectile {
 export interface MatchStatus {
   status: 'playing' | 'won' | 'draw';
   winnerTeamId: string | null;
+  /** Why the match ended when not by elimination (`research`: a capstone was completed). */
+  reason?: 'research';
 }
 
 /** Top-level game state (plain JSON-serialisable data). */
@@ -286,6 +288,8 @@ export interface GameState {
   suddenDeath?: SuddenDeathState;
   /** Research preset of this match; absent means `off`. */
   research?: ResearchSetting;
+  /** Research race: the capstone tech ids; completing any of them wins. Absent = elimination. */
+  raceCapstones?: string[];
 }
 
 /** Serialisable snapshot of a game state. */

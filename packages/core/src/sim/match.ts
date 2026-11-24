@@ -189,12 +189,18 @@ export function createMatch(options: MatchOptions): MatchSetup {
   });
   const loadout = { ...demoLoadout(options.weapons, settings), ...options.loadout };
   for (const team of state.teams) team.inventory = initialInventory(options.weapons, loadout);
-  if (settings.research !== 'off') {
-    state.research = settings.research;
+  const race = settings.mode === 'researchRace';
+  if (settings.research !== 'off' || race) {
+    state.research = settings.research === 'off' ? 'on' : settings.research;
     for (const team of state.teams) team.research = emptyTeamResearch();
   }
   if (settings.demo) for (const team of state.teams) team.researched = gatedTechs(options.weapons);
   const content = buildMatchContent(options);
+  if (race)
+    state.raceCapstones = content.technologies
+      .list()
+      .filter((t) => t.capstone)
+      .map((t) => t.id);
   const weapons = content.weapons;
   const sim = new Simulation({
     state,

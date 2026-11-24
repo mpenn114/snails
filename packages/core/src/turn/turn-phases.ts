@@ -3,7 +3,12 @@ import type { SimEvent } from '../sim/events.js';
 import type { SimContext } from '../sim/types.js';
 import { rollWind, type WindConfig, DEFAULT_WIND_CONFIG } from '../sim/wind.js';
 import type { Rng } from '../rng.js';
-import { evaluateMatch, evaluateTurnLimit, resolveDraw } from '../rules/win.js';
+import {
+  evaluateMatch,
+  evaluateResearchRace,
+  evaluateTurnLimit,
+  resolveDraw,
+} from '../rules/win.js';
 
 /** Durations (seconds) and thresholds for the turn state machine. */
 export interface TurnConfig {
@@ -139,12 +144,13 @@ function allAtRest(state: GameState, eps: number): boolean {
 /** Ends the match: records the outcome on `state.match` and emits `matchEnded`. */
 function endMatch(state: GameState, status: MatchStatus, emit: Emit): void {
   state.match = status;
-  const winnerTeamId = status.winnerTeamId;
-  emit(
-    winnerTeamId === null
-      ? { type: 'matchEnded', status: status.status }
-      : { type: 'matchEnded', status: status.status, winnerTeamId },
-  );
+  const { winnerTeamId, reason } = status;
+  emit({
+    type: 'matchEnded',
+    status: status.status,
+    ...(winnerTeamId === null ? {} : { winnerTeamId }),
+    ...(reason ? { reason } : {}),
+  });
 }
 
 function endTurn(state: GameState, config: TurnConfig, emit: Emit, wind?: TurnWind): void {
@@ -176,6 +182,11 @@ export function advanceTurn(
   wind?: TurnWind,
 ): void {
   if (state.match.status !== 'playing') return;
+  const race = evaluateResearchRace(state);
+  if (race.status !== 'playing') {
+    endMatch(state, race, emit);
+    return;
+  }
   const t = state.turn;
   t.phaseTime += dt;
   switch (t.phase) {

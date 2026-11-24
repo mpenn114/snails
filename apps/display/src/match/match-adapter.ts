@@ -129,7 +129,7 @@ export class MatchAdapter {
         const team = this.last?.teams.find((t) => t.id === e.winnerTeamId);
         this.winner =
           e.status === 'won' && team
-            ? { name: team.name, colour: team.colour }
+            ? { name: team.name, colour: team.colour, ...(e.reason ? { reason: e.reason } : {}) }
             : { name: null, colour: null };
         this.deps.aim.set(null);
       } else if (e.type === 'suddenDeathStarted') this.notice = suddenDeathNotice(e.kind);

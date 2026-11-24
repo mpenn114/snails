@@ -45,6 +45,8 @@ export interface MatchEndedEvent {
   type: 'matchEnded';
   status: MatchStatus['status'];
   winnerTeamId?: string;
+  /** Set when the match ended by completing a capstone. */
+  reason?: 'research';
 }
 
 /** A weapon launched a projectile. */
