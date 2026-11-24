@@ -172,7 +172,7 @@ the MG-03 harness to its PR. After the first round looked poor, MG-13 to MG-15 s
 | M4-04 | Pebble Toss and Salt Shaker as pure data (cluster, salt status) | content | M4-03, M1-19 | ✅ |
 | M4-05 | Slime Grenade (thrown, fuse, slow status) | content | M4-03 | ⬜ |
 | M4-06 | Pebble Roller (bouncing, fuse) | content | M4-03, M1-08 | ⬜ |
-| M4-07 | Radula Missile (guided steering input) | content | M4-03, M3-21 | ⬜ |
+| M4-07 | Radula Missile (guided steering input) | content | M4-03, M3-21 | ✅ |
 | M4-08 | Spore Cloud (lingering area effect over turns) | content | M4-03 | ⬜ |
 | M4-09 | Shell Drill (digger tunnel) | content | M4-03, M1-05 | ⬜ |
 | M4-10 | Shell Bash (melee, knockback) | content | M4-03 | ⬜ |
