@@ -37,6 +37,8 @@ export interface TeamResearch {
   damagedSinceTurnStart?: boolean;
   /** Uses of once-per-match abilities, `abilityId -> uses spent`. */
   abilityUses?: Record<string, number>;
+  /** Turns since the last grant of each repeating `grantStock` effect, keyed `techId:effectIndex`. */
+  stockTimers?: Record<string, number>;
 }
 
 /** Stats a tech can modify for its team (extend the list when a tech needs a new one). */

@@ -1,3 +1,4 @@
+import { teamStat } from '../research/tech-effects.js';
 import type { GameState, MatchStatus, Snail, Team, TurnPhase } from '../state/types.js';
 import type { SimEvent } from '../sim/events.js';
 import type { SimContext } from '../sim/types.js';
@@ -174,6 +175,7 @@ export function advanceTurn(
   dt: number,
   emit: Emit,
   wind?: TurnWind,
+  retreatBonus?: number,
 ): void {
   if (state.match.status !== 'playing') return;
   const t = state.turn;
@@ -194,7 +196,8 @@ export function advanceTurn(
       if (t.phaseTime >= config.resolveDelay) setPhase(state, 'retreat', emit);
       break;
     case 'retreat':
-      if (t.phaseTime >= config.retreatDuration) setPhase(state, 'settle', emit);
+      if (t.phaseTime >= config.retreatDuration + (retreatBonus ?? 0))
+        setPhase(state, 'settle', emit);
       break;
     case 'settle':
       if (allAtRest(state, config.restEpsilon) || t.phaseTime >= config.settleTimeout) {
@@ -212,6 +215,20 @@ export function turnSystem(
   config: TurnConfig = DEFAULT_TURN_CONFIG,
   windConfig: WindConfig = DEFAULT_WIND_CONFIG,
 ): (ctx: SimContext) => void {
-  return (ctx) =>
-    advanceTurn(ctx.state, config, ctx.dt, ctx.emit, { rng: ctx.rng.wind, config: windConfig });
+  return (ctx) => {
+    const team = ctx.state.turn.activeTeamId;
+    const bonus =
+      team === null
+        ? 0
+        : teamStat(ctx.state, ctx.techs, team, 'moveBudgetSeconds', config.retreatDuration) -
+          config.retreatDuration;
+    advanceTurn(
+      ctx.state,
+      config,
+      ctx.dt,
+      ctx.emit,
+      { rng: ctx.rng.wind, config: windConfig },
+      bonus,
+    );
+  };
 }

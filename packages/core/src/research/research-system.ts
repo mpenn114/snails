@@ -3,6 +3,8 @@ import type { SimEvent } from '../sim/events.js';
 import type { Simulation } from '../sim/simulation.js';
 import type { SimContext } from '../sim/types.js';
 import { addCalcium, CALCIUM_INCOME } from './calcium.js';
+import { applyCompletionEffects, tickStockGrants } from './tech-completion.js';
+import { dispatchTechHooks, teamStat } from './tech-effects.js';
 import { advanceResearch, cancelResearchHandler, queueResearchHandler } from './research-queue.js';
 
 function teamOf(ctx: SimContext, snailId: string): string | undefined {
@@ -16,7 +18,8 @@ function turnIncome(ctx: SimContext, teamId: string | null): void {
   research.roundsSinceDamage = research.damagedSinceTurnStart ? 0 : research.roundsSinceDamage + 1;
   research.damagedSinceTurnStart = false;
   research.damageCalciumThisTurn = 0;
-  addCalcium(ctx, teamId, CALCIUM_INCOME.perTurn, 'turnIncome');
+  const income = teamStat(ctx.state, ctx.techs, teamId, 'calciumPerTurn', CALCIUM_INCOME.perTurn);
+  addCalcium(ctx, teamId, Math.round(income), 'turnIncome');
 }
 
 /** Converts damage to an enemy into Calcium (1 per 5, remainder carried, capped per turn). */
@@ -37,7 +40,9 @@ function damageIncome(ctx: SimContext, dealer: string, amount: number): void {
 /**
  * Registers every research command handler and hook, in this fixed order (add new lines at the
  * end of the relevant group; keep this a short list). Turn start: (1) Calcium income (M5-01),
- * (2) research progress and start of the next queued tech (M5-03), (3) anything later jobs add.
+ * (2) repeating stock grants (M5-05), (3) research progress and start of the next queued tech
+ * (M5-03), (4) anything later jobs add. The `research-effects` observer dispatches tech hooks and
+ * applies one-time effects when `researchCompleted` fires (M5-05).
  * An event observer grants damage and kill income. Does nothing when research is off.
  */
 export function registerResearch(sim: Simulation, content: MatchContent): void {
@@ -48,9 +53,18 @@ export function registerResearch(sim: Simulation, content: MatchContent): void {
   /** Team that last damaged each snail (for kill credit); cleared on death. */
   const lastEnemyHit = new Map<string, string>();
   sim.registerTurnStartHook('research-income', (ctx, info) => turnIncome(ctx, info.teamId));
+  sim.registerTurnStartHook('research-stock', (ctx, info) => tickStockGrants(ctx, info.teamId));
   sim.registerTurnStartHook('research-progress', (ctx, info) =>
     advanceResearch(ctx, info.teamId, techs),
   );
+  sim.registerEventObserver('research-effects', (ctx, e: SimEvent) => {
+    dispatchTechHooks(ctx, e);
+    if (e.type !== 'researchCompleted') return;
+    const team = ctx.state.teams.find((t) => t.id === e.teamId);
+    if (team) {
+      applyCompletionEffects(ctx, team, e.techId, techs, (id) => content.weapons.get(id)?.ammo);
+    }
+  });
   sim.registerEventObserver('research-income', (ctx, e: SimEvent) => {
     if (e.type === 'snailDamaged' && e.sourceSnailId !== null) {
       const dealer = teamOf(ctx, e.sourceSnailId);
