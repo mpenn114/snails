@@ -25,7 +25,7 @@ export interface HudModel {
   timerSeconds: number;
   bars: TeamBar[];
   /** Set once the match ended: winning team (`name` null for a draw). */
-  winner: { name: string | null; colour: string | null } | null;
+  winner: { name: string | null; colour: string | null; reason?: 'research' } | null;
   /** Standing announcement (sudden death is on), or null. */
   notice: string | null;
 }

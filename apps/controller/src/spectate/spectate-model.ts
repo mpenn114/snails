@@ -31,6 +31,8 @@ export interface SpectateState {
   flashSeq: number;
   status: 'won' | 'draw' | null;
   winnerTeamId: string | null;
+  /** Why the match ended when not by elimination. */
+  reason?: 'research';
 }
 
 /** Fresh state for a player. */
@@ -66,7 +68,13 @@ function reduceEvents(
     } else if (e.type === 'snailDied') {
       next = { ...next, teams: setHp(next.teams, e.snailId, 0) };
     } else if (e.type === 'matchEnded' && e.status !== 'playing') {
-      next = { ...next, phase: 'ended', status: e.status, winnerTeamId: e.winnerTeamId ?? null };
+      next = {
+        ...next,
+        phase: 'ended',
+        status: e.status,
+        winnerTeamId: e.winnerTeamId ?? null,
+        ...(e.reason ? { reason: e.reason } : {}),
+      };
     }
   }
   return next;
@@ -157,6 +165,9 @@ function endedTitle(state: SpectateState): string {
   if (state.status === 'draw') return 'Draw!';
   const win = state.teams.find((t) => t.id === state.winnerTeamId);
   if (!win) return 'Match over';
+  if (state.reason === 'research') {
+    return win.id === state.myTeamId ? 'Victory by research!' : `${win.name} wins by research`;
+  }
   return win.id === state.myTeamId ? 'Victory!' : `${win.name} wins`;
 }
 

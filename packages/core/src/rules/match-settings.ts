@@ -12,6 +12,8 @@ export const WIND_SETTINGS = ['off', 'low', 'normal', 'storm'] as const;
 export const CRATE_SETTINGS = ['off', 'rare', 'normal', 'frequent'] as const;
 /** Sudden-death types: rising water, health drain, or both (the game-design default). */
 export const SUDDEN_DEATH_TYPES = ['water', 'drain', 'both'] as const;
+/** Game modes: last team standing, or the first capstone technology wins. */
+export const GAME_MODES = ['elimination', 'researchRace'] as const;
 /** Fall damage presets. */
 export const FALL_DAMAGE_SETTINGS = ['off', 'on', 'high'] as const;
 
@@ -62,6 +64,8 @@ export const MatchSettingsSchema = z.object({
   demo: z.boolean().default(false),
   /** Research preset: off (classic weapons only), on, or fast (cheaper, quicker techs). */
   research: z.enum(RESEARCH_SETTINGS).default('on'),
+  /** Game mode; research race forces research on and ends the match at the first capstone. */
+  mode: z.enum(GAME_MODES).default('elimination'),
 });
 
 /** Parsed, fully defaulted match settings. */

@@ -19,7 +19,7 @@ export function hudHtml(m: HudModel): string {
     )
     .join('');
   const win = m.winner
-    ? `<div class="winner">${m.winner.name ? `${esc(m.winner.name)} wins!` : 'Draw!'}</div>`
+    ? `<div class="winner">${m.winner.name ? `${esc(m.winner.name)} wins${m.winner.reason === 'research' ? ' the research race' : ''}!` : 'Draw!'}</div>`
     : '';
   const notice = m.notice ? `<div class="notice">${esc(m.notice)}</div>` : '';
   return `${turn}${notice}<div class="bars">${bars}</div>${win}`;

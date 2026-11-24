@@ -34,6 +34,10 @@ const SUDDEN_TYPE: readonly Option[] = [
   ['water', 'Rising water'],
   ['drain', 'Health drain'],
 ];
+const MODE: readonly Option[] = [
+  ['elimination', 'Elimination'],
+  ['researchRace', 'Research race'],
+];
 const FALL: readonly Option[] = [
   ['off', 'Off'],
   ['on', 'On'],
@@ -42,6 +46,7 @@ const FALL: readonly Option[] = [
 
 /** The settings the host can change in the lobby, in display order (game-design "Match settings"). */
 export const SETTING_FIELDS: readonly SettingField[] = [
+  { kind: 'select', key: 'mode', label: 'Game mode', options: MODE },
   { kind: 'select', key: 'startingHealth', label: 'Starting health', options: HEALTH },
   { kind: 'select', key: 'wind', label: 'Wind', options: WIND },
   { kind: 'select', key: 'crates', label: 'Crates', options: CRATES },

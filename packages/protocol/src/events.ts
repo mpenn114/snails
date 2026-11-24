@@ -35,6 +35,7 @@ const plain = [
     type: z.literal('matchEnded'),
     status: z.enum(['playing', 'won', 'draw']),
     winnerTeamId: z.string().optional(),
+    reason: z.enum(['research']).optional(),
   }),
   z.object({
     type: z.literal('projectileFired'),

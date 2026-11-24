@@ -99,7 +99,7 @@ Each of these changes the shell visibly (materials; see [snail-visuals.md](snail
 | Great Spiral: Glide | 150 | Free movement; no fall damage; one rope per turn. | Tier 3 Mobility |
 | Great Spiral: Oracle | 150 | See all hidden info; steal 1 queued tech per round. | Tier 3 Utility |
 
-Any capstone completed counts as the objective in Research race.
+Any capstone completed counts as the objective in Research race. Implemented as match setting `mode: 'researchRace'` (forces research on, stores the capstone ids in `state.raceCapstones`; the match ends with `reason: 'research'` on `matchEnded`).
 
 ## How techs change snails and shells
 
