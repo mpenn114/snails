@@ -159,8 +159,8 @@ export interface Team {
    */
   nextSnailIndex: number;
   /**
-   * Weapon stock granted by crates, `weaponId -> extra uses`; absent means none. M4-15 (ammo
-   * and inventory) owns the full model and should adopt this field as the stock counter.
+   * Weapon stock, `weaponId -> uses left`. Initialised at match start from each finite weapon's
+   * `ammo` (infinite weapons are not counted), spent by `fire`, increased by crates.
    */
   inventory?: Record<string, number>;
 }

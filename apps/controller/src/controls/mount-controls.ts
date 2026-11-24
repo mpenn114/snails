@@ -4,13 +4,14 @@ import { DEFAULT_SCREEN_FACING } from './aim-mapping';
 import type { ScreenFacing } from './aim-mapping';
 import { bindAim, bindJoystick } from './gestures';
 import type { Gestures } from './gestures';
+import { trackInventory } from './inventory-tracker';
 import { trackSteering } from './steering';
 import { trackTurns } from './turn-tracker';
 import type { TurnTracker } from './turn-tracker';
 import { formatTimer, isWarning, remainingAt } from './turn-timer';
 import { SLOT_TOP } from '../shell/layers';
-import { buildWeaponTiles, fireLabel } from './weapon-list';
-import type { WeaponLike } from './weapon-list';
+import { buildWeaponTiles, defaultWeaponId, fireLabel, resolveSelection } from './weapon-list';
+import type { InventoryView, WeaponLike } from './weapon-list';
 
 /** Options for `mountControls`. */
 export interface ControlsOptions {
@@ -42,10 +43,11 @@ function renderTiles(
   weapons: readonly WeaponLike[],
   selected: string | null,
   myTurn: boolean,
+  inv: InventoryView | null,
   pick: (id: string) => void,
 ): void {
   grid.replaceChildren();
-  for (const t of buildWeaponTiles(weapons, selected, myTurn)) {
+  for (const t of buildWeaponTiles(weapons, selected, myTurn, inv)) {
     const b = document.createElement('button');
     b.type = 'button';
     b.className = `ctl-tile${t.selected ? ' sel' : ''}`;
@@ -54,6 +56,8 @@ function renderTiles(
     q(b, '.ctl-icon').textContent = t.icon;
     q(b, '.n').textContent = t.name;
     q(b, '.a').textContent = t.ammoLabel;
+    b.title = t.reason;
+    if (t.block) b.dataset.block = t.block;
     b.addEventListener('click', () => pick(t.id));
     grid.appendChild(b);
   }
@@ -120,6 +124,24 @@ function bindGestures(
 }
 
 /**
+ * Resolves the selected weapon against the inventory. When stock hit zero (or a lock applies)
+ * the selection falls back to the default weapon and, on my turn, the server is told.
+ */
+function syncSelection(
+  client: ControllerClient,
+  weapons: readonly WeaponLike[],
+  selected: string | null,
+  inv: InventoryView | null,
+  myTurn: boolean,
+): string | null {
+  const resolved = resolveSelection(weapons, selected, inv);
+  if (resolved !== selected && selected !== null && myTurn && resolved !== null) {
+    client.send({ type: 'selectWeapon', weaponId: resolved });
+  }
+  return resolved;
+}
+
+/**
  * Mounts the in-match controls (HUD timer for everyone; joystick, aim, jump, fire and weapon
  * picker on my turn only). Returns a disposer.
  */
@@ -141,17 +163,21 @@ export function mountControls(
 
   const tracker = trackTurns(client, opts.playerId);
   const sheet = q(root, '.ctl-sheet');
-  let selected: string | null = opts.weapons[0]?.id ?? null;
+  let selected: string | null = defaultWeaponId(opts.weapons, null);
   const fireBtn = q(root, '.ctl-fire');
+  const inventory = trackInventory(client);
   const rebuild = (): void => {
+    const inv = inventory.of(tracker.view.myTeamId);
+    selected = syncSelection(client, opts.weapons, selected, inv, tracker.view.myTurn);
     fireBtn.textContent = fireLabel(opts.weapons.find((w) => w.id === selected));
-    renderTiles(q(root, '.ctl-grid'), opts.weapons, selected, tracker.view.myTurn, (id) => {
+    renderTiles(q(root, '.ctl-grid'), opts.weapons, selected, tracker.view.myTurn, inv, (id) => {
       selected = id;
       client.send({ type: 'selectWeapon', weaponId: id });
       sheet.classList.remove('open');
       rebuild();
     });
   };
+  inventory.onChange(rebuild);
 
   const facing = opts.screenFacing ?? (() => DEFAULT_SCREEN_FACING);
   const steering = trackSteering(client, opts.weapons);
@@ -174,6 +200,7 @@ export function mountControls(
   return () => {
     clearInterval(tick);
     steering.dispose();
+    inventory.dispose();
     off();
     tracker.dispose();
     wired();

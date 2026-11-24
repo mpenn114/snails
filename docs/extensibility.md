@@ -123,6 +123,14 @@ Clients: the protocol snapshot carries `scheduled` (`[id, groupId, x,y,z mm, rad
 - **Destruction.** `damageAround`/`resolveExplosion` call `destroyCratesInRadius`, so any weapon with a `damage` effect (or classic explosion) destroys crates in its radius and emits `crateDestroyed` (reason `explosion`). Crates are not nudged or drifted by explosions or slopes yet, and a projectile passing through one does not hit it.
 - **View.** `render/src/effects/crate-layer.ts` (`CrateLayer`): wooden box with a colour band chosen by the kind word in the definition id, a leaf parachute while falling, and a pooled pop for `crateCollected` / `crateDestroyed`. Protocol: snapshot `crates` (`[id, defId, px, py, pz (mm), grounded]`) and the three events.
 
+## Ammo and inventory
+
+`Team.inventory` (`weaponId -> uses left`) is the single stock counter. `createMatch` fills it per team from each finite weapon's `ammo` (infinite weapons are not counted); the optional `MatchOptions.loadout` (`weaponId -> count`) overrides starting stock (match settings, M4-17, will feed it). `registerCombat` also fills it for states not built by `createMatch`. Firing spends one unit; crates add via `grantWeapons`. Helpers in `combat/inventory.ts`: `initialInventory`, `stockOf`, `isWeaponLocked`, `weaponAvailability` (`'ok' | 'NO_AMMO' | 'WEAPON_LOCKED'`), `consumeStock`.
+
+`fire` is rejected by `validateCommand` (reasons `NO_AMMO`, `WEAPON_LOCKED`, after `NO_USES_LEFT`) and ignored by the handler. `requiresTech` weapons are locked until the team's `researched` contains the tech id (research itself is M5).
+
+The server sends an `inventory` message (`teams: [{ teamId, stock, locked: weaponId -> techId }]`) at match start, to rejoining members, and whenever it changes. The phone picker (`controls/weapon-list.ts`) shows the count (or infinity), greys out empty or locked weapons with a reason, and falls back to the default weapon (an infinite, ungated projectile) when stock hits zero; the server applies the same fallback.
+
 ## Planned: technologies, shell upgrades and hooks
 
 Today `TechnologySchema` and `ShellUpgradeSchema` are flat (see `content/schemas.ts`). The richer shapes below are the design for M5.

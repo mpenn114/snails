@@ -1,3 +1,4 @@
+import { initialInventory } from '../combat/inventory.js';
 import { registerCombat } from '../combat/combat.js';
 import { buildMatchContent, type MatchContent } from '../content/match-content.js';
 import type { ContentRegistry } from '../content/registry.js';
@@ -51,6 +52,12 @@ export interface MatchOptions {
   crates?: CrateDefinition[];
   /** Drop interval and map cap overrides (default every 3 rounds, up to 2). */
   crateRules?: Partial<CrateRules>;
+  /**
+   * Starting stock overrides, `weaponId -> count`, applied to every team (replaces the weapon's
+   * `ammo`; a finite count also limits an otherwise infinite weapon). Match settings (M4-17)
+   * will feed this.
+   */
+  loadout?: Record<string, number>;
 }
 
 /** Result of {@link createMatch}. */
@@ -111,6 +118,9 @@ export function createMatch(options: MatchOptions): MatchSetup {
     teams: buildTeams(options.teams, points),
     terrain: descriptor,
   });
+  for (const team of state.teams) {
+    team.inventory = initialInventory(options.weapons, options.loadout);
+  }
   const content = buildMatchContent(options);
   const weapons = content.weapons;
   const sim = new Simulation({ state, terrain: grid, rng, weapons });

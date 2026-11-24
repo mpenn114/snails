@@ -10,6 +10,8 @@ import {
   type MotionSpec,
   type WeaponLaunchSpec,
   getAim,
+  isWeaponLocked,
+  weaponAvailability,
 } from '@snails/core';
 import {
   encodeEventBatch,
@@ -17,6 +19,7 @@ import {
   type CrateState,
   type DecodedSnapshot,
   type EventBatch,
+  type Inventory,
   type MatchSettings,
   type ScheduledState,
   type Snapshot,
@@ -111,6 +114,7 @@ export class GameSession {
   private readonly cursors = new Map<string, number>();
   private activePlayer: string | undefined;
   private readonly control = new Map<string, TeamControlState>();
+  private readonly defaultWeapon: string;
   private readonly clock: SessionClock;
   private readonly snapshotEvery: number;
   private readonly maxSteps: number;
@@ -133,6 +137,7 @@ export class GameSession {
     const ungated = defs.filter((w) => w.requiresTech === undefined);
     const plain = ungated.find((w) => w.ammo === 'infinite' && w.category === 'projectile');
     const defaultWeapon = (plain ?? ungated[0] ?? defs[0])?.id ?? '';
+    this.defaultWeapon = defaultWeapon;
     for (const t of opts.teams) {
       this.teamPlayers.set(t.id, [...t.playerIds]);
       this.control.set(t.id, { direction: 0, weaponId: defaultWeapon });
@@ -169,6 +174,23 @@ export class GameSession {
         name: t.name,
         colour: t.colour,
         snails: t.snails.map((s) => ({ id: s.id, name: s.name })),
+      })),
+    };
+  }
+
+  /** Every team's weapon stock and tech locks (the `inventory` wire message). */
+  inventoryMessage(): Inventory {
+    const weapons = this.match.weapons.list();
+    return {
+      type: 'inventory',
+      teams: this.match.sim.state.teams.map((t) => ({
+        teamId: t.id,
+        stock: { ...t.inventory },
+        locked: Object.fromEntries(
+          weapons.flatMap((w) =>
+            w.requiresTech !== undefined && isWeaponLocked(t, w) ? [[w.id, w.requiresTech]] : [],
+          ),
+        ),
       })),
     };
   }
@@ -281,6 +303,7 @@ export class GameSession {
     const guiding = intent.type === 'steer' && ['fire', 'resolve'].includes(state.turn.phase);
     if (state.turn.phase !== 'action' && !guiding) return { ok: false, reason: 'wrong_phase' };
     const control = this.control.get(teamId) as TeamControlState;
+    this.fallBackIfUnavailable(teamId, control);
     if (intent.type === 'selectWeapon') return this.selectWeapon(control, intent.weaponId);
     const snail = this.activeSnail();
     if (!snail) return { ok: false, reason: 'no_active_snail' };
@@ -291,9 +314,21 @@ export class GameSession {
   }
 
   private selectWeapon(control: TeamControlState, weaponId: string): IntentResult {
-    if (!this.match.weapons.has(weaponId)) return { ok: false, reason: 'unknown_weapon' };
+    const weapon = this.match.weapons.get(weaponId);
+    if (!weapon) return { ok: false, reason: 'unknown_weapon' };
+    const team = this.match.sim.state.teams.find((t) => t.id === this.activeTeamId);
+    const status = team ? weaponAvailability(team, weapon) : 'ok';
+    if (status !== 'ok') return { ok: false, reason: status.toLowerCase() };
     control.weaponId = weaponId;
     return { ok: true };
+  }
+
+  /** Resets a team's selection to the default weapon when it is empty or locked. */
+  private fallBackIfUnavailable(teamId: string, control: TeamControlState): void {
+    const team = this.match.sim.state.teams.find((t) => t.id === teamId);
+    const weapon = this.match.weapons.get(control.weaponId);
+    if (!team || !weapon || weaponAvailability(team, weapon) === 'ok') return;
+    control.weaponId = this.defaultWeapon;
   }
 
   private activeSnail(): Snail | undefined {

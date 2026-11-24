@@ -7,6 +7,7 @@ import { FIXED_DT, type ProjectileState } from '../physics/ballistics.js';
 import { isGuidable, resolveMotion, type MotionSpec } from '../physics/motion.js';
 import { distance } from '../math/vec3.js';
 import { ropeSystem } from '../rope/rope-system.js';
+import { consumeStock, initialInventory, weaponAvailability } from './inventory.js';
 import { patternOffsets } from './pattern.js';
 import {
   createProjectileSystem,
@@ -176,12 +177,15 @@ export function fireCommandHandler(
     const weapon = content.weapons.get(cmd.weaponId);
     const snail = findSnail(ctx.state, cmd.snailId);
     if (!weapon || !snail || !snail.alive) return;
+    const team = ctx.state.teams.find((t) => t.id === snail.teamId);
+    if (team && weaponAvailability(team, weapon) !== 'ok') return;
     const limit = usesPerTurn(weapon);
     if (limit !== Number.POSITIVE_INFINITY) {
       const uses = (ctx.state.turn.uses ??= {});
       if ((uses[weapon.id] ?? 0) >= limit) return;
       uses[weapon.id] = (uses[weapon.id] ?? 0) + 1;
     }
+    if (team) consumeStock(team, weapon);
     if (weapon.melee) {
       strikeMelee(ctx, content, weapon, snail, weapon.melee.reach);
       if (weapon.endsAction !== false) notifyFired(ctx.state, (e) => ctx.emit(e));
@@ -238,7 +242,8 @@ export function createDetonationHandler(
 
 /**
  * Registers aim/fire handlers and the projectile system (which detonates weapons inline, so
- * effects resolve in the same step as the hit). Call once per simulation. `statuses` and `areas`
+ * effects resolve in the same step as the hit). Call once per simulation. Teams that have no
+ * `inventory` yet are given each weapon's starting `ammo`. `statuses` and `areas`
  * default to empty registries.
  */
 export function registerCombat(
@@ -252,6 +257,10 @@ export function registerCombat(
     areas: registries.areas ?? empty.areas,
     crates: registries.crates ?? empty.crates,
   };
+  // Teams without a stock counter (states not built by `createMatch`) get the weapons' `ammo`.
+  for (const team of sim.state.teams) {
+    team.inventory ??= initialInventory(content.weapons.list());
+  }
   sim.registerCommandHandler('aim', aimCommandHandler);
   sim.registerCommandHandler('fire', fireCommandHandler(content));
   sim.addSystem('rope', ropeSystem());

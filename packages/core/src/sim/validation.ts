@@ -1,5 +1,6 @@
 import type { GameState } from '../state/types.js';
 import { usesPerTurn } from '../combat/combat.js';
+import { weaponAvailability, type StockedWeapon } from '../combat/inventory.js';
 import type { Command } from './types.js';
 
 /** Stable machine-readable codes for why a command was refused. */
@@ -12,6 +13,8 @@ export type RejectionReason =
   | 'UNKNOWN_WEAPON'
   | 'ALREADY_FIRED'
   | 'NO_USES_LEFT'
+  | 'NO_AMMO'
+  | 'WEAPON_LOCKED'
   | 'INVALID_VALUE'
   | 'MATCH_OVER';
 
@@ -24,10 +27,13 @@ export interface ValidationContext {
   /** Weapon registry; when omitted, weapon ids are not checked. */
   weapons?: {
     has(id: string): boolean;
-    /** When present, use-limited weapons are checked against `turn.uses`. */
-    get?(
-      id: string,
-    ): { perTurn?: number | undefined; endsAction?: boolean | undefined } | undefined;
+    /** When present, use-limited weapons, stock and tech locks are checked. */
+    get?(id: string):
+      | (Partial<StockedWeapon> & {
+          perTurn?: number | undefined;
+          endsAction?: boolean | undefined;
+        })
+      | undefined;
   };
   /** Team issuing the command; when omitted, issuer is not checked. */
   issuerTeamId?: string;
@@ -68,6 +74,22 @@ function checkValues(cmd: Command): ValidationResult {
       return reject('INVALID_VALUE', 'input must be within -1..1');
     }
   }
+  return OK;
+}
+
+function checkStock(
+  state: GameState,
+  snailId: string,
+  weaponId: string,
+  def: Partial<StockedWeapon> | undefined,
+): ValidationResult {
+  if (def?.ammo === undefined) return OK;
+  const team = state.teams.find((t) => t.snails.some((s) => s.id === snailId));
+  if (!team) return OK;
+  const weapon = { id: weaponId, ammo: def.ammo, requiresTech: def.requiresTech };
+  const status = weaponAvailability(team, weapon);
+  if (status === 'WEAPON_LOCKED') return reject(status, `${weaponId} is locked (needs research)`);
+  if (status === 'NO_AMMO') return reject(status, `${weaponId} is out of ammo`);
   return OK;
 }
 
@@ -113,6 +135,8 @@ export function validateCommand(
     if (def && (turn.uses?.[cmd.weaponId] ?? 0) >= usesPerTurn(def)) {
       return reject('NO_USES_LEFT', `${cmd.weaponId} has no uses left this turn`);
     }
+    const stock = checkStock(state, cmd.snailId, cmd.weaponId, def);
+    if (!stock.ok) return stock;
   }
   return OK;
 }

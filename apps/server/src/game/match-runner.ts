@@ -51,6 +51,7 @@ export function buildTeams(members: readonly Member[]): SessionTeam[] {
 export class MatchRunner implements ActiveMatch {
   private readonly session: GameSession;
   private latest: ServerMessage | null = null;
+  private lastInventory = '';
   private readonly lastReject = new Map<string, number>();
   private pendingAim: { msg: ServerMessage; from: string } | null = null;
   private aimTimer: unknown = null;
@@ -78,6 +79,7 @@ export class MatchRunner implements ActiveMatch {
       onSnapshot: (s) => {
         this.latest = s;
         this.broadcast(s);
+        this.broadcastInventory();
       },
       onEvents: (b) => this.broadcast(b),
       onTurnStart: (i) => {
@@ -90,6 +92,7 @@ export class MatchRunner implements ActiveMatch {
     this.latest = this.session.snapshot();
     this.broadcast(this.session.matchStartedMessage());
     this.broadcast(this.latest);
+    this.broadcastInventory();
     this.session.start();
   }
 
@@ -97,6 +100,7 @@ export class MatchRunner implements ActiveMatch {
   catchUp(member: Member): void {
     member.send(this.session.matchStartedMessage());
     member.send(this.session.snapshot());
+    member.send(this.session.inventoryMessage());
     const turn = this.session.currentTurn();
     if (!turn) return;
     member.send({ type: 'turnStart', ...turn.info });
@@ -180,6 +184,15 @@ export class MatchRunner implements ActiveMatch {
     if (this.aimTimer !== null) (this.opts.clearTimeout ?? clearTimeout)(this.aimTimer as never);
     this.aimTimer = null;
     this.pendingAim = null;
+  }
+
+  /** Broadcasts the inventory when it differs from the last one sent. */
+  private broadcastInventory(): void {
+    const msg = this.session.inventoryMessage();
+    const key = JSON.stringify(msg);
+    if (key === this.lastInventory) return;
+    this.lastInventory = key;
+    this.broadcast(msg);
   }
 
   private broadcast(msg: ServerMessage): void {

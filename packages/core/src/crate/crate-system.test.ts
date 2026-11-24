@@ -230,8 +230,8 @@ describe('crate pickup', () => {
     putCrate(m, SUPPLY.id, snail.position);
     putCrate(m, SUPPLY.id, snail.position);
     m.sim.step();
-    expect(m.sim.state.teams[0]?.inventory).toEqual({ 'test:pebble-toss': 6 });
-    expect(m.sim.state.teams[1]?.inventory).toBeUndefined();
+    expect(m.sim.state.teams[0]?.inventory?.['test:pebble-toss']).toBe(6);
+    expect(m.sim.state.teams[1]?.inventory?.['test:pebble-toss']).toBeUndefined();
   });
 
   it('mystery crates roll the crates RNG: deterministic, never lethal, whole table reachable', () => {

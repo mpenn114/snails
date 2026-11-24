@@ -42,6 +42,12 @@ function setup(victimAt: Vec3 = { x: 40, y: 6, z: 36 }): Simulation {
     statuses: registries.statuses.list(),
     areas: registries.areas.list(),
   });
+  // Gated weapons are locked until researched (M4-15); research everything for these tests.
+  for (const t of state.teams) {
+    t.researched = registries.weapons
+      .list()
+      .flatMap((w) => (w.requiresTech ? [w.requiresTech] : []));
+  }
   const sim = new Simulation({ state, terrain: grid, rng: new RngStreams(1) });
   registerCombat(sim, content);
   registerLingeringEffects(sim, content);
