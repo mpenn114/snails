@@ -22,6 +22,8 @@ jobs:
       - run: pnpm check-limits
       - run: pnpm test:coverage
       - run: pnpm build
+      # AI regression gate (docs/ai.md): reuses the build above, so no sim:ai rebuild.
+      - run: pnpm sim:ai:run --gate
   e2e:
     needs: ci
     runs-on: ubuntu-latest
