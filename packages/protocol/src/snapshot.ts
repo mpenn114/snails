@@ -68,6 +68,8 @@ export type WireTeamResearch = z.infer<typeof WireTeamResearch>;
 export const WireTeamEntry = z.object({
   id: z.string(),
   researching: z.boolean().optional(),
+  /** Completed tech ids (public; absent = none). */
+  researched: z.array(z.string()).optional(),
   research: WireTeamResearch.optional(),
 });
 /** Per-team research entry. */

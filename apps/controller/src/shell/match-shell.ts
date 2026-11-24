@@ -1,5 +1,5 @@
 import type { ControlMode } from '@snails/protocol';
-import { weapons } from '@snails/content-base';
+import { technologies, weapons } from '@snails/content-base';
 import { createAimStore } from '../controls/aim-store';
 import { mountControls } from '../controls/mount-controls';
 import { trackScreenFacing } from '../controls/facing-tracker';
@@ -10,6 +10,7 @@ import { mountSpectate } from '../spectate/spectate-view';
 import { mountPassPhone, shouldPassPhone } from '../ui/pass-phone';
 import { lobbyErrorText, playerTeams } from '../ui/lobby-logic';
 import { mountLobbyView } from '../ui/lobby-view';
+import { mountResearch } from '../research/mount-research';
 import { mountPhoneView } from '../view/mount-phone-view';
 import { SHELL_CSS, SLOT_LEFT, SLOT_RIGHT, SLOT_TOP, Z } from './layers';
 import type { LayerName } from './layers';
@@ -67,6 +68,7 @@ function mountSession(client: ControllerClient, screen: HTMLElement, playerId: s
   const disposeFeedback = mountFeedback(banners, client, playerId);
   let lobby = showLobby();
   const pass = mountPassPhone(modal);
+  const disposeResearch = mountResearch(modal, client, playerId, technologies);
 
   let myTeams: readonly string[] = [];
   let mode: ControlMode = 'perPlayer';
@@ -91,6 +93,7 @@ function mountSession(client: ControllerClient, screen: HTMLElement, playerId: s
   return () => {
     offs.forEach((off) => off());
     pass.destroy();
+    disposeResearch();
     disposeFeedback();
     disposeSpectate();
     disposeControls();

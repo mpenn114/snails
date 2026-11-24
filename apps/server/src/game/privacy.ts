@@ -17,6 +17,7 @@ export function researchFields(
   const teams: WireTeamEntry[] = state.teams.map((t) => ({
     id: t.id,
     researching: t.research?.active != null,
+    ...(t.researched.length > 0 ? { researched: [...t.researched] } : {}),
     ...(t.research ? { research: structuredClone(t.research) } : {}),
   }));
   return { research: state.research, teams };
@@ -42,7 +43,11 @@ export function filterSnapshot(snap: Snapshot, viewerTeams: readonly string[]): 
     ...snap,
     teams: snap.teams.map((t) => {
       if (!t.research || viewerTeams.includes(t.id)) return t;
-      return { id: t.id, ...(t.researching === undefined ? {} : { researching: t.researching }) };
+      return {
+        id: t.id,
+        ...(t.researching === undefined ? {} : { researching: t.researching }),
+        ...(t.researched === undefined ? {} : { researched: t.researched }),
+      };
     }),
   };
 }

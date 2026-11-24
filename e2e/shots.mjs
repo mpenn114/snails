@@ -74,6 +74,18 @@ async function settled(page) {
   }
 }
 
+/** Opens the research screen on the phone and saves its screenshot. */
+async function researchShot(active) {
+  await active.locator('button.shell-btn', { hasText: 'Research' }).click();
+  await active.waitForSelector('.rs.open .rs-card', { timeout: 30000 });
+  await active.screenshot({ path: join(out, 'phone-research.png'), timeout: SHOT_TIMEOUT });
+  captions.push({
+    file: 'phone-research.png',
+    caption: 'Phone 390x844: research screen (Calcium, queue, four-branch tech tree)',
+  });
+  step('saved phone-research.png');
+}
+
 async function phoneShot(browser, base, errors) {
   const mk = () =>
     browser.newContext({
@@ -131,6 +143,7 @@ async function phoneShot(browser, base, errors) {
     caption: 'Phone 390x844, Mobile tier: in-match view on own turn (live match, random seed)',
   });
   step('saved phone-my-turn.png');
+  await researchShot(active);
   await dctx.close();
 }
 
