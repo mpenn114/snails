@@ -182,8 +182,8 @@ the MG-03 harness to its PR. After the first round looked poor, MG-13 to MG-15 s
 | M4-14 | Crates and pickups (drop rules, health, ammo, weapon crates) | core | M4-01, M1-20 | ✅ |
 | M4-15 | Ammo and inventory model plus phone weapon picker integration | core | M4-04, M3-22 | ✅ |
 | M4-16 | Terrain materials (dirt, rock, sand) with differing carve resistance | core | M4-01, M1-05 | ✅ |
-| M4-17 | Match settings model and Classic mode complete | core | M4-14, M3-18 | ⬜ |
-| M4-18 | Sudden death (rising water or health drain) | core | M4-17 | ⬜ |
+| M4-17 | Match settings model and Classic mode complete | core | M4-14, M3-18 | ✅ |
+| M4-18 | Sudden death (rising water or health drain) | core | M4-17 | ✅ |
 | M4-19 | Per-weapon simulation tests and a playable demo map with every weapon | content | M4-05, M4-06, M4-07, M4-08, M4-09, M4-10, M4-11, M4-12 | ⬜ |
 | M4-20 | Extensibility walkthrough verification: add a weapon with only a data file | docs | M4-19 | ⬜ |
 | M4-21 | Two-axis snail movement: turn/steer as well as crawl, deterministic and replayable (playtest #9) | core | M1-09, M3-21 | ✅ |
