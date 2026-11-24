@@ -16,6 +16,7 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
+    "@snails/core": "workspace:*",
     "zod": "^3.23.8"
   }
 }

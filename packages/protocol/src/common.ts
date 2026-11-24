@@ -1,3 +1,4 @@
+import { MatchSettingsSchema } from '@snails/core';
 import { z } from 'zod';
 
 /** Machine-readable error codes carried by the server `error` message. */
@@ -31,18 +32,21 @@ export const ControlMode = z.enum(['perPlayer', 'hotSeat']);
 /** Control mode type. */
 export type ControlMode = z.infer<typeof ControlMode>;
 
-/** Match settings chosen by the host. */
-export const MatchSettings = z.object({
-  /** Seconds each turn lasts. */
-  turnTimeSeconds: z.number().int().min(10).max(120),
-  snailsPerTeam: z.number().int().min(1).max(8),
+/**
+ * Match settings chosen by the host: core's gameplay `MatchSettingsSchema` (the single source of
+ * truth for ranges and defaults) plus the lobby-only fields. Missing gameplay fields default to
+ * Classic, so a client that sends only a few of them still parses.
+ */
+export const MatchSettings = MatchSettingsSchema.extend({
   /** Terrain and simulation seed (uint32). */
-  seed: z.number().int().min(0).max(0xffffffff),
+  seed: z.number().int().min(0).max(0xffffffff).default(1),
   /** `perPlayer` (default): each phone is bound to its own team; `hotSeat`: phones may serve several teams. */
   controlMode: ControlMode.default('perPlayer'),
 });
 /** Match settings type. */
 export type MatchSettings = z.infer<typeof MatchSettings>;
+/** Match settings as a client may send them: every defaulted field optional. */
+export type MatchSettingsInput = z.input<typeof MatchSettings>;
 
 /** Terrain generator parameters (mirrors core's TerrainGenConfig; lengths in metres). */
 export const TerrainParams = z.object({

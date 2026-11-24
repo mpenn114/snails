@@ -59,7 +59,14 @@ export interface ConnectionOptions {
 
 /** Websocket close code for policy violations. */
 const POLICY = 1008;
-const LOBBY_TYPES = new Set(['setTeam', 'toggleTeam', 'setColour', 'setReady', 'startMatch']);
+const LOBBY_TYPES = new Set([
+  'setTeam',
+  'toggleTeam',
+  'setColour',
+  'setReady',
+  'setSettings',
+  'startMatch',
+]);
 const INTENT_TYPES = new Set([
   'move',
   'jump',

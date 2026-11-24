@@ -30,5 +30,9 @@ describe('hudHtml', () => {
   });
   it('has no turn banner without a match', () => {
     expect(hudHtml(EMPTY_HUD)).not.toContain('class="turn"');
+    expect(hudHtml(EMPTY_HUD)).not.toContain('class="notice"');
+    expect(hudHtml({ ...EMPTY_HUD, notice: 'Sudden death! <b>' })).toContain(
+      '<div class="notice">Sudden death! &lt;b&gt;</div>',
+    );
   });
 });

@@ -42,3 +42,26 @@ export function evaluateTurnLimit(state: GameState, maxTurns: number | undefined
   if (!best || tied) return { status: 'draw', winnerTeamId: null };
   return { status: 'won', winnerTeamId: best.id };
 }
+
+/**
+ * Draw rule for a simultaneous elimination (no team has a living snail): the team that dealt
+ * the most damage to other teams during the final turn (`state.turn.damageDealt`) wins; a tie
+ * for most, or no damage at all, is a draw. Any other status passes through unchanged.
+ */
+export function resolveDraw(state: GameState, status: MatchStatus): MatchStatus {
+  if (status.status !== 'draw') return status;
+  let best: string | null = null;
+  let bestDamage = 0;
+  let tied = false;
+  for (const [teamId, damage] of Object.entries(state.turn.damageDealt ?? {})) {
+    if (damage > bestDamage) {
+      best = teamId;
+      bestDamage = damage;
+      tied = false;
+    } else if (damage === bestDamage && damage > 0) {
+      tied = true;
+    }
+  }
+  if (best === null || tied) return status;
+  return { status: 'won', winnerTeamId: best };
+}

@@ -21,7 +21,8 @@ export function hudHtml(m: HudModel): string {
   const win = m.winner
     ? `<div class="winner">${m.winner.name ? `${esc(m.winner.name)} wins!` : 'Draw!'}</div>`
     : '';
-  return `${turn}<div class="bars">${bars}</div>${win}`;
+  const notice = m.notice ? `<div class="notice">${esc(m.notice)}</div>` : '';
+  return `${turn}${notice}<div class="bars">${bars}</div>${win}`;
 }
 
 /** Thin DOM HUD overlay on top of the canvas. */

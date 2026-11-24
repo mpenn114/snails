@@ -159,8 +159,9 @@ export const AreaSchema = z
     drowns: z.boolean().optional(),
     /**
      * Makes the area a body of water: on spawn its centre settles to the lowest terrain within
-     * its radius and the surface (`position.y`) is `waterDepth` metres above that point. With
-     * `drowns`, only snails whose centre is below the surface drown.
+     * its radius and the surface (`position.y`) is `waterDepth` metres above that point, capped at
+     * the lowest point of the rim (so flat ground only gets a thin film). With `drowns`, only
+     * snails whose centre is below the surface drown.
      */
     waterDepth: pos.optional(),
     /** Status ids removed from snails touching the area (water puts out salt). */

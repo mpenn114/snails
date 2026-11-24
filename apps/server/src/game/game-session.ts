@@ -17,7 +17,8 @@ import {
   type CrateState,
   type DecodedSnapshot,
   type EventBatch,
-  type MatchSettings,
+  MatchSettings,
+  type MatchSettingsInput,
   type ScheduledState,
   type Snapshot,
   type TerrainParams,
@@ -70,7 +71,7 @@ export interface SessionCallbacks {
 
 /** Options for {@link GameSession}. */
 export interface GameSessionOptions extends SessionCallbacks {
-  settings: MatchSettings;
+  settings: MatchSettingsInput;
   teams: SessionTeam[];
   terrain?: Partial<TerrainParams>;
   weapons?: WeaponDefinition[];
@@ -107,6 +108,7 @@ const realClock: SessionClock = {
 export class GameSession {
   private readonly match: MatchSetup;
   private readonly terrainParams: TerrainParams;
+  private readonly settings: MatchSettings;
   private readonly teamPlayers = new Map<string, string[]>();
   private readonly cursors = new Map<string, number>();
   private activePlayer: string | undefined;
@@ -123,6 +125,7 @@ export class GameSession {
 
   /** @throws Error if the terrain cannot host all snails. */
   constructor(private readonly opts: GameSessionOptions) {
+    this.settings = MatchSettings.parse(opts.settings);
     this.clock = opts.clock ?? realClock;
     this.snapshotEvery = Math.max(1, Math.round(1 / (FIXED_DT * (opts.snapshotHz ?? 20))));
     this.maxSteps = Math.max(1, opts.maxStepsPerFrame ?? 8);
@@ -138,9 +141,10 @@ export class GameSession {
       this.control.set(t.id, { direction: 0, weaponId: defaultWeapon });
     }
     this.match = createMatch({
-      seed: opts.settings.seed,
+      seed: this.settings.seed,
       terrain: this.terrainParams,
-      turn: { actionDuration: opts.settings.turnTimeSeconds },
+      settings: this.settings,
+      winds: content.winds.list(),
       weapons: defs,
       statuses: content.statuses.list(),
       areas: content.areas.list(),
@@ -150,7 +154,7 @@ export class GameSession {
         name: t.name,
         colour: t.colour,
         snailNames: Array.from(
-          { length: opts.settings.snailsPerTeam },
+          { length: this.settings.snailsPerTeam },
           (_, i) => `${t.name} ${i + 1}`,
         ),
       })),
@@ -161,9 +165,9 @@ export class GameSession {
   matchStartedMessage(): MatchStartedPayload {
     return {
       type: 'matchStarted',
-      seed: this.opts.settings.seed,
+      seed: this.settings.seed,
       terrain: this.terrainParams,
-      settings: this.opts.settings,
+      settings: this.settings,
       teams: this.match.sim.state.teams.map((t) => ({
         id: t.id,
         name: t.name,
@@ -229,7 +233,7 @@ export class GameSession {
       info: {
         teamId: turn.activeTeamId,
         snailId: turn.activeSnailId,
-        durationMs: this.opts.settings.turnTimeSeconds * 1000,
+        durationMs: this.settings.turnTimeSeconds * 1000,
         ...(this.activePlayer ? { activePlayerId: this.activePlayer } : {}),
       },
       remainingMs:
@@ -275,7 +279,7 @@ export class GameSession {
       return { ok: false, reason: 'unknown_player' };
     if (this.ended || state.match.status !== 'playing') return { ok: false, reason: 'match_over' };
     const roster = teamId ? (this.teamPlayers.get(teamId) ?? []) : [];
-    const mode = this.opts.settings.controlMode;
+    const mode = this.settings.controlMode;
     if (!teamId || !mayCommandTurn(mode, roster, this.activePlayer, playerId))
       return { ok: false, reason: 'not_your_turn' };
     const guiding = intent.type === 'steer' && ['fire', 'resolve'].includes(state.turn.phase);
@@ -321,7 +325,7 @@ export class GameSession {
     this.opts.onTurnStart?.({
       teamId: turn.activeTeamId,
       snailId: turn.activeSnailId,
-      durationMs: this.opts.settings.turnTimeSeconds * 1000,
+      durationMs: this.settings.turnTimeSeconds * 1000,
       ...(pick.playerId ? { activePlayerId: pick.playerId } : {}),
     });
   }
@@ -414,6 +418,7 @@ export class GameSession {
       })),
       scheduled: wireScheduled(s.scheduled),
       crates: wireCrates(s.crates),
+      waterLevel: s.terrain.waterLevel,
     };
   }
 }

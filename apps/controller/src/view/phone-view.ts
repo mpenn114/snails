@@ -137,6 +137,7 @@ export class PhoneView {
         seed: msg.seed,
         teams: msg.teams,
         terrain: msg.terrain,
+        initialMaxHealth: msg.settings.startingHealth,
       });
       r.init(buildTerrainInit(msg.seed, msg.terrain));
       this.startOverlay(r, msg.teams);

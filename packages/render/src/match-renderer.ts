@@ -294,6 +294,9 @@ export class MatchRenderer {
     add(b.scheduled.updater);
     add(b.crates.updater);
     add(b.explosions.updater);
+    add((_dt, s) => {
+      if (s) b.view.water?.setLevel(s.snapshot.terrain.waterLevel);
+    });
     add(b.splashes.updater);
     add((dt) => b.material.scorch.advance(dt));
     add(b.wind.updater);

@@ -1,5 +1,6 @@
 import { TEAM_COLORS, hexToCss } from '@snails/render';
-import type { ControlMode, ErrorCode, LobbyPlayer, MatchSettings } from '@snails/protocol';
+import { MatchSettings } from '@snails/protocol';
+import type { ControlMode, ErrorCode, LobbyPlayer, MatchSettingsInput } from '@snails/protocol';
 
 /** Selectable team ids. */
 export const TEAMS = ['A', 'B', 'C', 'D'] as const;
@@ -7,7 +8,7 @@ export const TEAMS = ['A', 'B', 'C', 'D'] as const;
 /** Selectable colour palette (CSS hex). */
 export const PALETTE: readonly string[] = TEAM_COLORS.map(hexToCss);
 
-/** Allowed ranges for host settings (mirrors the protocol schema). */
+/** Ranges of the typed host inputs (a subset of the protocol schema, which `settingsError` also checks). */
 export const SETTINGS_LIMITS = {
   turnTimeSeconds: { min: 10, max: 120 },
   snailsPerTeam: { min: 1, max: 8 },
@@ -58,7 +59,7 @@ export function canStart(
   players: readonly LobbyPlayer[],
   hostId: string | null,
   meId: string,
-  settings: MatchSettings,
+  settings: MatchSettingsInput,
 ): boolean {
   return (
     hostId === meId &&
@@ -72,21 +73,19 @@ export function canStart(
  * @param s settings to check
  * @returns a message, or `undefined` when valid
  */
-export function settingsError(s: MatchSettings): string | undefined {
+export function settingsError(s: MatchSettingsInput): string | undefined {
   const t = SETTINGS_LIMITS.turnTimeSeconds;
   const n = SETTINGS_LIMITS.snailsPerTeam;
-  if (
-    !Number.isInteger(s.turnTimeSeconds) ||
-    s.turnTimeSeconds < t.min ||
-    s.turnTimeSeconds > t.max
-  )
+  const turn = s.turnTimeSeconds ?? Number.NaN;
+  const snails = s.snailsPerTeam ?? Number.NaN;
+  const seed = s.seed ?? Number.NaN;
+  if (!Number.isInteger(turn) || turn < t.min || turn > t.max)
     return `Turn time must be ${t.min}-${t.max} seconds`;
-  if (!Number.isInteger(s.snailsPerTeam) || s.snailsPerTeam < n.min || s.snailsPerTeam > n.max)
+  if (!Number.isInteger(snails) || snails < n.min || snails > n.max)
     return `Snails per team must be ${n.min}-${n.max}`;
-  if (!Number.isInteger(s.seed) || s.seed < 0 || s.seed > 0xffffffff)
-    return 'Seed must be 0-4294967295';
+  if (!Number.isInteger(seed) || seed < 0 || seed > 0xffffffff) return 'Seed must be 0-4294967295';
   if (s.controlMode !== 'perPlayer' && s.controlMode !== 'hotSeat') return 'Unknown control mode';
-  return undefined;
+  return MatchSettings.safeParse(s).success ? undefined : 'Invalid match settings';
 }
 
 /**

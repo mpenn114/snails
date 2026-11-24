@@ -1,8 +1,8 @@
 import { destroyCratesInRadius } from '../crate/crate-destroy.js';
-import { applyDamage, livingSnails } from '../entities/snail.js';
+import { applyDamage, findSnail, livingSnails } from '../entities/snail.js';
 import { distance, normalize, sub } from '../math/vec3.js';
 import type { SimContext } from '../sim/types.js';
-import type { Vec3 } from '../state/types.js';
+import type { Snail, Vec3 } from '../state/types.js';
 import { type CarveResult, carveSphere, toCarveEvent } from '../terrain/carve.js';
 import { resolveCollapse } from '../terrain/collapse.js';
 import { SNAIL_RADIUS } from './projectile-system.js';
@@ -97,6 +97,13 @@ export function carveAt(
   return carve;
 }
 
+/** True when friendly fire is off and `snail` is a teammate (not the firer itself) of the source. */
+function friendlyFireOff(ctx: SimContext, snail: Snail, source: ExplosionSource): boolean {
+  if (ctx.state.rules?.friendlyFire !== false || snail.id === source.ownerSnailId) return false;
+  const owner = findSnail(ctx.state, source.ownerSnailId);
+  return owner !== undefined && owner.teamId === snail.teamId;
+}
+
 /** Damage part of an explosion. */
 export type DamageSpec = Pick<ExplosionSpec, 'radius' | 'maxDamage' | 'knockback' | 'falloff'>;
 
@@ -127,7 +134,8 @@ export function damageAround(
     const dist = Math.max(0, distance(centre, snail.position) - SNAIL_RADIUS);
     const f = computeFalloff(dist, spec.radius, spec.falloff);
     if (f <= 0) continue;
-    const result = applyDamage(snail, Math.round(spec.maxDamage * f));
+    const friendly = friendlyFireOff(ctx, snail, source);
+    const result = applyDamage(snail, friendly ? 0 : Math.round(spec.maxDamage * f));
     const dir = knockbackDir(centre, snail.position);
     const speed = spec.knockback * f;
     snail.velocity = {

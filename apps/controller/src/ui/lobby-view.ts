@@ -1,6 +1,8 @@
-import type { ClientMessage, ControlMode, MatchSettings } from '@snails/protocol';
+import { MatchSettings } from '@snails/protocol';
+import type { ClientMessage, ControlMode, MatchSettingsInput } from '@snails/protocol';
 import { choiceHtml, rosterHtml } from './lobby-html';
 import type { LobbyStateMsg } from './lobby-html';
+import { paintSettingFields, readSettingFields, settingsFieldsHtml } from './settings-form';
 import {
   PALETTE,
   TEAMS,
@@ -33,13 +35,24 @@ const SKELETON = `<h1>Lobby <span class="room"></span></h1>
     <label>Controls <select class="mode">
       <option value="perPlayer">One phone per player</option>
       <option value="hotSeat">Hot-seat (shared phone)</option></select></label>
-    <button class="random" type="button">Random seed</button></fieldset>
+    <button class="random" type="button">Random seed</button>
+    <div class="more"></div></fieldset>
   <button class="start primary" type="button">Start match</button>
   <p class="status" role="status"></p>`;
 
-/** Reads host settings from the three inputs (NaN when blank or invalid). */
-function readSettings(inputs: readonly HTMLInputElement[], mode: ControlMode): MatchSettings {
+/**
+ * Reads host settings: the form's fields on top of the last settings the server sent (so values
+ * the form cannot show are kept), then the three numeric inputs (NaN when blank or invalid).
+ */
+function readSettings(
+  el: ParentNode,
+  inputs: readonly HTMLInputElement[],
+  mode: ControlMode,
+  base: MatchSettings | undefined,
+): MatchSettingsInput {
   return {
+    ...base,
+    ...readSettingFields(el),
     controlMode: mode,
     turnTimeSeconds: parseIntField(inputs[0]!.value),
     snailsPerTeam: parseIntField(inputs[1]!.value),
@@ -49,11 +62,13 @@ function readSettings(inputs: readonly HTMLInputElement[], mode: ControlMode): M
 
 /** Fills the settings inputs from the server defaults; returns true. */
 function seedInputs(
+  el: ParentNode,
   inputs: readonly HTMLInputElement[],
   mode: HTMLSelectElement,
   s: MatchSettings,
 ): boolean {
   mode.value = s.controlMode;
+  paintSettingFields(el, s);
   inputs[0]!.value = String(s.turnTimeSeconds);
   inputs[1]!.value = String(s.snailsPerTeam);
   inputs[2]!.value = String(s.seed);
@@ -75,7 +90,7 @@ function paintLobby(q: Query, s: LobbyStateMsg, meId: string): void {
 }
 
 /** Shows host-only controls and enables Start / explains what blocks it. */
-function paintStart(q: Query, s: LobbyStateMsg, meId: string, settings: MatchSettings): void {
+function paintStart(q: Query, s: LobbyStateMsg, meId: string, settings: MatchSettingsInput): void {
   const isHost = s.hostId === meId;
   q('.settings').toggleAttribute('hidden', !isHost);
   q('.start').toggleAttribute('hidden', !isHost);
@@ -83,6 +98,16 @@ function paintStart(q: Query, s: LobbyStateMsg, meId: string, settings: MatchSet
   if (isHost)
     q('.status').textContent =
       startBlocker(s.players, settings.controlMode) ?? settingsError(settings) ?? '';
+}
+
+/** Live-publishes the host's valid edits so the display shows them; other players' edits are ignored. */
+function pushSettings(
+  edited: MatchSettingsInput,
+  isHost: boolean,
+  send: (m: ClientMessage) => void,
+): void {
+  if (isHost && settingsError(edited) === undefined)
+    send({ type: 'setSettings', settings: MatchSettings.parse(edited) });
 }
 
 /**
@@ -107,7 +132,9 @@ export function mountLobbyView(
   const [modeSel, multi] = [q<HTMLSelectElement>('.mode'), q<HTMLInputElement>('.multi')];
   let last: LobbyStateMsg | undefined;
   let seeded = false;
-  const settings = (): MatchSettings => readSettings(inputs, modeSel.value as ControlMode);
+  q('.more').innerHTML = settingsFieldsHtml();
+  const settings = (): MatchSettingsInput =>
+    readSettings(el, inputs, modeSel.value as ControlMode, last?.settings);
   const refreshStart = (): void => {
     if (!last) return;
     paintStart(q, last, meId, settings());
@@ -115,8 +142,7 @@ export function mountLobbyView(
   el.addEventListener('click', (e) => {
     const t = (e.target as HTMLElement).closest('button');
     if (!t || !last) return;
-    const v = t.dataset['v'];
-    const kind = t.parentElement?.className.replace('row ', '');
+    const [v, kind] = [t.dataset['v'], t.parentElement?.className.replace('row ', '')];
     if (kind === 'teams' && v) send({ type: multi.checked ? 'toggleTeam' : 'setTeam', teamId: v });
     else if (kind === 'colours' && v) send({ type: 'setColour', colour: v });
     else if (t.classList.contains('ready'))
@@ -128,18 +154,20 @@ export function mountLobbyView(
       t.classList.contains('start') &&
       canStart(last.players, last.hostId, meId, settings())
     )
-      send({ type: 'startMatch', settings: settings() });
+      send({ type: 'startMatch', settings: MatchSettings.parse(settings()) });
   });
   for (const input of inputs) input.addEventListener('input', refreshStart);
-  modeSel.addEventListener('change', () => {
+  el.addEventListener('change', (e) => {
+    if (!(e.target as HTMLElement).closest('.settings')) return;
     if (modeSel.value === 'hotSeat') multi.checked = true;
     refreshStart();
+    pushSettings(settings(), last?.hostId === meId, send);
   });
 
   return {
     update: (s) => {
       last = s;
-      if (!seeded) seeded = seedInputs(inputs, modeSel, s.settings);
+      if (!seeded) seeded = seedInputs(el, inputs, modeSel, s.settings);
       paintLobby(q, s, meId);
       refreshStart();
     },

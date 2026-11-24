@@ -1,4 +1,4 @@
-import type { LobbyPlayer, MatchSettings } from '@snails/protocol';
+import { MatchSettings, type LobbyPlayer, type MatchSettingsInput } from '@snails/protocol';
 
 /** Subset of `GET /api/info` the display needs. */
 export interface InfoLike {
@@ -65,8 +65,33 @@ export function groupByTeam(players: readonly LobbyPlayer[]): TeamGroup[] {
  * One-line settings summary for the TV.
  * @param s current match settings
  */
-export function settingsSummary(s: MatchSettings): string {
-  return `${s.turnTimeSeconds}s turns, ${s.snailsPerTeam} snails per team, seed ${s.seed}`;
+export function settingsSummary(s: MatchSettingsInput): string {
+  const m = MatchSettings.parse(s);
+  return `${m.turnTimeSeconds}s turns, ${m.snailsPerTeam} snails per team, seed ${m.seed}`;
+}
+
+const cap = (word: string): string => word.charAt(0).toUpperCase() + word.slice(1);
+
+/**
+ * The compact settings panel of the lobby: one `[label, value]` chip per rule the host can change.
+ * @param s current match settings
+ */
+export function settingsChips(s: MatchSettingsInput): [label: string, value: string][] {
+  const m = MatchSettings.parse(s);
+  const sudden =
+    m.suddenDeathRound === null
+      ? 'Off'
+      : `Round ${m.suddenDeathRound}, ${{ water: 'rising water', drain: 'health drain', both: 'water and drain' }[m.suddenDeathType]}`;
+  return [
+    ['Turn', `${m.turnTimeSeconds} s${m.lazyStart ? ' (lazy start)' : ''}`],
+    ['Snails', `${m.snailsPerTeam} per team`],
+    ['Health', String(m.startingHealth)],
+    ['Wind', cap(m.wind)],
+    ['Crates', cap(m.crates)],
+    ['Sudden death', sudden],
+    ['Fall damage', cap(m.fallDamage)],
+    ['Friendly fire', m.friendlyFire ? 'On' : 'Off'],
+  ];
 }
 
 /**

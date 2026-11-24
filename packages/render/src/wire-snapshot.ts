@@ -49,7 +49,7 @@ export class WireSnapshotMapper {
       tick: s.tick,
       seed: this.info.seed,
       wind: { ...s.wind },
-      terrain: { ...this.info.terrain },
+      terrain: { ...this.info.terrain, waterLevel: s.waterLevel ?? this.info.terrain.waterLevel },
       teams,
       turn: {
         ...s.turn,

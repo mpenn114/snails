@@ -95,7 +95,7 @@ export class SplashEffects {
   private readonly drops: InstancedChunks;
   private readonly projectiles = new SplashTracker();
   private readonly snails = new SplashTracker();
-  private readonly level: number;
+  private level: number;
   private readonly quality: number;
   private readonly random: () => number;
   private next = 0;
@@ -125,7 +125,10 @@ export class SplashEffects {
     });
     this.group.add(this.drops.mesh);
     this.updater = (dt, state) => {
-      if (state) this.detect(state);
+      if (state) {
+        this.level = state.snapshot.terrain.waterLevel;
+        this.detect(state);
+      }
       this.advance(dt);
     };
   }

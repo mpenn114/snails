@@ -23,6 +23,8 @@ export const SetTeam = z.object({ type: z.literal('setTeam'), teamId: TeamId });
 export const ToggleTeam = z.object({ type: z.literal('toggleTeam'), teamId: TeamId });
 export const SetColour = z.object({ type: z.literal('setColour'), colour: Colour });
 export const SetReady = z.object({ type: z.literal('setReady'), ready: z.boolean() });
+/** Host-only: changes the lobby's match settings (shown live on the display). */
+export const SetSettings = z.object({ type: z.literal('setSettings'), settings: MatchSettings });
 export const StartMatch = z.object({ type: z.literal('startMatch'), settings: MatchSettings });
 
 /**
@@ -74,6 +76,7 @@ export const ClientMessage = z.discriminatedUnion('type', [
   ToggleTeam,
   SetColour,
   SetReady,
+  SetSettings,
   StartMatch,
   Move,
   Jump,

@@ -54,7 +54,9 @@ Snails are slow and committed.
 - **Fall damage:** Free falls up to 3 m are harmless. Beyond that: 4 damage per extra metre, cap 40.
   Landing in soft soil (dug terrain, leaf piles) halves it. Retreated snails take 50%.
 - **Drowning:** Puddles are instant death for snails that enter below the surface, unless they
-  have Bubble Shell or are on a lily pad / floating prop. Water rises in sudden death.
+  have Bubble Shell or are on a lily pad / floating prop. A puddle only fills a real dip: its
+  surface is at most the lowest point of the rim around it, so on flat ground it is a thin wet
+  film and nobody drowns. Water rises in sudden death.
 - **Out of bounds:** Leaving the map edge or falling below the world floor is instant death.
 - **Knockback:** Explosions push snails away. Knockback is scaled by weapon and reduced by the
   Heavy Shell techs.
@@ -145,10 +147,12 @@ unlocks, crates and match settings.
 - **Last team standing** (Classic).
 - **First to research goal** (Research race).
 - **Hold the zone** (King of the Hill).
-- **Sudden death:** After round 20 (configurable), water rises 1 m per round and max health
-  of every snail falls to 1 over 5 rounds. Ensures every match ends.
-- **Draw:** If the last snails die simultaneously, the team that dealt the most damage that turn
-  wins; otherwise a draw is declared.
+- **Sudden death:** From round 20 (configurable, or off), water rises 1 m per round (a share at
+  every turn start) and/or max health of every snail falls to 1 over 5 rounds, per the
+  sudden-death type setting (water, drain, or both; default both). The display announces it.
+  Ensures every match ends.
+- **Draw:** If the last snails die simultaneously, the team that dealt the most damage to other
+  teams that turn wins; on a tie, or if nobody dealt damage, a draw is declared.
 
 ## Game modes
 
@@ -180,7 +184,7 @@ Modes are content definitions; custom modes are possible via the event bus.
 | Map | Preset list or Random seed; size S / **M** / L |
 | Crates | Off / Rare / **Normal** / Frequent |
 | Research | Off (classic weapons only) / **On** / Fast |
-| Sudden death | Off / **Round 20** / Round 12 |
+| Sudden death | Off / **Round 20** / Round 12; type water / drain / **both** |
 | Fall damage | Off / **On** / High |
 | Friendly fire | **On** / Off |
 | Team colours | Auto or picked in the lobby |

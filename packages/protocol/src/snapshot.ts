@@ -64,6 +64,8 @@ export const Snapshot = z.object({
   scheduled: z.array(WireScheduled).optional(),
   /** Crates on the map (absent from older servers = none). */
   crates: z.array(WireCrate).optional(),
+  /** Water surface height in mm; absent = the level announced in `matchStarted` (sudden death raises it). */
+  water: int.optional(),
 });
 /** Compact snapshot message. */
 export type Snapshot = z.infer<typeof Snapshot>;
@@ -147,6 +149,8 @@ export interface DecodedSnapshot {
   areas: AreaState[];
   scheduled: ScheduledState[];
   crates: CrateState[];
+  /** Water surface height in metres; absent = unchanged from the terrain parameters. */
+  waterLevel?: number;
 }
 
 const q = (v: number): number => Math.round(v * 1000);
@@ -202,6 +206,7 @@ export function encodeSnapshot(s: DecodedSnapshot): Snapshot {
     ]),
     scheduled: s.scheduled.map(encodeScheduled),
     crates: s.crates.map(encodeCrate),
+    ...(s.waterLevel === undefined ? {} : { water: q(s.waterLevel) }),
   };
 }
 
@@ -277,5 +282,6 @@ export function decodeSnapshot(m: Snapshot): DecodedSnapshot {
       position: dv(px, py, pz),
       grounded: grounded === 1,
     })),
+    ...(m.water === undefined ? {} : { waterLevel: dq(m.water) }),
   };
 }

@@ -71,7 +71,7 @@ const plain = [
     amount: z.number(),
     remaining: z.number(),
     sourceSnailId: z.string().nullable(),
-    cause: z.enum(['explosion', 'fall', 'status', 'area', 'crate']),
+    cause: z.enum(['explosion', 'fall', 'status', 'area', 'crate', 'suddenDeath']),
   }),
   z.object({
     type: z.literal('snailDied'),
@@ -163,6 +163,12 @@ const plain = [
     position: V,
     reason: z.enum(['explosion', 'water']),
   }),
+  z.object({
+    type: z.literal('suddenDeathStarted'),
+    round: int,
+    kind: z.enum(['water', 'drain', 'both']),
+  }),
+  z.object({ type: z.literal('waterRose'), level: z.number(), delta: z.number() }),
 ] as const;
 
 const carvedBase = {

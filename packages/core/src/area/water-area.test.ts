@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { AreaDefinition, StatusDefinition } from '../content/types.js';
 import { makeTestCtx } from '../sim/test-ctx.js';
 import { spawnArea } from './area-system.js';
-import { applyWater, findLowPoint } from './water-area.js';
+import { MIN_WATER_FILM, applyWater, findLowPoint } from './water-area.js';
 
 const SALT: StatusDefinition = { id: 't:salt', name: 'Salt', perTurnDamage: 4 };
 const POOL: AreaDefinition = {
@@ -36,21 +36,44 @@ describe('water areas', () => {
     expect(area.position.y).toBeCloseTo(2.5 + 0.9, 0);
   });
 
-  it('stay at the impact height on flat ground', () => {
+  it('are only a thin film on flat ground, whatever their depth', () => {
     const { ctx } = makeTestCtx({ areas: [POOL] });
     const area = spawnArea(ctx, POOL, { position: { x: 20, y: 5.5, z: 20 }, sourceSnailId: 'a1' });
     expect(area.position.x).toBeCloseTo(20);
-    expect(area.position.y).toBeCloseTo(5.5 + 0.9, 0);
+    expect(area.position.y).toBeCloseTo(5.5 + MIN_WATER_FILM, 5);
   });
 
-  it('drown snails below the surface, spare those above and outside', () => {
+  it('are capped by the lowest point of the rim in a shallow dip', () => {
+    const { ctx } = makeTestCtx({ areas: [POOL] });
+    dig(ctx, 20, 20, 5);
+    const area = spawnArea(ctx, POOL, { position: { x: 20, y: 5.5, z: 20 }, sourceSnailId: 'a1' });
+    expect(area.position.y).toBeCloseTo(5.5, 0);
+    expect(area.position.y).toBeLessThanOrEqual(5.5 + 1e-6);
+  });
+
+  it('do not drown a snail standing on flat ground inside them', () => {
     const { ctx, events } = makeTestCtx({
       areas: [POOL],
       positions: [
-        { x: 20, y: 7.2, z: 20 },
+        { x: 10, y: 6, z: 20 },
         { x: 21, y: 6, z: 20 },
       ],
     });
+    const area = spawnArea(ctx, POOL, { position: { x: 20, y: 5.5, z: 20 }, sourceSnailId: 'a1' });
+    applyWater(ctx, area, POOL);
+    expect(ctx.state.teams[1]?.snails[0]?.alive).toBe(true);
+    expect(events.some((e) => e.type === 'snailDrowned')).toBe(false);
+  });
+
+  it('drown snails below the surface of a genuine dip, spare those above and outside', () => {
+    const { ctx, events } = makeTestCtx({
+      areas: [POOL],
+      positions: [
+        { x: 10, y: 7.2, z: 20 },
+        { x: 20, y: 3, z: 20 },
+      ],
+    });
+    dig(ctx, 20, 20, 2.5);
     const area = spawnArea(ctx, POOL, { position: { x: 20, y: 5.5, z: 20 }, sourceSnailId: 'a1' });
     applyWater(ctx, area, POOL);
     const [a, b] = [ctx.state.teams[0]?.snails[0], ctx.state.teams[1]?.snails[0]];

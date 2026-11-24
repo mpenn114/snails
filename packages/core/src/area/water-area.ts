@@ -38,6 +38,33 @@ export function findLowPoint(terrain: SdfQuery, at: Vec3, radius: number): Vec3 
   return best ?? { ...at };
 }
 
+/** Probes around the rim of a puddle (columns on the circle of the full radius). */
+const RIM_PROBES = 16;
+/** A puddle always wets the ground a little, so it still puts out salt on flat ground. */
+export const MIN_WATER_FILM = 0.2;
+
+/**
+ * Surface height of a water area of `radius` and `depth` whose lowest ground point is `low`:
+ * `depth` above the low point, but never above the lowest point of the surrounding rim (the
+ * water would spill over it) and never under a thin wet film. On flat ground the rim is as low
+ * as the floor, so the puddle is a film nobody drowns in; in a real dip it is `depth` deep.
+ */
+export function waterSurfaceY(terrain: SdfQuery, low: Vec3, radius: number, depth: number): number {
+  let rim = Number.POSITIVE_INFINITY;
+  for (let i = 0; i < RIM_PROBES; i++) {
+    const a = (2 * Math.PI * i) / RIM_PROBES;
+    const from = {
+      x: low.x + Math.cos(a) * radius,
+      y: low.y + radius + depth,
+      z: low.z + Math.sin(a) * radius,
+    };
+    const hit = rayCast(terrain, from, { x: 0, y: -1, z: 0 }, 2 * radius + depth + 2);
+    if (hit && hit.distance > 0) rim = Math.min(rim, hit.point.y);
+  }
+  const top = Math.min(low.y + depth, rim);
+  return Math.max(low.y + MIN_WATER_FILM, top);
+}
+
 /** True when the area definition describes a body of water (`waterDepth` set). */
 export function isWaterArea(def: AreaDefinition | undefined): def is AreaDefinition {
   return def?.waterDepth !== undefined;

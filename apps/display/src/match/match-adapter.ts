@@ -3,7 +3,7 @@ import type { MatchInit } from '@snails/render';
 import { WireSnapshotMapper } from '@snails/render';
 import { decodeEventBatch, decodeSnapshot } from '@snails/protocol';
 import type { ServerMessage } from '@snails/protocol';
-import { EMPTY_HUD, hudFromSnapshot } from './hud-model';
+import { EMPTY_HUD, hudFromSnapshot, suddenDeathNotice } from './hud-model';
 import type { HudModel } from './hud-model';
 
 /** The `matchStarted` server message. */
@@ -52,6 +52,7 @@ export class MatchAdapter {
   private last: GameSnapshot | null = null;
   private timerMs: number | null = null;
   private winner: HudModel['winner'] = null;
+  private notice: string | null = null;
   private inMatch = false;
 
   constructor(private readonly deps: MatchAdapterDeps) {}
@@ -88,10 +89,16 @@ export class MatchAdapter {
   }
 
   private start(m: MatchStarted): void {
-    this.mapper = new WireSnapshotMapper({ seed: m.seed, teams: m.teams, terrain: m.terrain });
+    this.mapper = new WireSnapshotMapper({
+      seed: m.seed,
+      teams: m.teams,
+      terrain: m.terrain,
+      initialMaxHealth: m.settings.startingHealth,
+    });
     this.last = null;
     this.timerMs = null;
     this.winner = null;
+    this.notice = null;
     this.inMatch = true;
     this.deps.aim.set(null);
     this.deps.renderer.init(this.deps.buildInit(m));
@@ -119,7 +126,7 @@ export class MatchAdapter {
             ? { name: team.name, colour: team.colour }
             : { name: null, colour: null };
         this.deps.aim.set(null);
-      }
+      } else if (e.type === 'suddenDeathStarted') this.notice = suddenDeathNotice(e.kind);
     }
     this.refresh();
   }
@@ -130,12 +137,14 @@ export class MatchAdapter {
     this.mapper = null;
     this.last = null;
     this.winner = null;
+    this.notice = null;
     this.deps.aim.set(null);
     this.deps.onHud(EMPTY_HUD);
     this.deps.onMatchVisible(false);
   }
 
   private refresh(): void {
-    if (this.last) this.deps.onHud(hudFromSnapshot(this.last, this.timerMs, this.winner));
+    if (this.last)
+      this.deps.onHud(hudFromSnapshot(this.last, this.timerMs, this.winner, this.notice));
   }
 }
