@@ -1,8 +1,8 @@
 import { Rng, stepProjectile } from '@snails/core';
-import type { AimContext, CpuPlayer, Shot } from './cpu-player.js';
+import type { AimContext, AimStrategy, Shot } from './aim-strategy.js';
 
 /** Easiest CPU: aims randomly. */
-export class RandomAimStrategy implements CpuPlayer {
+export class RandomAimStrategy implements AimStrategy {
   /** @param rng - Seeded RNG for determinism. */
   constructor(private readonly rng: Rng) {}
 
@@ -27,7 +27,7 @@ export function simulateMiss(ctx: AimContext, shot: Shot): number {
 }
 
 /** Brute-force angle/power search over core ballistics (stub; ignores terrain). */
-export class BallisticSolverStrategy implements CpuPlayer {
+export class BallisticSolverStrategy implements AimStrategy {
   /** Searches a coarse angle/power grid for the smallest miss distance. */
   chooseShot(ctx: AimContext): Shot {
     let best: Shot = { angle: Math.PI / 4, power: 1 };

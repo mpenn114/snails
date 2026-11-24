@@ -15,7 +15,7 @@ export interface AimContext {
   maxSpeed: number;
 }
 
-/** Strategy interface implemented by all CPU aiming behaviours. */
-export interface CpuPlayer {
+/** Aim-only strategy (used by the balance runner and as a solver building block). */
+export interface AimStrategy {
   chooseShot(ctx: AimContext): Shot;
 }
