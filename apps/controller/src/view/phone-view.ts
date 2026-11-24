@@ -16,10 +16,18 @@ import { QualityGovernor } from './quality-governor';
 import type { QualityLevel } from './quality-governor';
 import { buildTerrainInit } from './terrain-init';
 import { MatchOverlay } from './match-overlay';
+import { createPerfProbe, perfProbeRequested } from './perf-probe';
+import type { PerfSample, RendererInfoLike } from './perf-probe';
 import { guardContextLoss } from './context-guard';
 import { capPixelRatio, isIos } from '../platform/ios';
 import type { PlatformNavigator } from '../platform/ios';
 import { TERRAIN_TEXTURES } from '../terrain-textures';
+
+/**
+ * Phone follow camera: three-quarter view (about 40 degrees to the side, a little higher) so the
+ * round shell shows its spiral face instead of reading as a capsule from directly behind.
+ */
+const PHONE_RIG_OPTIONS = { followYawOffset: 0.7, followPitch: 0.55 } as const;
 
 /** Subset of the WebGL renderer touched when scaling resolution. */
 interface PixelRatioTarget {
@@ -90,6 +98,7 @@ export class PhoneView {
       now: () => this.deps.now(),
       modelBaseUrl: `${import.meta.env.BASE_URL}models/`,
       terrainTextures: TERRAIN_TEXTURES,
+      rigOptions: PHONE_RIG_OPTIONS,
       makeView: (env) => this.makeView(canvas, env),
     });
     this.renderer.setTier(this.governor.settings.tier);
@@ -199,12 +208,18 @@ export class PhoneView {
 
   private makeView(canvas: HTMLCanvasElement, env: ViewEnvironment): GameView {
     const level = this.governor.settings;
+    let probe: ((dt: number) => void) | null = null;
     const view = createGameView(canvas, {
       tier: level.tier,
       powerPreference: 'high-performance',
       terrainBounds: env.bounds,
       waterLevel: env.waterLevel,
-      onRenderer: (r) => (this.glRenderer = r),
+      onRenderer: (r) => {
+        this.glRenderer = r;
+        if (perfProbeRequested(window.location.search)) {
+          probe = createPerfProbe(r as RendererInfoLike, window as { __perf?: PerfSample });
+        }
+      },
       scheduler: createCappedScheduler({
         base: {
           request: (cb) => window.requestAnimationFrame(cb),
@@ -215,6 +230,7 @@ export class PhoneView {
       }),
     });
     view.addUpdater((dt) => {
+      probe?.(dt);
       if (this.hidden || dt <= 0) return;
       this.applyChange(this.governor.pushFrame(dt * 1000, this.deps.now()));
     });

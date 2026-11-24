@@ -141,6 +141,29 @@ Thermal and battery: render on demand when nothing animates (idle between turns,
 
 Frame budget at 60 fps = 16.6 ms: scene+shadows 6 ms, post 3 ms, terrain/mesh upload 1 ms, JS update + VFX 2 ms, headroom 4 ms. Targets on High: draw calls < 800, triangles < 1.5 M visible, GPU memory < 1.5 GB, shader compile hitches avoided by warm-up pass during loading. An auto-quality governor lowers tier if the 1 s average frame time exceeds 20 ms for 5 s (with hysteresis; user override available). A debug overlay (stats.js-style plus draw calls, worker queue length) is toggled with F3.
 
+## Tier budget verification (M7-15)
+
+Measured after the low poly restyle with `pnpm build && NODE_PATH=$(npm root -g) pnpm perf` (`e2e/perf.mjs`): `renderer.info` read from the display harness (1920x1080; Mobile at 390x844, DPR 2) once the terrain mesh backlog has drained, and from the real phone view (`?perf=1`, Pixel 7 emulation, own turn, follow camera). Draw calls and triangles are the whole frame (all post passes, shadow pass included). Headless Chromium uses SwiftShader (software WebGL), so fps is not meaningful and is not recorded; the counts are the check. Values are 8 s averages; counts vary a few percent with the camera and seed.
+
+| View | Draw calls (budget) | Triangles (budget) | Textures | Programs | Geometries |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| Harness High | 540 (800) | 778k (1.5 M) | 52 | 58 | 214 |
+| Harness Medium | 481 (700) | 666k (1.0 M) | 25 | 46 | 211 |
+| Harness Low | 467 (600) | 526k (800k) | 12 | 28 | 207 |
+| Harness Mobile (390x844) | 91 (250) | 83k (250k) | 14 | 14 | 179 |
+| Phone view (Mobile tier, live match) | 77 (250) | 66k (250k) | 11 | 13 | 68 |
+
+Notes:
+
+- Budgets are ceilings, and tiers must be monotonic (a lower tier never costs more than the one above). High uses the targets above (< 800 calls, < 1.5 M triangles); the others are derived.
+- Terrain chunks dominate triangles (roughly 400k to 700k on the three desktop tiers). The new props, water, puffs and snail animation add little: Mobile is about 90 calls and 83k triangles in the harness and about 77 calls and 65k triangles in the phone view, far below the budget.
+- Textures and programs on High include the post-processing chain's render targets and shaders; programs compile once at load.
+- Per-object triangle budgets are in `TRIANGLE_BUDGETS` (`style/palette.ts`) and are covered by unit tests.
+- Prop count was trialled as a lever (low 170 to 110, medium 300 to 260): it changed draw calls by under 2%, so it was not trimmed. No tier exceeded its budget, so no trims were made to `quality.ts`.
+- Real-device fps, heat and readability: see the MG-12 checklist in [device-testing.md](development/device-testing.md#6-mg-12-visual-and-performance-checklist-android-ios-tv). It has not been run.
+
+Phone follow camera: a three-quarter view (about 40 degrees to the side, pitch 0.55) so the shell's spiral face shows; aim mode stays directly behind the snail so aiming is unaffected.
+
 ## WebGPU migration path
 
 1. Keep all materials behind a `materials/` factory; avoid raw `ShaderMaterial` GLSL where possible, using `onBeforeCompile` patches in one place per material.

@@ -220,3 +220,44 @@ File one GitHub issue per distinct problem, not one per phone. Use the labels an
 Do not include personal data in issues or attachments (names of players, room photos, phone identifiers beyond the model).
 
 Once the run is complete, link the results table and issue list from the M3-32 row in [tasks.md](../tasks.md) (update the status there, not in this document).
+
+## 6. MG-12 visual and performance checklist (Android, iOS, TV)
+
+Purpose: confirm on real hardware that the restyled look (art direction, see [art-direction.md](../art-direction.md)) is readable and holds its frame rate per quality tier. Headless budget counts live in [graphics.md](../graphics.md#tier-budget-verification-m7-15); this checklist is what they cannot show. **Status: not run.** MG-12 stays open until the tables in 6.4 are filled from real devices.
+
+Use a release build (`pnpm build`, then the server start command from section 1.1). Append `?perf=1` to the phone URL to publish `window.__perf` (draw calls, triangles, textures, programs) and use `?tier=...` on the display harness page (`/display/harness.html?tier=high&profile=1&seed=2&speed=2`) for a fixed scene. Run `pnpm perf` on the host first so counts are known.
+
+### 6.1 Per device (Android phone, iPhone, TV or laptop on the display)
+
+| Check | What to look at | Pass |
+| --- | --- | --- |
+| Snail readability | Snail silhouettes, shell spiral face (phone follow camera is three-quarter), team colour, active-snail ring at normal holding distance | Own and enemy snails identifiable at a glance in sunlight-level brightness |
+| Labels and HUD | Name tags, health bars, turn timer, wind, minimap, buttons (Jump, Fire, Arms) | All text legible without zooming; nothing clipped by notch, home bar or TV overscan |
+| Aiming | Aim arc and landing ring, aim camera behind the snail | Arc visible against grass, water and sky |
+| Terrain and props | Terrain colour banding, props, water, fog horizon | No flicker, z-fighting, black patches or missing props |
+| Effects | Explosion, puff trail, splash, damage numbers | Readable, not washing out the screen |
+| Frame rate | Fixed scene, 60 s steady state, per tier | Phone: 30 fps cap held at Mobile, 60 where the device allows. TV/laptop: High >= 58 fps average, 1% low >= 45 |
+| Governor | Does the quality governor change tier during a 10 minute match? | Changes are rare and do not oscillate |
+| Heat and battery | Battery % and device temperature at 0, 10 and 20 minutes | Phone <= 15% battery per 20 minutes with the screen on, not too hot to hold (note the touch temperature), no thermal throttling message |
+| Water and post on High | (TV/laptop only) water ripples, SSAO, bloom, SMAA, grade | Water reads as water, no shimmering edges, post does not drop below the fps target; if it does, record medium's result too |
+| Loss and restore | Lock the screen, switch app, rotate | Context restores, no black canvas (iOS: see [ios-compat.md](ios-compat.md)) |
+
+### 6.2 Procedure
+
+1. Fill the device matrix in section 2 (iPhones: iOS and Safari version in place of Android and Chrome; TV: model, browser, resolution, refresh rate).
+2. Start a match with 4 snails per team. On each phone play 3 turns, watching the checks above. Take 4 photos or screen recordings: own turn, enemy turn, a blast, the minimap and HUD.
+3. Run the 20 minute thermal case (case 2) once per device class and record battery and temperature.
+4. On the TV or laptop, load the display on High, then Medium; note fps and which tier the governor settles on.
+
+### 6.3 Where to record
+
+Record results in the tables below (copy them into the test report or commit them here). Add one row per device and tier. File problems with the template in section 5, labelled `device-testing` and `render`.
+
+### 6.4 Results (fill in)
+
+| Date | Build (commit) | Device (model, OS, browser) | Tier | fps avg / 1% low | Battery % per 20 min | Temp | Readability (snails, labels, HUD) | Water / post (High) | Result | Notes |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| | | Android: | Mobile | | | | | n/a | | |
+| | | iOS: | Mobile | | | | | n/a | | |
+| | | TV / laptop: | High | | n/a | n/a | | | | |
+| | | TV / laptop: | Medium | | n/a | n/a | | | | |

@@ -30,6 +30,9 @@ interface GlInfo {
     programs?: unknown[] | null;
   };
 }
+interface GlResettable extends GlInfo {
+  info: GlInfo['info'] & { autoReset: boolean; reset(): void };
+}
 let glRenderer: GlInfo | null = null;
 const profile = params.get('profile') === '1';
 const renderer = new MatchRenderer({
@@ -42,7 +45,12 @@ const renderer = new MatchRenderer({
       terrainBounds: bounds,
       waterLevel,
       postProcessing: params.get('post') !== '0',
-      onRenderer: (r) => (glRenderer = r),
+      onRenderer: (r) => {
+        // Post-processing renders several passes per frame; accumulate them and reset once per
+        // harness frame so the counters cover the whole frame, not just the last pass.
+        (r as GlResettable).info.autoReset = false;
+        glRenderer = r;
+      },
     }),
 });
 renderer.setTier(tier);
@@ -65,18 +73,27 @@ const frames = createFrameStats();
 const updateOverlay = createOverlay(document.body);
 let last = performance.now();
 let lastOverlay = 0;
+/** Whole-frame counters of the previous frame (all post passes), read before each reset. */
+let frameCalls = 0;
+let frameTriangles = 0;
 function frame(nowMs: number): void {
   const dtMs = nowMs - last;
   last = nowMs;
   frames.record(dtMs);
+  const gl = glRenderer as GlResettable | null;
+  if (gl) {
+    frameCalls = gl.info.render.calls;
+    frameTriangles = gl.info.render.triangles;
+    gl.info.reset();
+  }
   server.advance(dtMs / 1000);
   if (nowMs - lastOverlay > 250) {
     lastOverlay = nowMs;
     updateOverlay({
       frames,
       rebuild: renderer.terrainMeshes?.stats ?? null,
-      calls: glRenderer?.info.render.calls ?? 0,
-      triangles: glRenderer?.info.render.triangles ?? 0,
+      calls: frameCalls,
+      triangles: frameTriangles,
       snails: server.sim.state.teams.flatMap((t) => t.snails).filter((s) => s.alive).length,
       tier,
       ticks: server.ticks,
@@ -85,8 +102,8 @@ function frame(nowMs: number): void {
       timings: profile ? (renderer.view?.loop.timings ?? null) : null,
     });
     (window as unknown as { __perf?: unknown }).__perf = {
-      calls: glRenderer?.info.render.calls ?? 0,
-      triangles: glRenderer?.info.render.triangles ?? 0,
+      calls: frameCalls,
+      triangles: frameTriangles,
       geometries: glRenderer?.info.memory.geometries ?? 0,
       textures: glRenderer?.info.memory.textures ?? 0,
       programs: glRenderer?.info.programs?.length ?? 0,

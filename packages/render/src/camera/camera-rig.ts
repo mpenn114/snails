@@ -47,6 +47,8 @@ export interface CameraRigOptions {
   /** Third-person follow distance and pitch. */
   followDistance?: number;
   followPitch?: number;
+  /** Radians added to the behind-the-snail follow yaw (three-quarter view); 0 sits directly behind. */
+  followYawOffset?: number;
   /** Smoothing times in seconds. */
   followSmoothTime?: number;
   freeSmoothTime?: number;
@@ -208,7 +210,9 @@ export class CameraRig {
     const focus = this.tracker.update(dt, snapshot);
     const target = this.manualTarget ?? focus?.point ?? cur.target;
     const yaw =
-      !this.manualTarget && focus?.facing != null ? yawBehindFacing(focus.facing) : cur.yaw;
+      !this.manualTarget && focus?.facing != null
+        ? yawBehindFacing(focus.facing) + (this.opts.followYawOffset ?? 0)
+        : cur.yaw;
     return {
       target: { ...target },
       yaw,

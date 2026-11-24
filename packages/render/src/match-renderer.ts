@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { SdfGrid } from '@snails/core';
 import type { GameSnapshot, SimEvent } from '@snails/core';
-import { CameraRig, type CameraMode } from './camera/camera-rig.js';
+import { CameraRig, type CameraMode, type CameraRigOptions } from './camera/camera-rig.js';
 import { ExplosionEffects } from './effects/explosion-effects.js';
 import { SplashEffects } from './effects/splash-effects.js';
 import { createWindParticles, type WindParticles } from './environment/wind-particles.js';
@@ -60,6 +60,8 @@ export interface MatchRendererDeps {
   modelLoader?: ModelLoader;
   /** Terrain texture URLs (loaded async; the palette colours show until they arrive). */
   terrainTextures?: TerrainTextureSources;
+  /** Camera rig overrides (the phone uses a three-quarter follow yaw offset). */
+  rigOptions?: Partial<CameraRigOptions>;
 }
 
 /** An extra per-frame layer plugged in via {@link MatchRenderer.addLayer}. */
@@ -211,7 +213,7 @@ export class MatchRenderer {
     const splashes = this.makeSplashes(view, source, waterLevel);
     view.roots.effects.add(projectiles.group, explosions.group, splashes.group);
 
-    const rig = createRig(view.camera, grid);
+    const rig = createRig(view.camera, grid, this.deps.rigOptions);
     const wind = this.makeWind(grid, q.particleScale);
     view.roots.effects.add(wind.object);
     const built: Built = {
@@ -362,12 +364,17 @@ export class MatchRenderer {
 }
 
 /** Camera rig framing the island (overview extent 0.8 x map span) with terrain-aware clamping. */
-function createRig(camera: THREE.PerspectiveCamera, grid: SdfGrid): CameraRig {
+function createRig(
+  camera: THREE.PerspectiveCamera,
+  grid: SdfGrid,
+  extra: Partial<CameraRigOptions> = {},
+): CameraRig {
   const ws = grid.worldSize();
   return new CameraRig(camera, {
     mode: 'follow',
     shot: { kind: 'overview', rate: 0.05, extent: Math.max(ws.x, ws.z) * 0.8 },
     bounds: { min: { x: -20, y: 0, z: -20 }, max: { x: ws.x + 20, y: ws.y + 40, z: ws.z + 20 } },
     heightAt: (x, z) => groundHeight(grid, x, z),
+    ...extra,
   });
 }

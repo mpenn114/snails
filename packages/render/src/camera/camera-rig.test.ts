@@ -62,6 +62,15 @@ describe('follow mode', () => {
     expect(rig.camera.position.x).toBeLessThan(10);
   });
 
+  it('applies the three-quarter follow yaw offset', () => {
+    const rig = mk({ followYawOffset: 0.7 });
+    const s = snap();
+    for (let i = 0; i < 400; i++) rig.update(0.02, st(s));
+    const diff = rig.pose().yaw - (yawBehindFacing(0) + 0.7);
+    expect(Math.sin(diff)).toBeCloseTo(0, 2);
+    expect(Math.cos(diff)).toBeGreaterThan(0.99);
+  });
+
   it('is frame-rate independent', () => {
     const a = mk();
     const b = mk();

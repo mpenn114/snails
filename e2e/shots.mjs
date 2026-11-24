@@ -22,7 +22,7 @@ const DISPLAY_SHOTS = [
   ],
   ['display-aim', 'aim', 'Display 1920x1080, High: dotted aim arc and landing ring'],
 ];
-// SHOTS_ONLY=display-flight,display-aim limits the run (and skips the phone shot) while iterating.
+// SHOTS_ONLY=display-flight,display-aim limits the run (and the phone shot unless phone-my-turn is listed) while iterating.
 const only = process.env.SHOTS_ONLY?.split(',');
 const captions = [];
 
@@ -141,7 +141,7 @@ const errors = [];
 try {
   browser = await chromium.launch({ args: GL_ARGS });
   await displayShots(browser, base, errors);
-  if (!only) await phoneShot(browser, base, errors);
+  if (!only || only.includes('phone-my-turn')) await phoneShot(browser, base, errors);
   sheet();
   if (errors.length) fail(`uncaught page errors:\n${errors.join('\n')}`);
   step(`done: ${out} (${readdirSync(out).length} files)`);
