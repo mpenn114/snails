@@ -64,18 +64,25 @@ try {
   );
   step('demo match started with every weapon stocked and unlocked');
 
+  // Pick the active phone from the server's turnStart (activePlayerId), not from whichever page
+  // shows `.ctl.mine` first: on slow CI the previous player's page can still show stale controls.
+  const playerOf = (p) => p.frames.find((m) => m.type === 'welcome')?.playerId;
+  let turnsSeen = 0;
   for (const weapon of WEAPON_TURNS) {
-    const active = await until(
-      `a phone gets my-turn controls for ${weapon}`,
-      async () => {
-        for (const p of phones) if (await p.page.locator('.ctl.mine').count()) return p;
-        return null;
-      },
+    const turnStarts = () => dFrames.filter((m) => m.type === 'turnStart');
+    await until(`turn start for ${weapon}`, () => turnStarts().length > turnsSeen, 60000);
+    const turn = turnStarts().at(-1);
+    turnsSeen = turnStarts().length;
+    const active = phones.find((p) => playerOf(p) === turn.activePlayerId);
+    if (!active) fail(`no phone for active player ${turn.activePlayerId}`);
+    // Software GL can take a while to repaint the controls on CI.
+    await until(
+      `${active.name} gets my-turn controls for ${weapon}`,
+      () => active.page.locator('.ctl.mine').count(),
       60000,
-    ); // software GL can take a while to repaint the controls on CI
-    await until('display saw the turn start', () => has(dFrames, 'turnStart'), 60000);
+    );
     const mark = dFrames.length;
-    const turnTeam = teamOf(dFrames.filter((m) => m.type === 'turnStart').at(-1));
+    const turnTeam = teamOf(turn);
     await active.page.evaluate((name) => {
       const tile = [...document.querySelectorAll('.ctl-tile')].find((t) =>
         t.textContent.includes(name),
