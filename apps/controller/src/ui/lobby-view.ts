@@ -1,5 +1,6 @@
 import { MatchSettings } from '@snails/protocol';
 import type { ClientMessage, ControlMode, MatchSettingsInput } from '@snails/protocol';
+import { CPU_PANEL_HTML, createCpuPicker } from './cpu-controls';
 import { choiceHtml, rosterHtml } from './lobby-html';
 import type { LobbyStateMsg } from './lobby-html';
 import { paintSettingFields, readSettingFields, settingsFieldsHtml } from './settings-form';
@@ -29,6 +30,7 @@ const SKELETON = `<h1>Lobby <span class="room"></span></h1>
   <div class="row teams"></div>
   <div class="row colours"></div>
   <button class="ready" type="button"></button>
+  ${CPU_PANEL_HTML}
   <fieldset class="settings"><legend>Match settings</legend>
     <label>Turn time (s) <input class="turn" inputmode="numeric" /></label>
     <label>Snails per team <input class="snails" inputmode="numeric" /></label>
@@ -83,7 +85,8 @@ function paintLobby(q: Query, s: LobbyStateMsg, meId: string): void {
   const me = s.players.find((p) => p.id === meId);
   q('.room').textContent = s.roomCode;
   q<HTMLAnchorElement>('.tv').href = `/display/?room=${encodeURIComponent(s.roomCode)}`;
-  q('.roster').innerHTML = rosterHtml(s.players, s.hostId);
+  q('.roster').innerHTML = rosterHtml(s.players, s.hostId, s.hostId === meId);
+  q('.cpu-panel').toggleAttribute('hidden', s.hostId !== meId);
   q('.teams').innerHTML = choiceHtml(TEAMS, me ? playerTeams(me) : null, new Set(), 'team');
   const taken = takenColours(s.players, meId);
   q('.colours').innerHTML = choiceHtml(PALETTE, me?.colour ?? null, taken, 'colour');
@@ -132,8 +135,8 @@ export function mountLobbyView(
   const q = <T extends HTMLElement>(sel: string): T => el.querySelector<T>(sel)!;
   const inputs = ['.turn', '.snails', '.seed'].map((s) => q<HTMLInputElement>(s));
   const [modeSel, multi] = [q<HTMLSelectElement>('.mode'), q<HTMLInputElement>('.multi')];
-  let last: LobbyStateMsg | undefined;
-  let seeded = false;
+  let [last, seeded]: [LobbyStateMsg | undefined, boolean] = [undefined, false];
+  const cpuPicker = createCpuPicker(el);
   q('.more').innerHTML = settingsFieldsHtml();
   const settings = (): MatchSettingsInput =>
     readSettings(el, inputs, modeSel.value as ControlMode, last?.settings);
@@ -146,6 +149,7 @@ export function mountLobbyView(
     if (!t || !last) return;
     const [v, kind] = [t.dataset['v'], t.parentElement?.className.replace('row ', '')];
     if (kind === 'teams' && v) send({ type: multi.checked ? 'toggleTeam' : 'setTeam', teamId: v });
+    else if (cpuPicker.click(t, last.hostId === meId, send)) return;
     else if (kind === 'colours' && v) send({ type: 'setColour', colour: v });
     else if (t.classList.contains('ready'))
       send({ type: 'setReady', ready: !last.players.find((p) => p.id === meId)?.ready });
