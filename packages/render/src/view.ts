@@ -17,7 +17,8 @@ import {
 } from './render-loop.js';
 import { createPostController, type PostFactory } from './post/post-controller.js';
 import { createPostPipeline } from './post/post-pipeline.js';
-import { createEnvironment } from './environment/environment.js';
+import { createEnvironment, type Environment } from './environment/environment.js';
+import type { Water } from './environment/water.js';
 import type { Bounds3 } from './environment/lighting.js';
 import { createSceneGraph, type SceneRoots } from './scene-graph.js';
 
@@ -66,6 +67,8 @@ export interface GameView {
   readonly quality: QualitySettings;
   /** Resolves true once the post chain for the current tier is active (false when none). */
   readonly postReady: Promise<boolean>;
+  /** The water surface (feed it the terrain via `setTerrain` for depth tint and foam). */
+  readonly water: Water;
   /** Switches tier at runtime (pixel ratio, shadow flag, draw distance); see applyQuality. */
   setTier(tier: QualityTier): void;
   dispose(): void;
@@ -100,16 +103,20 @@ function createCamera(far: number): THREE.PerspectiveCamera {
   return camera;
 }
 
+function makeEnvironment(root: THREE.Group, deps: GameViewDeps): Environment {
+  return createEnvironment(root, {
+    tier: deps.tier,
+    ...(deps.terrainBounds ? { bounds: deps.terrainBounds } : {}),
+    ...(deps.waterLevel !== undefined ? { waterLevel: deps.waterLevel } : {}),
+  });
+}
+
 /** Builds scene, camera, lights and a started render loop from injected deps. */
 export function createGameViewWith(deps: GameViewDeps): GameView {
   const q = qualitySettings(deps.tier, deps.devicePixelRatio);
   const { scene, roots } = createSceneGraph();
   const camera = createCamera(500 * q.drawDistanceScale);
-  const env = createEnvironment(roots.environment, {
-    tier: deps.tier,
-    ...(deps.terrainBounds ? { bounds: deps.terrainBounds } : {}),
-    ...(deps.waterLevel !== undefined ? { waterLevel: deps.waterLevel } : {}),
-  });
+  const env = makeEnvironment(roots.environment, deps);
   env.applyTo(scene);
   fitFog(scene, camera);
   const loop = createRenderLoop({
@@ -126,6 +133,7 @@ export function createGameViewWith(deps: GameViewDeps): GameView {
   const state = { tier: deps.tier, quality: q };
   const post = createPostController(deps, loop, scene, camera);
   return {
+    water: env.water,
     get postReady() {
       return post.ready();
     },

@@ -208,44 +208,128 @@ function pickKind(kinds: readonly PropKind[], total: number, r: number): number 
   return kinds.length - 1;
 }
 
+/** Share of the budget placed by the first (clustered scatter) pass; rocks then gather companions. */
+const SCATTER_SHARE = 0.72;
+/** Height (m) above the water line over which the shoreline boost fades out. */
+const SHORE_BAND = 1.6;
+/** Chance (0..1) a shoreline sample survives, however far from a cluster. */
+const SHORE_KEEP = 0.65;
+/** Companion props gathered around each rock (min, extra). */
+const ROCK_COMPANIONS = [2, 3] as const;
+
+interface PlanContext {
+  opts: PropPlanOptions;
+  kinds: readonly PropKind[];
+  total: number;
+  rnd: () => number;
+  seedA: number;
+  seedB: number;
+  out: PropPlacement[];
+}
+
+/** Ground checks shared by every pass: surface, water, slope, snails and spacing. */
+function groundPlacement(
+  c: PlanContext,
+  x: number,
+  z: number,
+  kindIndex: number,
+): { y: number; normal: PropPlacement['normal'] } | null {
+  const kind = c.kinds[kindIndex] as PropKind;
+  const y = surfaceHeight(c.opts.grid, x, z);
+  if (y === null || y < c.opts.waterLevel + WATER_MARGIN) return null;
+  const normal = c.opts.grid.normal({ x, y, z });
+  if (normal.y < MIN_NORMAL_Y) return null;
+  const avoid = c.opts.avoid ?? [];
+  if (tooClose(avoid, x, y, z, AVOID_RADIUS)) return null;
+  if (kind.tall && tooClose(avoid, x, y, z, NEAR_RADIUS)) return null;
+  if (c.out.some((p) => Math.hypot(p.x - x, p.z - z) < MIN_SPACING)) return null;
+  return { y, normal };
+}
+
+function placeAt(c: PlanContext, x: number, z: number, kindIndex: number): boolean {
+  const kind = c.kinds[kindIndex] as PropKind;
+  const variant = Math.floor(c.rnd() * (kind.capColors?.length ?? 1));
+  const yaw = c.rnd() * Math.PI * 2;
+  const scale = kind.scale[0] + c.rnd() * (kind.scale[1] - kind.scale[0]);
+  const tint = 1 + (c.rnd() * 2 - 1) * kind.tint;
+  const ws = c.opts.grid.worldSize();
+  if (x < EDGE_MARGIN || z < EDGE_MARGIN || x > ws.x - EDGE_MARGIN || z > ws.z - EDGE_MARGIN) {
+    return false;
+  }
+  const g = groundPlacement(c, x, z, kindIndex);
+  if (!g) return false;
+  c.out.push({ kind: kindIndex, x, y: g.y, z, yaw, scale, variant, tint, normal: g.normal });
+  return true;
+}
+
+function scatterPass(c: PlanContext, budget: number): void {
+  const ws = c.opts.grid.worldSize();
+  for (let tries = 0; c.out.length < budget && tries < c.opts.count * 24; tries++) {
+    const x = EDGE_MARGIN + c.rnd() * (ws.x - 2 * EDGE_MARGIN);
+    const z = EDGE_MARGIN + c.rnd() * (ws.z - 2 * EDGE_MARGIN);
+    const kindIndex = pickKind(c.kinds, c.total, c.rnd());
+    const kind = c.kinds[kindIndex] as PropKind;
+    const keepRoll = c.rnd();
+    const patch = smooth(0.45, 0.62, clusterNoise(c.seedA, x, z));
+    const mushroomPatch = smooth(0.58, 0.72, clusterNoise(c.seedB, x, z, 4));
+    let keep = SPARSE_KEEP + (1 - SPARSE_KEEP) * patch;
+    if (!kind.tall && !kind.patchy) {
+      const y = surfaceHeight(c.opts.grid, x, z);
+      const shore =
+        y === null ? 0 : 1 - smooth(0, SHORE_BAND, y - c.opts.waterLevel - WATER_MARGIN);
+      keep = Math.max(keep, SHORE_KEEP * shore);
+    }
+    if (keepRoll > keep) continue;
+    if (kind.patchy && keepRoll > mushroomPatch * 0.6) continue;
+    placeAt(c, x, z, kindIndex);
+  }
+}
+
+/** Small kinds (tufts, plants, flowers) that gather around rocks. */
+function companionKinds(kinds: readonly PropKind[]): number[] {
+  const ids: number[] = [];
+  kinds.forEach((k, i) => {
+    if (!k.tall && !k.patchy && !k.file.startsWith('rock')) ids.push(i);
+  });
+  return ids;
+}
+
+function rockPass(c: PlanContext): void {
+  const small = companionKinds(c.kinds);
+  if (small.length === 0) return;
+  const rocks = c.out.filter((p) => (c.kinds[p.kind] as PropKind).file.startsWith('rock'));
+  for (const rock of rocks) {
+    const n = ROCK_COMPANIONS[0] + Math.floor(c.rnd() * (ROCK_COMPANIONS[1] + 1));
+    for (let i = 0; i < n && c.out.length < c.opts.count; i++) {
+      const a = c.rnd() * Math.PI * 2;
+      const r = 0.55 + rock.scale * 0.6 + c.rnd() * 0.9;
+      const kindIndex = small[Math.floor(c.rnd() * small.length)] as number;
+      placeAt(c, rock.x + Math.cos(a) * r, rock.z + Math.sin(a) * r, kindIndex);
+    }
+  }
+}
+
 /**
- * Deterministically scatters props over the terrain surface: rejection sampling on the column
- * surface (above water, not steep, off the edge, clear of `avoid` points and each other).
- * Cosmetic only: uses its own RNG and never touches the simulation.
+ * Deterministically scatters props over the terrain surface: clustered rejection sampling on the
+ * column surface (above water, not steep, off the edge, clear of `avoid` points and each other),
+ * thicker along the shoreline, then small tufts and flowers gathered around the rocks. Cosmetic
+ * only: uses its own RNG and never touches the simulation.
  */
 export function planProps(opts: PropPlanOptions): PropPlacement[] {
   const kinds = opts.kinds ?? PROP_KINDS;
-  const total = kinds.reduce((s, k) => s + k.weight, 0);
-  const rnd = seededRandom(opts.seed);
-  const ws = opts.grid.worldSize();
-  const seedA = (opts.seed ^ 0x9e3779b9) >>> 0;
-  const seedB = (opts.seed ^ 0x85ebca6b) >>> 0;
-  const out: PropPlacement[] = [];
-  for (let tries = 0; out.length < opts.count && tries < opts.count * 24; tries++) {
-    const x = EDGE_MARGIN + rnd() * (ws.x - 2 * EDGE_MARGIN);
-    const z = EDGE_MARGIN + rnd() * (ws.z - 2 * EDGE_MARGIN);
-    const kindIndex = pickKind(kinds, total, rnd());
-    const kind = kinds[kindIndex] as PropKind;
-    const keepRoll = rnd();
-    const variant = Math.floor(rnd() * (kind.capColors?.length ?? 1));
-    const patch = smooth(0.45, 0.62, clusterNoise(seedA, x, z));
-    const mushroomPatch = smooth(0.58, 0.72, clusterNoise(seedB, x, z, 4));
-    if (keepRoll > SPARSE_KEEP + (1 - SPARSE_KEEP) * patch) continue;
-    if (kind.patchy && keepRoll > mushroomPatch * 0.6) continue;
-    const yaw = rnd() * Math.PI * 2;
-    const scale = kind.scale[0] + rnd() * (kind.scale[1] - kind.scale[0]);
-    const tint = 1 + (rnd() * 2 - 1) * kind.tint;
-    const y = surfaceHeight(opts.grid, x, z);
-    if (y === null || y < opts.waterLevel + WATER_MARGIN) continue;
-    const normal = opts.grid.normal({ x, y, z });
-    if (normal.y < MIN_NORMAL_Y) continue;
-    const avoid = opts.avoid ?? [];
-    if (tooClose(avoid, x, y, z, AVOID_RADIUS)) continue;
-    if (kind.tall && tooClose(avoid, x, y, z, NEAR_RADIUS)) continue;
-    if (out.some((p) => Math.hypot(p.x - x, p.z - z) < MIN_SPACING)) continue;
-    out.push({ kind: kindIndex, x, y, z, yaw, scale, variant, tint, normal });
-  }
-  return out;
+  const c: PlanContext = {
+    opts,
+    kinds,
+    total: kinds.reduce((s, k) => s + k.weight, 0),
+    rnd: seededRandom(opts.seed),
+    seedA: (opts.seed ^ 0x9e3779b9) >>> 0,
+    seedB: (opts.seed ^ 0x85ebca6b) >>> 0,
+    out: [],
+  };
+  scatterPass(c, Math.floor(opts.count * SCATTER_SHARE));
+  rockPass(c);
+  scatterPass(c, opts.count);
+  return c.out;
 }
 
 function tooClose(

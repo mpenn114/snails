@@ -66,7 +66,7 @@ export const QUALITY_TABLE: Readonly<Record<QualityTier, TierProfile>> = {
     chunkBudgetMs: 8,
     terrainLodDistance: 24,
     drawDistanceScale: 1,
-    propCount: 340,
+    propCount: 420,
   },
   medium: {
     pixelRatioCap: 1.5,
@@ -84,7 +84,7 @@ export const QUALITY_TABLE: Readonly<Record<QualityTier, TierProfile>> = {
     chunkBudgetMs: 6,
     terrainLodDistance: 20,
     drawDistanceScale: 0.8,
-    propCount: 240,
+    propCount: 300,
   },
   low: {
     pixelRatioCap: 1,
@@ -102,7 +102,7 @@ export const QUALITY_TABLE: Readonly<Record<QualityTier, TierProfile>> = {
     chunkBudgetMs: 4,
     terrainLodDistance: 16,
     drawDistanceScale: 0.6,
-    propCount: 140,
+    propCount: 170,
   },
   mobile: {
     pixelRatioCap: 1.5,

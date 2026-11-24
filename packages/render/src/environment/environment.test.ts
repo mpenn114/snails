@@ -3,7 +3,7 @@ import * as THREE from 'three';
 import { describe, expect, it, vi } from 'vitest';
 import { createEnvironment } from './environment.js';
 import { createLighting, fitShadowFrustum, shadowMapSize } from './lighting.js';
-import { createWater } from './water.js';
+import { buildWaterGeometry, createWater, waterGridLines } from './water.js';
 
 const bounds = { min: new THREE.Vector3(0, 0, 0), max: new THREE.Vector3(48, 24, 48) };
 
@@ -73,5 +73,15 @@ describe('environment', () => {
     env.dispose();
     expect(spy).toHaveBeenCalled();
     expect(root.children).toHaveLength(0);
+  });
+});
+
+describe('water grid', () => {
+  it('has dense lines across the pad and one far line per side', () => {
+    const lines = waterGridLines(0, 48, 24, 1.5, 2000);
+    expect(lines[0]).toBe(-2000);
+    expect(lines[lines.length - 1]).toBe(2048);
+    expect(lines.length).toBeGreaterThan(40);
+    expect(buildWaterGeometry([0, 1, 2], [0, 1]).getIndex()?.count).toBe(12);
   });
 });
