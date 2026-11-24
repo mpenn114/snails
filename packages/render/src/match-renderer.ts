@@ -210,8 +210,7 @@ export class MatchRenderer {
     const projectiles = new ProjectileLayer({ shadows: q.shadows, quality: q.particleScale });
     const areas = new AreaLayer();
     const strands = this.makeStrands(q.particleScale);
-    const scheduled = new ScheduledLayer();
-    const crates = new CrateLayer();
+    const [scheduled, crates] = [new ScheduledLayer(), new CrateLayer()];
     const explosions = this.makeExplosions(q.particleScale, q.maxDynamicLights);
     const props = this.makeProps(grid, waterLevel, q.propCount, q.shadows);
     view.roots.entities.add(snails.group, ...(props ? [props.group] : []));

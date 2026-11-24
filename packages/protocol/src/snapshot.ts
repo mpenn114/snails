@@ -200,25 +200,26 @@ export function encodeSnapshot(s: DecodedSnapshot): Snapshot {
       q(a.radius),
       a.turnsLeft,
     ]),
-    scheduled: s.scheduled.map((e) => [
-      e.id,
-      e.groupId,
-      q(e.position.x),
-      q(e.position.y),
-      q(e.position.z),
-      q(e.radius),
-      e.turnsLeft,
-      e.style === 'arrival' ? 1 : 0,
-    ]),
-    crates: s.crates.map((c) => [
-      c.id,
-      c.defId,
-      q(c.position.x),
-      q(c.position.y),
-      q(c.position.z),
-      c.grounded ? 1 : 0,
-    ]),
+    scheduled: s.scheduled.map(encodeScheduled),
+    crates: s.crates.map(encodeCrate),
   };
+}
+
+function encodeScheduled(e: ScheduledState): z.infer<typeof WireScheduled> {
+  return [
+    e.id,
+    e.groupId,
+    q(e.position.x),
+    q(e.position.y),
+    q(e.position.z),
+    q(e.radius),
+    e.turnsLeft,
+    e.style === 'arrival' ? 1 : 0,
+  ];
+}
+
+function encodeCrate(c: CrateState): z.infer<typeof WireCrate> {
+  return [c.id, c.defId, q(c.position.x), q(c.position.y), q(c.position.z), c.grounded ? 1 : 0];
 }
 
 /** Expands a compact snapshot; unknown phase/state codes fall back to `intro`/`dead`. */

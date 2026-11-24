@@ -1,5 +1,5 @@
-import type { GameSnapshot, Snail, Team } from '@snails/core';
-import type { DecodedSnapshot } from '@snails/protocol';
+import type { Crate, GameSnapshot, ScheduledEffect, Snail, Team } from '@snails/core';
+import type { CrateState, DecodedSnapshot, ScheduledState } from '@snails/protocol';
 
 /** Roster entry of one team, as announced by the server's `matchStarted` message. */
 export interface WireTeamInfo {
@@ -78,24 +78,9 @@ export class WireSnapshotMapper {
         sourceSnailId: '',
       })),
       nextAreaId: 0,
-      scheduled: s.scheduled.map((e) => ({
-        id: e.id,
-        groupId: e.groupId,
-        weaponId: '',
-        ownerSnailId: '',
-        position: e.position,
-        turnsLeft: e.turnsLeft,
-        effects: [],
-        telegraph: { radius: e.radius, style: e.style },
-      })),
+      scheduled: s.scheduled.map(scheduledFromWire),
       nextScheduledId: 0,
-      crates: s.crates.map((c) => ({
-        id: c.id,
-        defId: c.defId,
-        position: c.position,
-        velocity: { x: 0, y: 0, z: 0 },
-        grounded: c.grounded,
-      })),
+      crates: s.crates.map(crateFromWire),
       nextCrateId: 0,
       match: { status: 'playing', winnerTeamId: null },
     };
@@ -136,4 +121,27 @@ export class WireSnapshotMapper {
         : {}),
     };
   }
+}
+
+function scheduledFromWire(e: ScheduledState): ScheduledEffect {
+  return {
+    id: e.id,
+    groupId: e.groupId,
+    weaponId: '',
+    ownerSnailId: '',
+    position: e.position,
+    turnsLeft: e.turnsLeft,
+    effects: [],
+    telegraph: { radius: e.radius, style: e.style },
+  };
+}
+
+function crateFromWire(c: CrateState): Crate {
+  return {
+    id: c.id,
+    defId: c.defId,
+    position: c.position,
+    velocity: { x: 0, y: 0, z: 0 },
+    grounded: c.grounded,
+  };
 }

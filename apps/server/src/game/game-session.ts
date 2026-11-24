@@ -4,6 +4,7 @@ import {
   DEFAULT_TERRAIN_CONFIG,
   type MatchSetup,
   type SimEvent,
+  type GameState,
   type Snail,
   type WeaponDefinition,
   type MotionSpec,
@@ -13,9 +14,11 @@ import {
 import {
   encodeEventBatch,
   encodeSnapshot,
+  type CrateState,
   type DecodedSnapshot,
   type EventBatch,
   type MatchSettings,
+  type ScheduledState,
   type Snapshot,
   type TerrainParams,
   type WirePhase,
@@ -409,22 +412,32 @@ export class GameSession {
         radius: a.radius,
         turnsLeft: a.turnsLeft,
       })),
-      scheduled: s.scheduled.map((e) => ({
-        id: e.id,
-        groupId: e.groupId,
-        position: e.position,
-        radius: e.telegraph.radius,
-        turnsLeft: e.turnsLeft,
-        style: e.telegraph.style,
-      })),
-      crates: s.crates.map((c) => ({
-        id: c.id,
-        defId: c.defId,
-        position: c.position,
-        grounded: c.grounded,
-      })),
+      scheduled: wireScheduled(s.scheduled),
+      crates: wireCrates(s.crates),
     };
   }
+}
+
+/** Wire view of the telegraphed scheduled effects. */
+function wireScheduled(list: GameState['scheduled']): ScheduledState[] {
+  return list.map((e) => ({
+    id: e.id,
+    groupId: e.groupId,
+    position: e.position,
+    radius: e.telegraph.radius,
+    turnsLeft: e.turnsLeft,
+    style: e.telegraph.style,
+  }));
+}
+
+/** Wire view of the crates. */
+function wireCrates(list: GameState['crates']): CrateState[] {
+  return list.map((c) => ({
+    id: c.id,
+    defId: c.defId,
+    position: c.position,
+    grounded: c.grounded,
+  }));
 }
 
 function snailWireState(n: Snail): 'dead' | 'grounded' | 'airborne' {
