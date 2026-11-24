@@ -29,6 +29,24 @@ export const technologies: TechnologyDefinition[] = [
     prerequisites: [],
     description: 'Climb steeper slopes.',
   },
+  {
+    id: 'beetle-callers',
+    name: 'Beetle Callers',
+    branch: 'weaponry',
+    tier: 3,
+    cost: 60,
+    prerequisites: ['salt-refinery'],
+    description: 'Unlocks the Beetle Barrage.',
+  },
+  {
+    id: 'snail-mail-network',
+    name: 'Snail Mail Network',
+    branch: 'utility',
+    tier: 1,
+    cost: 30,
+    prerequisites: [],
+    description: 'Unlocks Snail Mail.',
+  },
 ];
 
 /** Base-game shell upgrades. */

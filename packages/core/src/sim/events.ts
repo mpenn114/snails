@@ -193,6 +193,26 @@ export interface AreaMovedEvent {
   position: Vec3;
 }
 
+/** A delayed effect was scheduled (clients telegraph its target). */
+export interface ScheduledCreatedEvent {
+  type: 'scheduledCreated';
+  scheduledId: string;
+  groupId: string;
+  weaponId: string;
+  position: Vec3;
+  turnsLeft: number;
+  radius: number;
+  style: 'strike' | 'arrival';
+}
+
+/** A scheduled effect ran and was removed. */
+export interface ScheduledFiredEvent {
+  type: 'scheduledFired';
+  scheduledId: string;
+  groupId: string;
+  position: Vec3;
+}
+
 /** A snail was repositioned by a `move` effect. */
 export interface SnailMovedEvent {
   type: 'snailMoved';
@@ -250,7 +270,9 @@ export type SimEvent =
   | SnailMovedEvent
   | RopeAttachedEvent
   | RopeReleasedEvent
-  | MeleeStruckEvent;
+  | MeleeStruckEvent
+  | ScheduledCreatedEvent
+  | ScheduledFiredEvent;
 
 /** Discriminator values of {@link SimEvent}. */
 export type SimEventType = SimEvent['type'];
@@ -282,6 +304,8 @@ export const SIM_EVENT_TYPES: readonly SimEventType[] = [
   'areaCreated',
   'areaExpired',
   'areaMoved',
+  'scheduledCreated',
+  'scheduledFired',
   'snailMoved',
   'ropeAttached',
   'ropeReleased',

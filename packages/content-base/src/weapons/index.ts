@@ -1,4 +1,5 @@
 import type { WeaponDefinition } from '@snails/core';
+import { beetleBarrage } from './beetle-barrage.js';
 import { dewBomb } from './dew-bomb.js';
 import { pebbleRoller } from './pebble-roller.js';
 import { pebbleToss } from './pebble-toss.js';
@@ -8,8 +9,11 @@ import { shellBash } from './shell-bash.js';
 import { shellDrill } from './shell-drill.js';
 import { slimeGrenade } from './slime-grenade.js';
 import { slimeRope } from './slime-rope.js';
+import { snailMail } from './snail-mail.js';
+import { sporeCloud } from './spore-cloud.js';
 
 export {
+  beetleBarrage,
   dewBomb,
   pebbleRoller,
   pebbleToss,
@@ -19,6 +23,8 @@ export {
   shellDrill,
   slimeGrenade,
   slimeRope,
+  snailMail,
+  sporeCloud,
 };
 
 /**
@@ -36,4 +42,7 @@ export const weapons: WeaponDefinition[] = [
   shellDrill,
   shellBash,
   slimeRope,
+  sporeCloud,
+  beetleBarrage,
+  snailMail,
 ];

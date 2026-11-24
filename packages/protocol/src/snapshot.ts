@@ -38,6 +38,12 @@ export const WireStatus = z.tuple([z.string(), z.string(), int, int]);
 /** Wire area: `[id, kind, px,py,pz (mm), radius (mm), turnsLeft]`. */
 export const WireArea = z.tuple([z.string(), z.string(), int, int, int, int, int]);
 
+/**
+ * Wire scheduled effect: `[id, groupId, px,py,pz (mm), radius (mm), turnsLeft, style]` with
+ * style 0 = strike, 1 = arrival.
+ */
+export const WireScheduled = z.tuple([z.string(), z.string(), int, int, int, int, int, int]);
+
 /** Compact authoritative snapshot (sent to display and controllers alike, ADR-0008). */
 export const Snapshot = z.object({
   type: z.literal('snapshot'),
@@ -52,6 +58,8 @@ export const Snapshot = z.object({
   statuses: z.array(WireStatus).optional(),
   /** Lingering areas (absent from older servers = none). */
   areas: z.array(WireArea).optional(),
+  /** Telegraphed delayed effects (absent from older servers = none). */
+  scheduled: z.array(WireScheduled).optional(),
 });
 /** Compact snapshot message. */
 export type Snapshot = z.infer<typeof Snapshot>;
@@ -99,6 +107,16 @@ export interface AreaState {
   turnsLeft: number;
 }
 
+/** Decoded scheduled effect (a telegraphed strike or arrival). */
+export interface ScheduledState {
+  id: string;
+  groupId: string;
+  position: Vec3;
+  radius: number;
+  turnsLeft: number;
+  style: 'strike' | 'arrival';
+}
+
 /** Decoded snapshot (metres, seconds, radians). */
 export interface DecodedSnapshot {
   tick: number;
@@ -114,6 +132,7 @@ export interface DecodedSnapshot {
   projectiles: ProjectileState[];
   statuses: StatusState[];
   areas: AreaState[];
+  scheduled: ScheduledState[];
 }
 
 const q = (v: number): number => Math.round(v * 1000);
@@ -167,6 +186,16 @@ export function encodeSnapshot(s: DecodedSnapshot): Snapshot {
       q(a.radius),
       a.turnsLeft,
     ]),
+    scheduled: s.scheduled.map((e) => [
+      e.id,
+      e.groupId,
+      q(e.position.x),
+      q(e.position.y),
+      q(e.position.z),
+      q(e.radius),
+      e.turnsLeft,
+      e.style === 'arrival' ? 1 : 0,
+    ]),
   };
 }
 
@@ -210,6 +239,14 @@ export function decodeSnapshot(m: Snapshot): DecodedSnapshot {
       position: dv(px, py, pz),
       radius: dq(radius),
       turnsLeft,
+    })),
+    scheduled: (m.scheduled ?? []).map(([id, groupId, px, py, pz, radius, turnsLeft, style]) => ({
+      id,
+      groupId,
+      position: dv(px, py, pz),
+      radius: dq(radius),
+      turnsLeft,
+      style: style === 1 ? ('arrival' as const) : ('strike' as const),
     })),
   };
 }

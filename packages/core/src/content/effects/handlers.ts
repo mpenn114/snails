@@ -5,6 +5,7 @@ import { distance, normalize } from '../../math/vec3.js';
 import { attachRope } from '../../rope/rope-system.js';
 import { carveAt, damageAround } from '../../physics/explosion.js';
 import { SNAIL_RADIUS, spawnProjectile } from '../../physics/projectile-system.js';
+import { scheduleEffect } from '../../scheduled/scheduled-system.js';
 import { applyStatus } from '../../status/status-system.js';
 import type { Vec3 } from '../../state/types.js';
 import type { EffectContext } from '../match-content.js';
@@ -116,6 +117,8 @@ const reel: EffectHandler<EffectOf<'reel'>> = (ctx, e, at, source) => {
   const snail = findSnail(ctx.state, source.ownerSnailId);
   if (!snail || !snail.alive || snail.rope) return;
   attachRope(ctx, snail, at, e.seconds, e.standoff);
+const schedule: EffectHandler<EffectOf<'schedule'>> = (ctx, e, at, source) => {
+  scheduleEffect(ctx, e, at, source);
 };
 
 /**
@@ -129,6 +132,7 @@ export const effectHandlers: { [T in EffectType]: EffectHandler<EffectOf<T>> } =
   spawn,
   move,
   reel,
+  schedule,
 };
 
 /** Runs effects in order at a detonation point. */

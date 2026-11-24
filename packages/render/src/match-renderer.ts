@@ -5,6 +5,7 @@ import { CameraRig, type CameraMode, type CameraRigOptions } from './camera/came
 import { ExplosionEffects } from './effects/explosion-effects.js';
 import { SplashEffects } from './effects/splash-effects.js';
 import { createWindParticles, type WindParticles } from './environment/wind-particles.js';
+import { ScheduledLayer } from './effects/scheduled-layer.js';
 import { AreaLayer } from './effects/area-layer.js';
 import { StrandEffects } from './effects/strand-effects.js';
 import { ProjectileLayer } from './effects/projectile-layer.js';
@@ -103,6 +104,7 @@ interface Built {
   projectiles: ProjectileLayer;
   areas: AreaLayer;
   strands: StrandEffects;
+  scheduled: ScheduledLayer;
   props: PropLayer | null;
   explosions: ExplosionEffects;
   splashes: SplashEffects;
@@ -206,19 +208,17 @@ export class MatchRenderer {
     const projectiles = new ProjectileLayer({ shadows: q.shadows, quality: q.particleScale });
     const areas = new AreaLayer();
     const strands = this.makeStrands(q.particleScale);
-    const explosions = new ExplosionEffects({
-      quality: q.particleScale,
-      maxLights: q.maxDynamicLights,
-      ...(this.deps.random ? { random: this.deps.random } : {}),
-    });
-    view.roots.entities.add(snails.group);
+    const scheduled = new ScheduledLayer();
+    const explosions = this.makeExplosions(q.particleScale, q.maxDynamicLights);
     const props = this.makeProps(grid, waterLevel, q.propCount, q.shadows);
-    if (props) view.roots.entities.add(props.group);
+    view.roots.entities.add(snails.group, ...(props ? [props.group] : []));
     const splashes = this.makeSplashes(view, source, waterLevel);
-    view.roots.effects.add(projectiles.group, areas.group, explosions.group, splashes.group);
-    const rig = createRig(view.camera, grid, this.deps.rigOptions);
     const wind = this.makeWind(grid, q.particleScale);
-    view.roots.effects.add(wind.object, strands.group);
+    const effects = [projectiles, areas, scheduled, explosions, splashes, strands].map(
+      (l) => l.group,
+    );
+    view.roots.effects.add(...effects, wind.object);
+    const rig = createRig(view.camera, grid, this.deps.rigOptions);
     const built: Built = {
       view,
       terrain,
@@ -227,6 +227,7 @@ export class MatchRenderer {
       projectiles,
       areas,
       strands,
+      scheduled,
       props,
       explosions,
       splashes,
@@ -242,6 +243,14 @@ export class MatchRenderer {
   private makeStrands(quality: number): StrandEffects {
     return new StrandEffects({
       quality,
+      ...(this.deps.random ? { random: this.deps.random } : {}),
+    });
+  }
+
+  private makeExplosions(quality: number, maxLights: number): ExplosionEffects {
+    return new ExplosionEffects({
+      quality,
+      maxLights,
       ...(this.deps.random ? { random: this.deps.random } : {}),
     });
   }
@@ -279,6 +288,7 @@ export class MatchRenderer {
     add(b.projectiles.updater);
     add(b.areas.updater);
     add(b.strands.updater);
+    add(b.scheduled.updater);
     add(b.explosions.updater);
     add(b.splashes.updater);
     add((dt) => b.material.scorch.advance(dt));
@@ -357,6 +367,7 @@ export class MatchRenderer {
     b.projectiles.dispose();
     b.areas.dispose();
     b.strands.dispose();
+    b.scheduled.dispose();
     b.explosions.dispose();
     b.splashes.dispose();
     b.wind.dispose();

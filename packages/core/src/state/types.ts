@@ -1,3 +1,4 @@
+import type { BasicEffect } from '../content/effects/effect-schemas.js';
 import type { MotionSpec } from '../physics/motion.js';
 
 /** 3D vector. */
@@ -81,6 +82,30 @@ export interface AreaInstance {
   sourceSnailId: string;
   /** Free-form numeric parameters for area kinds that need them. */
   params?: Record<string, number>;
+}
+
+/**
+ * An effect list waiting to run at a fixed point after a number of turn starts (serialisable
+ * reusable data: Beetle Barrage shells, the Snail Mail arrival). Created by the `schedule`
+ * effect, resolved by the `scheduled` turn-start hook.
+ */
+export interface ScheduledEffect {
+  /** Deterministic id `s<counter>`. */
+  id: string;
+  /** Entries created by one `schedule` effect share a group id (`g<counter>`). */
+  groupId: string;
+  /** Weapon that scheduled it. */
+  weaponId: string;
+  /** Snail credited with it (and the one a `move` effect repositions). */
+  ownerSnailId: string;
+  /** Where the effects run. */
+  position: Vec3;
+  /** Remaining turn starts; the effects run when it reaches 0. */
+  turnsLeft: number;
+  /** Effects run at `position` (never another `schedule`). */
+  effects: BasicEffect[];
+  /** Warning marker radius in metres, and which warning it is (`arrival` = a snail lands). */
+  telegraph: { radius: number; style: 'strike' | 'arrival' };
 }
 
 /** A touchdown waiting to be resolved by the hazard system (serialisable). */
@@ -199,6 +224,10 @@ export interface GameState {
   areas: AreaInstance[];
   /** Counter used to assign deterministic area ids. */
   nextAreaId: number;
+  /** Delayed effects (telegraphed strikes, teleports) in creation order. */
+  scheduled: ScheduledEffect[];
+  /** Counter used to assign deterministic scheduled-effect and group ids. */
+  nextScheduledId: number;
   match: MatchStatus;
 }
 

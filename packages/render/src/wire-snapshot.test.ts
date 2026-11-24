@@ -51,6 +51,16 @@ function snap(
     areas: [
       { id: 'a1', kind: 'base:cloud', position: { x: 1, y: 2, z: 3 }, radius: 2, turnsLeft: 3 },
     ],
+    scheduled: [
+      {
+        id: 's1',
+        groupId: 'g1',
+        position: { x: 4, y: 2, z: 3 },
+        radius: 2,
+        turnsLeft: 2,
+        style: 'strike',
+      },
+    ],
   };
 }
 
@@ -66,6 +76,7 @@ describe('WireSnapshotMapper', () => {
     expect(s?.alive).toBe(true);
     expect(s?.grounded).toBe(true);
     expect(s?.shell.colour).toBe('#f00');
+    expect(m.scheduled[0]?.telegraph).toEqual({ radius: 2, style: 'strike' });
     expect(m.turn.fired).toBe(true);
     expect(m.projectiles[0]?.ownerSnailId).toBe('s1');
     expect(s?.statuses?.[0]).toMatchObject({ id: 'base:salt', turnsLeft: 2 });
