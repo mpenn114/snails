@@ -1,7 +1,7 @@
 // End-to-end Weapons demo: the host ticks "Weapons demo map" in the lobby settings, then three
 // turns fire three different weapons (two ballistic, one melee) and each must resolve cleanly.
 // Usage: pnpm build && node e2e/demo.mjs   (needs `playwright`, see smoke.mjs)
-import { chromium, devices, fail, has, startServer, step, teamOf, until, watch } from './lib.mjs';
+import { chromium, devices, fail, startServer, step, teamOf, until, watch } from './lib.mjs';
 
 const WEAPON_TURNS = ['Pebble Toss', 'Salt Shaker', 'Shell Bash'];
 const { server, base } = await startServer();
