@@ -72,7 +72,7 @@ describe('Calcium economy', () => {
     expect(calcium(m, 'a')).toBe(CALCIUM_INCOME.perTurn);
     expect(calcium(m, 'b')).toBe(0);
     expect(changes(first)).toEqual([
-      { type: 'calciumChanged', teamId: 'a', delta: 10, balance: 10, reason: 'turnIncome' },
+      { type: 'calciumChanged', teamId: 'a', delta: 15, balance: 15, reason: 'turnIncome' },
     ]);
   });
 
@@ -80,12 +80,12 @@ describe('Calcium economy', () => {
     const m = match();
     m.sim.step();
     emitNextStep(m, [hit('b:0', 'a:0', 3), hit('b:0', 'a:0', 3)]);
-    expect(calcium(m, 'a')).toBe(10 + 1);
+    expect(calcium(m, 'a')).toBe(CALCIUM_INCOME.perTurn + 1);
     emitNextStep(m, [hit('b:0', 'a:0', 1000)]);
     expect(m.sim.state.teams[0]?.research?.damageCalciumThisTurn).toBe(
       CALCIUM_INCOME.damageCapPerTurn,
     );
-    expect(calcium(m, 'a')).toBe(10 + 15);
+    expect(calcium(m, 'a')).toBe(CALCIUM_INCOME.perTurn + CALCIUM_INCOME.damageCapPerTurn);
   });
 
   it('ignores self, team and environmental damage', () => {
@@ -97,7 +97,7 @@ describe('Calcium economy', () => {
       hit('b:0', null, 50),
     ]);
     expect(changes(ev)).toEqual([]);
-    expect(calcium(m, 'a')).toBe(10);
+    expect(calcium(m, 'a')).toBe(CALCIUM_INCOME.perTurn);
   });
 
   it('pays a kill bonus to the team that last damaged the victim', () => {
@@ -108,7 +108,7 @@ describe('Calcium economy', () => {
       { type: 'snailDied', snailId: 'b:0', teamId: 'b', cause: 'explosion' },
       { type: 'snailDied', snailId: 'b:1', teamId: 'b', cause: 'drown' },
     ]);
-    expect(calcium(m, 'a')).toBe(10 + CALCIUM_INCOME.perKill);
+    expect(calcium(m, 'a')).toBe(CALCIUM_INCOME.perTurn + CALCIUM_INCOME.perKill);
   });
 
   it('clamps at zero and emits the applied delta', () => {

@@ -6,7 +6,7 @@ export const spikedWhorl = {
   name: 'Spiked Whorl',
   branch: 'shell',
   tier: 2,
-  cost: 45,
+  cost: 35,
   researchTurns: 2,
   prerequisites: ['calcified-shell'],
   description: 'Spikes: melee attackers take 10 damage; Shell Bash +30% damage.',

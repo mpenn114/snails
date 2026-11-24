@@ -6,7 +6,7 @@ export const ironPlating = {
   name: 'Iron Plating',
   branch: 'shell',
   tier: 2,
-  cost: 50,
+  cost: 35,
   researchTurns: 2,
   prerequisites: ['calcified-shell'],
   description: 'Iron shell: -20% blast damage, +10 max health.',

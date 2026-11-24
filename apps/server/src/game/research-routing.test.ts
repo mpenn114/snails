@@ -134,7 +134,7 @@ describe('research privacy in the match runner', () => {
     });
     s.advance(50);
     // Paid at once; the match's first turn start may already have completed the 1-turn tech.
-    expect(team.research?.calcium).toBe(90);
+    expect(team.research?.calcium).toBe(95);
     const done = team.researched.includes('salt-mining');
     expect(done || team.research?.active?.techId === 'salt-mining').toBe(true);
   });

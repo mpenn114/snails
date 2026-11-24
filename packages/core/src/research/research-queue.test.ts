@@ -93,9 +93,9 @@ describe('research queue', () => {
     expect(teamA(m).research?.active).toBeNull();
     expect(teamA(m).research?.queue).toEqual(['t1']);
     endTurn(m);
-    endTurn(m); // a's turn start: +10 income (5 + 10 = 15), then t1 starts
+    endTurn(m); // a's turn start: +10 income (5 + 15 = 20), then t1 starts
     expect(teamA(m).research?.active?.techId).toBe('t1');
-    expect(teamA(m).research?.calcium).toBe(5);
+    expect(teamA(m).research?.calcium).toBe(10);
   });
 
   it('enforces the tier gate (tier N needs N-1 techs, queued ones count)', () => {
@@ -132,8 +132,8 @@ describe('research queue', () => {
     endTurn(m);
     endTurn(m);
     expect(teamA(m).researched).toEqual(['t2']);
-    // 90 + 10 turn income - 3
-    expect(teamA(m).research).toMatchObject({ calcium: 97, active: { techId: 'cap1', paid: 3 } });
+    // 90 + 15 turn income - 3
+    expect(teamA(m).research).toMatchObject({ calcium: 102, active: { techId: 'cap1', paid: 3 } });
   });
 
   it('rejects invalid commands', () => {

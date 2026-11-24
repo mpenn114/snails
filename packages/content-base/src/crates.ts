@@ -14,7 +14,7 @@ export const crates: CrateDefinition[] = [
     name: 'Calcium Crate',
     kind: 'calcium',
     weight: 3,
-    contents: { calcium: 25 },
+    contents: { calcium: 40 },
   },
   {
     id: 'base:supply-crate',

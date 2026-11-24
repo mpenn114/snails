@@ -5,13 +5,13 @@ import type { TeamResearch } from './research-types.js';
 /** Calcium amounts of the economy in one place so balance work can tune them. */
 export const CALCIUM_INCOME = {
   /** Granted at the owning team's turn start. */
-  perTurn: 10,
+  perTurn: 15,
   /** One Calcium per this much damage dealt to enemy snails. */
   damagePerCalcium: 5,
   /** Cap on damage-based Calcium earned per turn. */
-  damageCapPerTurn: 15,
+  damageCapPerTurn: 20,
   /** Granted per enemy snail killed. */
-  perKill: 10,
+  perKill: 15,
 } as const;
 
 /** Fresh research state for a team at match start. */

@@ -6,7 +6,7 @@ export const snailMail: TechnologyDefinition = {
   name: 'Snail Mail',
   branch: 'utility',
   tier: 3,
-  cost: 75,
+  cost: 55,
   researchTurns: 2,
   prerequisites: ['egg-hunt'],
   description: 'Unlocks Snail Mail teleport.',

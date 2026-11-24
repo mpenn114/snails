@@ -83,14 +83,14 @@ describe('base tech data', () => {
   const table: [string, string, number, number, number, string[], string[]][] = [
     ['salt-mining', 'weaponry', 1, 20, 1, [], []],
     ['sticky-slime', 'weaponry', 1, 25, 1, [], []],
-    ['heavy-pebbles', 'weaponry', 2, 40, 2, [], ['salt-mining', 'sticky-slime']],
-    ['radula-guidance', 'weaponry', 2, 50, 2, ['sticky-slime'], []],
-    ['beetle-calls', 'weaponry', 3, 80, 3, ['heavy-pebbles'], []],
+    ['heavy-pebbles', 'weaponry', 2, 35, 2, [], ['salt-mining', 'sticky-slime']],
+    ['radula-guidance', 'weaponry', 2, 35, 2, ['sticky-slime'], []],
+    ['beetle-calls', 'weaponry', 3, 55, 2, ['heavy-pebbles'], []],
     ['calcified-shell', 'shell', 1, 25, 1, [], []],
-    ['spiked-whorl', 'shell', 2, 45, 2, ['calcified-shell'], []],
-    ['iron-plating', 'shell', 2, 50, 2, ['calcified-shell'], []],
-    ['crystal-lattice', 'shell', 3, 85, 3, ['iron-plating'], []],
-    ['regrowth', 'shell', 3, 70, 2, ['calcified-shell'], []],
+    ['spiked-whorl', 'shell', 2, 35, 2, ['calcified-shell'], []],
+    ['iron-plating', 'shell', 2, 35, 2, ['calcified-shell'], []],
+    ['crystal-lattice', 'shell', 3, 55, 2, ['iron-plating'], []],
+    ['regrowth', 'shell', 3, 40, 1, ['calcified-shell'], []],
   ];
   it.each(table)('%s matches the design doc', (id, branch, tier, cost, turns, pre, any) => {
     const t = byId(id);

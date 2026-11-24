@@ -35,9 +35,9 @@ describe('anti-snowball rules in a match', () => {
     next.research!.roundsSinceDamage = ANTI_SNOWBALL.mossTaxRounds;
     const events = endTurn(m);
     expect(income(events).filter((e) => e.reason === 'mossTax')).toEqual([
-      { reason: 'mossTax', delta: -5 },
+      { reason: 'mossTax', delta: -7 },
     ]);
-    expect(next.research!.calcium).toBe(5);
+    expect(next.research!.calcium).toBe(8);
   });
 
   it('does not tax a team that recently dealt damage', () => {
