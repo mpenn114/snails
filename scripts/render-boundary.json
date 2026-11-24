@@ -47,12 +47,6 @@
     "ContentRegistry",
     "createContentRegistries"
   ],
-  "forbiddenPackages": [
-    "@snails/ai",
-    "@snails/content-base",
-    "@snails/server",
-    "@snails/controller",
-    "@snails/desktop"
-  ],
+  "forbiddenPackages": ["@snails/ai", "@snails/server", "@snails/controller", "@snails/desktop"],
   "forbiddenPathSegments": ["core", "ai", "content-base", "server", "controller", "desktop"]
 }

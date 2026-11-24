@@ -44,6 +44,9 @@ function setup(victimAt: Vec3 = { x: 40, y: 6, z: 36 }): Simulation {
   });
   // Gated weapons are locked until researched (M4-15); research everything for these tests.
   for (const t of state.teams) {
+    for (const w of registries.weapons.list()) {
+      if (w.ammo !== 'infinite') (t.inventory ??= {})[w.id] = w.ammo;
+    }
     t.researched = registries.weapons
       .list()
       .flatMap((w) => (w.requiresTech ? [w.requiresTech] : []));
@@ -173,10 +176,10 @@ describe('base:beetle-barrage', () => {
     expect(victim?.health).toBeGreaterThanOrEqual(100 - 18 * 3);
   });
 
-  it('is gated by the beetle-callers technology', () => {
+  it('is gated by the beetle-calls technology', () => {
     const { registries } = loadContentPacks([basePack]);
-    expect(registries.weapons.get('base:beetle-barrage')?.requiresTech).toBe('beetle-callers');
-    expect(registries.technologies.has('beetle-callers')).toBe(true);
+    expect(registries.weapons.get('base:beetle-barrage')?.requiresTech).toBe('beetle-calls');
+    expect(registries.technologies.has('beetle-calls')).toBe(true);
   });
 });
 

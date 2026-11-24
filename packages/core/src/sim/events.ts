@@ -45,6 +45,8 @@ export interface MatchEndedEvent {
   type: 'matchEnded';
   status: MatchStatus['status'];
   winnerTeamId?: string;
+  /** Set when the match ended by completing a capstone. */
+  reason?: 'research';
 }
 
 /** A weapon launched a projectile. */
@@ -291,10 +293,67 @@ export interface WaterRoseEvent {
 }
 
 /** Every event the simulation can emit. Plain JSON data only. */
+/** Why a team's Calcium changed. */
+export type CalciumReason =
+  | 'turnIncome'
+  | 'damage'
+  | 'kill'
+  | 'crate'
+  | 'catchUp'
+  | 'techIncome'
+  | 'mossTax'
+  | 'spent'
+  | 'refund';
+
+/** A team's Calcium balance changed (private to that team on the wire). */
+export interface CalciumChangedEvent {
+  type: 'calciumChanged';
+  teamId: string;
+  delta: number;
+  balance: number;
+  reason: CalciumReason;
+}
+
+/** A tech was added to a team's queue (private). */
+export interface ResearchQueuedEvent {
+  type: 'researchQueued';
+  teamId: string;
+  techId: string;
+}
+
+/** Work began on a tech; Calcium was paid (private; opponents see only that research is on). */
+export interface ResearchStartedEvent {
+  type: 'researchStarted';
+  teamId: string;
+  techId: string;
+  turns: number;
+  cost: number;
+}
+
+/** A queued or active tech was removed (private). */
+export interface ResearchCancelledEvent {
+  type: 'researchCancelled';
+  teamId: string;
+  techId: string;
+  refund: number;
+}
+
+/** A team completed a tech: the public reveal moment. */
+export interface ResearchCompletedEvent {
+  type: 'researchCompleted';
+  teamId: string;
+  techId: string;
+}
+
 export type SimEvent =
   | TickEvent
   | TurnStartedEvent
   | TurnEndedEvent
+  | CalciumChangedEvent
+  | ResearchQueuedEvent
+  | ResearchStartedEvent
+  | ResearchCancelledEvent
+  | ResearchCompletedEvent
   | PhaseChangedEvent
   | WindChangedEvent
   | MatchEndedEvent
@@ -367,6 +426,11 @@ export const SIM_EVENT_TYPES: readonly SimEventType[] = [
   'crateDestroyed',
   'suddenDeathStarted',
   'waterRose',
+  'calciumChanged',
+  'researchQueued',
+  'researchStarted',
+  'researchCancelled',
+  'researchCompleted',
 ];
 
 /** Type guard: is `type` a known simulation event type? */

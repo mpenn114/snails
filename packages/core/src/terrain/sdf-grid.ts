@@ -52,6 +52,16 @@ export class SdfGrid {
     this.chunksZ = Math.ceil(nz / chunkSize);
   }
 
+  /** Independent copy of the grid: voxel and material arrays, material table and dirty set. */
+  clone(): SdfGrid {
+    const copy = new SdfGrid(this.nx, this.ny, this.nz, this.cellSize, 1, this.chunkSize);
+    copy.data.set(this.data);
+    copy.materials.set(this.materials);
+    copy.materialTable = this.materialTable;
+    for (const id of this.dirty) copy.dirty.add(id);
+    return copy;
+  }
+
   /** Linear index of a cell. */
   index(x: number, y: number, z: number): number {
     return x + this.nx * (y + this.ny * z);

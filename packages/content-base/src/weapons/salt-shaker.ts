@@ -18,4 +18,5 @@ export const saltShaker = {
     { type: 'status', statusId: 'base:salt', radius: 1, turns: 2 },
   ],
   ammo: 'infinite',
+  requiresTech: 'salt-mining',
 } satisfies WeaponDefinition;

@@ -12,6 +12,17 @@ export function evaluateMatch(state: GameState): MatchStatus {
   return { status: 'playing', winnerTeamId: null };
 }
 
+/**
+ * Research race rule: with `state.raceCapstones` set, the first team that has completed any of
+ * them wins (teams are checked in order, so a same-step tie goes to the earlier team).
+ */
+export function evaluateResearchRace(state: GameState): MatchStatus {
+  const caps = state.raceCapstones;
+  const winner = caps && state.teams.find((t) => t.researched.some((id) => caps.includes(id)));
+  if (!winner) return { status: 'playing', winnerTeamId: null };
+  return { status: 'won', winnerTeamId: winner.id, reason: 'research' };
+}
+
 /** Sum of health over a team's living snails (dead snails count as zero). */
 export function teamHealth(team: Team): number {
   return team.snails.reduce((sum, s) => (s.alive ? sum + s.health : sum), 0);

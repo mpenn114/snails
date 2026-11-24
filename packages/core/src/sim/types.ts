@@ -1,5 +1,6 @@
 import type { RngStreams } from '../rng-streams.js';
 import type { SdfGrid } from '../terrain/sdf-grid.js';
+import type { TechRegistry } from '../research/tech-rules.js';
 import type { GameState } from '../state/types.js';
 import type { SimEvent } from './events.js';
 import { FIXED_DT } from '../physics/ballistics.js';
@@ -54,8 +55,29 @@ export interface SteerCommand {
   input: number;
 }
 
+/** Queue a tech for a team (any phase, any team; validated against tiers and Calcium). */
+export interface QueueResearchCommand {
+  type: 'queueResearch';
+  teamId: string;
+  techId: string;
+}
+
+/** Remove a queued tech, or cancel the active one (refunds 50% of what was paid). */
+export interface CancelResearchCommand {
+  type: 'cancelResearch';
+  teamId: string;
+  techId: string;
+}
+
 /** Any player intent fed into the simulation. Validation happens upstream (M1-21). */
-export type Command = MoveCommand | AimCommand | FireCommand | EndTurnCommand | SteerCommand;
+export type Command =
+  | MoveCommand
+  | AimCommand
+  | FireCommand
+  | EndTurnCommand
+  | SteerCommand
+  | QueueResearchCommand
+  | CancelResearchCommand;
 
 /** Command discriminator values. */
 export type CommandType = Command['type'];
@@ -66,6 +88,8 @@ export interface SimContext {
   readonly terrain: SdfGrid;
   readonly rng: SimRng;
   readonly dt: number;
+  /** Technology registry (absent in sims built without one); tech stats read it. */
+  readonly techs?: TechRegistry;
   /** Queues an event to be returned from the current step. */
   emit(event: SimEvent): void;
 }

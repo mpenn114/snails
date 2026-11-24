@@ -6,10 +6,13 @@ import type {
   AreaDefinition,
   CrateDefinition,
   StatusDefinition,
+  TechnologyDefinition,
   WeaponDefinition,
   WindDefinition,
 } from '../content/types.js';
 import { DEFAULT_CRATE_RULES, type CrateRules } from '../crate/crate-rules.js';
+import { emptyTeamResearch } from '../research/calcium.js';
+import { registerResearch } from '../research/research-system.js';
 import { registerCrates } from '../crate/crate-system.js';
 import { moveCommandHandler, movementSystem } from '../movement/movement.js';
 import { snailSeparationSystem } from '../movement/snail-collision.js';
@@ -62,6 +65,8 @@ export interface MatchOptions {
   statuses?: StatusDefinition[];
   /** Area definitions `spawn` effects may refer to. */
   areas?: AreaDefinition[];
+  /** Technology definitions the research queue may use (none = nothing to research). */
+  technologies?: TechnologyDefinition[];
   /** Crate definitions that may drop (none = no crates). */
   crates?: CrateDefinition[];
   /** Drop interval and map cap overrides (default every 3 rounds, up to 2). */
@@ -184,10 +189,26 @@ export function createMatch(options: MatchOptions): MatchSetup {
   });
   const loadout = { ...demoLoadout(options.weapons, settings), ...options.loadout };
   for (const team of state.teams) team.inventory = initialInventory(options.weapons, loadout);
+  const race = settings.mode === 'researchRace';
+  if (settings.research !== 'off' || race) {
+    state.research = settings.research === 'off' ? 'on' : settings.research;
+    for (const team of state.teams) team.research = emptyTeamResearch();
+  }
   if (settings.demo) for (const team of state.teams) team.researched = gatedTechs(options.weapons);
   const content = buildMatchContent(options);
+  if (race)
+    state.raceCapstones = content.technologies
+      .list()
+      .filter((t) => t.capstone)
+      .map((t) => t.id);
   const weapons = content.weapons;
-  const sim = new Simulation({ state, terrain: grid, rng, weapons });
+  const sim = new Simulation({
+    state,
+    terrain: grid,
+    rng,
+    weapons,
+    technologies: content.technologies,
+  });
   const turnConfig = {
     ...turnConfigFromSettings(settings, DEFAULT_TURN_CONFIG),
     ...options.turn,
@@ -204,6 +225,7 @@ export function createMatch(options: MatchOptions): MatchSetup {
   if (windConfig.changesMidFlight === true) sim.addSystem('wind', midFlightWindSystem(windConfig));
   registerLingeringEffects(sim, content);
   registerMatchRules(sim, content, settings, options.crateRules);
+  registerResearch(sim, content);
   faceEnemies(sim);
   startTurn(state, turnConfig, () => undefined, { rng: rng.wind, config: windConfig });
   return { sim, weapons, content, turnConfig };

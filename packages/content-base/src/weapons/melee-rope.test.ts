@@ -50,6 +50,7 @@ function makeSim(fill: Fill, snails: Record<'a1' | 'b1', Vec3>, withMovement = f
     terrain: { nx: NX, ny: NY, nz: NZ },
   });
   state.wind = { strength: 0, direction: 0 };
+  state.teams[0]?.researched.push('slime-rope');
   const { registries } = loadContentPacks([basePack]);
   const content = buildMatchContent({
     weapons: registries.weapons.list(),

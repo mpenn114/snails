@@ -1,5 +1,5 @@
 import type { GameSnapshot, GameState } from '../state/types.js';
-import { createSnapshot } from '../state/game-state.js';
+import { cloneState, createSnapshot } from '../state/game-state.js';
 import type { SdfGrid } from '../terrain/sdf-grid.js';
 import {
   type Command,
@@ -10,6 +10,7 @@ import {
   type SystemFn,
 } from './types.js';
 import type { SimEvent } from './events.js';
+import { RngStreams } from '../rng-streams.js';
 import { FIXED_DT } from '../physics/ballistics.js';
 import type { TurnStartHook } from '../turn/turn-hooks.js';
 import { requestEndTurn } from '../turn/turn-phases.js';
@@ -26,6 +27,9 @@ function tallyDamage(state: GameState, e: SimEvent): void {
   tally[source.teamId] = (tally[source.teamId] ?? 0) + e.amount;
 }
 
+/** Callback for {@link Simulation.registerEventObserver}. */
+export type EventObserver = (ctx: SimContext, event: SimEvent) => void;
+
 interface QueuedCommand {
   cmd: Command;
   /** Present only for commands that went through {@link Simulation.submit}. */
@@ -39,6 +43,8 @@ export interface SimulationOptions {
   rng: SimRng;
   /** Weapon registry used to validate `fire` commands (optional). */
   weapons?: ValidationContext['weapons'];
+  /** Technology registry used to validate research commands (optional). */
+  technologies?: ValidationContext['technologies'];
 }
 
 /** Error thrown on misuse of the driver (not on gameplay conditions). */
@@ -62,9 +68,11 @@ export class Simulation {
   readonly rng: SimRng;
   private readonly queue: QueuedCommand[] = [];
   private readonly weapons?: ValidationContext['weapons'];
+  private readonly technologies?: ValidationContext['technologies'];
   private readonly handlers = new Map<CommandType, CommandHandler<never>>();
   private readonly systems: { name: string; fn: SystemFn }[] = [];
   private readonly turnStartHooks: { name: string; fn: TurnStartHook }[] = [];
+  private readonly eventObservers: { name: string; fn: EventObserver }[] = [];
   /** Last turn number whose hooks ran (0 = none yet, so turn 1 fires hooks on the first step). */
   private hookedTurn = 0;
 
@@ -73,6 +81,7 @@ export class Simulation {
     this.terrain = options.terrain;
     this.rng = options.rng;
     this.weapons = options.weapons;
+    this.technologies = options.technologies;
     this.registerCommandHandler('endTurn', (c) => requestEndTurn(c.state, c.emit));
   }
 
@@ -92,7 +101,11 @@ export class Simulation {
   }
 
   private validate(cmd: Command, issuerTeamId?: string): ValidationResult {
-    return validateCommand(this.state, cmd, { weapons: this.weapons, issuerTeamId });
+    return validateCommand(this.state, cmd, {
+      weapons: this.weapons,
+      technologies: this.technologies,
+      issuerTeamId,
+    });
   }
 
   /** Registers (or replaces) the handler for a command type. */
@@ -112,6 +125,15 @@ export class Simulation {
    */
   registerTurnStartHook(name: string, fn: TurnStartHook): void {
     this.turnStartHooks.push({ name, fn });
+  }
+
+  /**
+   * Registers an observer called, in registration order, for every emitted event right after it
+   * is recorded. Observers may emit further events (which are observed too), so they must not
+   * re-emit the kind they react to.
+   */
+  registerEventObserver(name: string, fn: EventObserver): void {
+    this.eventObservers.push({ name, fn });
   }
 
   /** Names of registered turn-start hooks in execution order. */
@@ -139,9 +161,11 @@ export class Simulation {
       terrain: this.terrain,
       rng: this.rng,
       dt,
+      ...(this.technologies ? { techs: this.technologies } : {}),
       emit: (e) => {
         events.push(e);
         tallyDamage(this.state, e);
+        for (const o of this.eventObservers) o.fn(ctx, e);
       },
     };
     for (const { cmd, validate } of this.queue.splice(0)) {
@@ -169,6 +193,34 @@ export class Simulation {
     this.state.tick += 1;
     events.push({ type: 'tick', tick: this.state.tick });
     return events;
+  }
+
+  /**
+   * Independent copy for lookahead: deep-cloned state, terrain grid and RNG stream positions,
+   * with the same handlers, systems, turn-start hooks and pending commands. Systems read all
+   * state through the step context, so sharing their closures is safe; stepping the fork with
+   * the same commands reproduces the original exactly and never touches it.
+   */
+  fork(): Simulation {
+    const copy = new Simulation({
+      state: cloneState(this.state),
+      terrain: this.terrain.clone(),
+      rng: RngStreams.fromState(this.rng.saveState()),
+      weapons: this.weapons,
+      technologies: this.technologies,
+    });
+    for (const [type, fn] of this.handlers) copy.handlers.set(type, fn);
+    copy.systems.push(...this.systems);
+    copy.turnStartHooks.push(...this.turnStartHooks);
+    copy.eventObservers.push(...this.eventObservers);
+    copy.hookedTurn = this.hookedTurn;
+    for (const q of this.queue) {
+      copy.queue.push({
+        cmd: { ...q.cmd },
+        validate: q.validate && { ...q.validate },
+      });
+    }
+    return copy;
   }
 
   /** Deep, plain-data copy of the current state. */

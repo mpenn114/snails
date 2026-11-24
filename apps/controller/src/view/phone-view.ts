@@ -9,7 +9,7 @@ import type { GameView, QualityTier, ViewEnvironment } from '@snails/render';
 import { decodeEventBatch, decodeSnapshot, decodeTerrainHistory } from '@snails/protocol';
 import type { ServerMessage } from '@snails/protocol';
 import type { SimEvent } from '@snails/core';
-import { weapons } from '@snails/content-base';
+import { technologies, weapons } from '@snails/content-base';
 import type { AimStore } from '../controls/aim-store';
 import { bindAimMode } from './aim-binding';
 import { AimView } from './aim-view';
@@ -116,6 +116,8 @@ export class PhoneView {
       rigOptions: PHONE_RIG_OPTIONS,
       makeView: (env) => this.makeView(canvas, env),
     });
+    const techVisuals = new Map(technologies.map((t) => [t.id, t.visual]));
+    this.renderer.setTechVisuals((id) => techVisuals.get(id));
     this.renderer.setTier(this.governor.settings.tier);
     window.addEventListener('resize', this.onResize);
     window.addEventListener('orientationchange', this.onResize);
@@ -163,7 +165,9 @@ export class PhoneView {
       r.init(buildTerrainInit(msg.seed, msg.terrain, msg.settings.demo));
       this.startOverlay(r, msg.teams);
     } else if (msg.type === 'snapshot' && this.mapper) {
-      const snap = this.mapper.map(decodeSnapshot(msg));
+      const decoded = decodeSnapshot(msg);
+      const snap = this.mapper.map(decoded);
+      r.setResearchTeams(decoded.teams);
       r.pushSnapshot(snap);
       this.overlay?.onSnapshot(snap);
       this.aimView?.onSnapshot(snap);

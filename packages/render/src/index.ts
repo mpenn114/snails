@@ -44,3 +44,6 @@ export * from './snail/shell-geometry.js';
 export * from './snail/body-geometry.js';
 export * from './snail/shell-pattern.js';
 export * from './snail/shell-material.js';
+export * from './research/shell-look.js';
+export * from './research/research-visuals.js';
+export * from './effects/tech-unlock-burst.js';

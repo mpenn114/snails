@@ -22,6 +22,7 @@ export * from './crate/crate-system.js';
 export * from './turn/turn-hooks.js';
 export * from './scheduled/scheduled-system.js';
 export * from './sim/lingering.js';
+export * from './sim/fork.js';
 export * from './combat/pattern.js';
 export * from './combat/inventory.js';
 export * from './rope/rope-system.js';
@@ -50,6 +51,11 @@ export {
   type EndTurnCommand,
 } from './sim/types.js';
 export * from './sim/events.js';
+export * from './research/research-types.js';
+export * from './research/calcium.js';
+export * from './research/tech-effects.js';
+export * from './research/research-system.js';
+export * from './research/tech-effects.js';
 export * from './sim/simulation.js';
 export * from './sim/validation.js';
 export * from './state/game-state.js';
@@ -70,3 +76,4 @@ export * from './rules/sudden-death.js';
 export * from './sim/match.js';
 export * from './sim/scripted-bot.js';
 export * from './sim/replay.js';
+export * from './research/tech-rules.js';

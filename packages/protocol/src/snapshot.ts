@@ -46,12 +46,45 @@ export const WireScheduled = z.tuple([z.string(), z.string(), int, int, int, int
 /** Wire crate: `[id, defId, px,py,pz (mm), grounded (0 or 1)]`. */
 export const WireCrate = z.tuple([z.string(), z.string(), int, int, int, int]);
 
+/** Research presets (mirrors core's `ResearchSetting`). */
+export const WireResearchSetting = z.enum(['off', 'on', 'fast']);
+
+/** Private research state of one team (mirrors core's `TeamResearch`). */
+export const WireTeamResearch = z.object({
+  calcium: z.number(),
+  queue: z.array(z.string()),
+  active: z.object({ techId: z.string(), turnsLeft: z.number(), paid: z.number() }).nullable(),
+  damageCalciumThisTurn: z.number(),
+  roundsSinceDamage: z.number(),
+  abilityUses: z.record(z.string(), z.number()).optional(),
+});
+/** Private research state of one team. */
+export type WireTeamResearch = z.infer<typeof WireTeamResearch>;
+
+/**
+ * Per-team research entry. `researching` is public (opponents show a shimmer); `research` is
+ * private: the server strips it for every viewer but the owning team's controllers.
+ */
+export const WireTeamEntry = z.object({
+  id: z.string(),
+  researching: z.boolean().optional(),
+  /** Completed tech ids (public; absent = none). */
+  researched: z.array(z.string()).optional(),
+  research: WireTeamResearch.optional(),
+  /** Flags set by the team's completed techs (public: techs are revealed on completion). */
+  flags: z.array(z.string()).optional(),
+});
+/** Per-team research entry. */
+export type WireTeamEntry = z.infer<typeof WireTeamEntry>;
+
 /** Compact authoritative snapshot (sent to display and controllers alike, ADR-0008). */
 export const Snapshot = z.object({
   type: z.literal('snapshot'),
   tick: int.nonnegative(),
   /** `[strength (milli m/s^2), direction (mrad)]`. */
   wind: z.tuple([int, int]),
+  /** Next turn's wind, same format; only sent to viewers with the Weather Vane (or Oracle). */
+  nextWind: z.tuple([int, int]).optional(),
   /** `[activeTeamId, activeSnailId, phaseIndex, timeRemainingMs, turnNumber]`. */
   turn: z.tuple([z.string().nullable(), z.string().nullable(), int.nonnegative(), int, int]),
   snails: z.array(WireSnail),
@@ -66,6 +99,10 @@ export const Snapshot = z.object({
   crates: z.array(WireCrate).optional(),
   /** Water surface height in mm; absent = the level announced in `matchStarted` (sudden death raises it). */
   water: int.optional(),
+  /** Research preset; absent = off. */
+  research: WireResearchSetting.optional(),
+  /** Per-team research entries; absent = research off. */
+  teams: z.array(WireTeamEntry).optional(),
 });
 /** Compact snapshot message. */
 export type Snapshot = z.infer<typeof Snapshot>;
@@ -136,6 +173,8 @@ export interface CrateState {
 export interface DecodedSnapshot {
   tick: number;
   wind: { strength: number; direction: number };
+  /** Next turn's wind (research on only). */
+  nextWind?: { strength: number; direction: number };
   turn: {
     activeTeamId: string | null;
     activeSnailId: string | null;
@@ -151,6 +190,10 @@ export interface DecodedSnapshot {
   crates: CrateState[];
   /** Water surface height in metres; absent = unchanged from the terrain parameters. */
   waterLevel?: number;
+  /** Research preset; absent = off. */
+  research?: z.infer<typeof WireResearchSetting>;
+  /** Per-team research entries (private `research` only where the viewer may see it). */
+  teams?: WireTeamEntry[];
 }
 
 const q = (v: number): number => Math.round(v * 1000);
@@ -163,6 +206,9 @@ export function encodeSnapshot(s: DecodedSnapshot): Snapshot {
     type: 'snapshot',
     tick: s.tick,
     wind: [q(s.wind.strength), q(s.wind.direction)],
+    ...(s.nextWind
+      ? { nextWind: [q(s.nextWind.strength), q(s.nextWind.direction)] as [number, number] }
+      : {}),
     turn: [
       s.turn.activeTeamId,
       s.turn.activeSnailId,
@@ -207,6 +253,8 @@ export function encodeSnapshot(s: DecodedSnapshot): Snapshot {
     scheduled: s.scheduled.map(encodeScheduled),
     crates: s.crates.map(encodeCrate),
     ...(s.waterLevel === undefined ? {} : { water: q(s.waterLevel) }),
+    ...(s.research === undefined ? {} : { research: s.research }),
+    ...(s.teams === undefined ? {} : { teams: s.teams }),
   };
 }
 
@@ -227,12 +275,18 @@ function encodeCrate(c: CrateState): z.infer<typeof WireCrate> {
   return [c.id, c.defId, q(c.position.x), q(c.position.y), q(c.position.z), c.grounded ? 1 : 0];
 }
 
+function decodeNextWind(m: Snapshot): Pick<DecodedSnapshot, 'nextWind'> {
+  if (!m.nextWind) return {};
+  return { nextWind: { strength: dq(m.nextWind[0]), direction: dq(m.nextWind[1]) } };
+}
+
 /** Expands a compact snapshot; unknown phase/state codes fall back to `intro`/`dead`. */
 export function decodeSnapshot(m: Snapshot): DecodedSnapshot {
   const [team, snail, phase, time, turnNumber] = m.turn;
   return {
     tick: m.tick,
     wind: { strength: dq(m.wind[0]), direction: dq(m.wind[1]) },
+    ...decodeNextWind(m),
     turn: {
       activeTeamId: team,
       activeSnailId: snail,
@@ -283,5 +337,7 @@ export function decodeSnapshot(m: Snapshot): DecodedSnapshot {
       grounded: grounded === 1,
     })),
     ...(m.water === undefined ? {} : { waterLevel: dq(m.water) }),
+    ...(m.research === undefined ? {} : { research: m.research }),
+    ...(m.teams === undefined ? {} : { teams: m.teams }),
   };
 }

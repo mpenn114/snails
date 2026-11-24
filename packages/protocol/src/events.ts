@@ -35,6 +35,7 @@ const plain = [
     type: z.literal('matchEnded'),
     status: z.enum(['playing', 'won', 'draw']),
     winnerTeamId: z.string().optional(),
+    reason: z.enum(['research']).optional(),
   }),
   z.object({
     type: z.literal('projectileFired'),
@@ -88,7 +89,7 @@ const plain = [
   }),
   z.object({
     type: z.literal('commandRejected'),
-    command: z.enum(['move', 'aim', 'steer', 'fire', 'endTurn']),
+    command: z.enum(['move', 'aim', 'steer', 'fire', 'endTurn', 'queueResearch', 'cancelResearch']),
     reason: z.string(),
   }),
   z.object({
@@ -169,6 +170,38 @@ const plain = [
     kind: z.enum(['water', 'drain', 'both']),
   }),
   z.object({ type: z.literal('waterRose'), level: z.number(), delta: z.number() }),
+  z.object({
+    type: z.literal('calciumChanged'),
+    teamId: z.string(),
+    delta: z.number(),
+    balance: z.number(),
+    reason: z.enum([
+      'turnIncome',
+      'damage',
+      'kill',
+      'crate',
+      'catchUp',
+      'techIncome',
+      'mossTax',
+      'spent',
+      'refund',
+    ]),
+  }),
+  z.object({ type: z.literal('researchQueued'), teamId: z.string(), techId: z.string() }),
+  z.object({
+    type: z.literal('researchStarted'),
+    teamId: z.string(),
+    techId: z.string(),
+    turns: z.number(),
+    cost: z.number(),
+  }),
+  z.object({
+    type: z.literal('researchCancelled'),
+    teamId: z.string(),
+    techId: z.string(),
+    refund: z.number(),
+  }),
+  z.object({ type: z.literal('researchCompleted'), teamId: z.string(), techId: z.string() }),
 ] as const;
 
 const carvedBase = {

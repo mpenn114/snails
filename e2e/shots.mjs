@@ -34,6 +34,12 @@ const DISPLAY_SHOTS = [
     'Display 1920x1080, High: projectile mid-flight with its puff trail',
   ],
   ['display-aim', 'aim', 'Display 1920x1080, High: dotted aim arc and landing ring'],
+  [
+    'display-research',
+    'close',
+    'Display 1920x1080, High: researched shell looks (iron spikes, shimmer)',
+    '&research=shimmer',
+  ],
 ];
 // SHOTS_ONLY=display-flight,display-aim limits the run (and the phone shot unless phone-my-turn is listed) while iterating.
 const only = process.env.SHOTS_ONLY?.split(',');
@@ -45,11 +51,11 @@ async function displayShots(browser, base, errors) {
     deviceScaleFactor: 1,
     reducedMotion: 'reduce',
   });
-  for (const [name, cam, caption] of DISPLAY_SHOTS) {
+  for (const [name, cam, caption, extra = ''] of DISPLAY_SHOTS) {
     if (only && !only.includes(name)) continue;
     const page = await ctx.newPage();
     watch(page, name, errors);
-    await page.goto(`${base}/display/harness.html?shot=1&cam=${cam}&seed=7&quality=high`);
+    await page.goto(`${base}/display/harness.html?shot=1&cam=${cam}&seed=7&quality=high${extra}`);
     await page.waitForFunction(() => window.__shotReady === true, null, { timeout: 900000 });
     await page.screenshot({ path: join(out, `${name}.png`), timeout: SHOT_TIMEOUT });
     captions.push({ file: `${name}.png`, caption });
@@ -72,6 +78,18 @@ async function settled(page) {
     prev = buf;
     await page.waitForTimeout(500);
   }
+}
+
+/** Opens the research screen on the phone and saves its screenshot. */
+async function researchShot(active) {
+  await active.locator('button.shell-btn', { hasText: 'Research' }).click();
+  await active.waitForSelector('.rs.open .rs-card', { timeout: 30000 });
+  await active.screenshot({ path: join(out, 'phone-research.png'), timeout: SHOT_TIMEOUT });
+  captions.push({
+    file: 'phone-research.png',
+    caption: 'Phone 390x844: research screen (Calcium, queue, four-branch tech tree)',
+  });
+  step('saved phone-research.png');
 }
 
 async function phoneShot(browser, base, errors) {
@@ -131,6 +149,7 @@ async function phoneShot(browser, base, errors) {
     caption: 'Phone 390x844, Mobile tier: in-match view on own turn (live match, random seed)',
   });
   step('saved phone-my-turn.png');
+  await researchShot(active);
   await dctx.close();
 }
 

@@ -1,6 +1,9 @@
 import type { GameState } from '../state/types.js';
 import { usesPerTurn } from '../combat/combat.js';
 import { weaponAvailability, type StockedWeapon } from '../combat/inventory.js';
+import type { ResearchRejection } from '../research/tech-rules.js';
+import { checkResearchCommand } from '../research/research-validation.js';
+import type { TechRegistry } from '../research/tech-rules.js';
 import type { Command } from './types.js';
 
 /** Stable machine-readable codes for why a command was refused. */
@@ -16,7 +19,8 @@ export type RejectionReason =
   | 'NO_AMMO'
   | 'WEAPON_LOCKED'
   | 'INVALID_VALUE'
-  | 'MATCH_OVER';
+  | 'MATCH_OVER'
+  | ResearchRejection;
 
 /** Outcome of validating a command. */
 export type ValidationResult =
@@ -35,6 +39,8 @@ export interface ValidationContext {
         })
       | undefined;
   };
+  /** Technology registry; research commands need it to be accepted. */
+  technologies?: TechRegistry;
   /** Team issuing the command; when omitted, issuer is not checked. */
   issuerTeamId?: string;
 }
@@ -109,6 +115,9 @@ export function validateCommand(
   ctx: ValidationContext = {},
 ): ValidationResult {
   if (state.match.status !== 'playing') return reject('MATCH_OVER', 'the match is over');
+  if (cmd.type === 'queueResearch' || cmd.type === 'cancelResearch') {
+    return checkResearchCommand(state, cmd, ctx.technologies, ctx.issuerTeamId);
+  }
   const { turn } = state;
   if (ctx.issuerTeamId !== undefined && ctx.issuerTeamId !== turn.activeTeamId) {
     return reject('NOT_YOUR_TURN', `team ${ctx.issuerTeamId} is not the active team`);

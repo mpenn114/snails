@@ -4,7 +4,6 @@ import {
   DEFAULT_TERRAIN_CONFIG,
   type MatchSetup,
   type SimEvent,
-  type GameState,
   type Snail,
   type WeaponDefinition,
   type MotionSpec,
@@ -16,26 +15,30 @@ import {
 import {
   encodeEventBatch,
   encodeSnapshot,
-  type CrateState,
   type DecodedSnapshot,
   type EventBatch,
   type Inventory,
   MatchSettings,
   type MatchSettingsInput,
-  type ScheduledState,
   type Snapshot,
   type TerrainParams,
   type WirePhase,
 } from '@snails/protocol';
+import type { CpuPlayer } from '@snails/ai';
+import { CpuDriver } from './cpu-driver.js';
 import {
   intentToCommand,
   type GameIntent,
   type IntentResult,
+  type ResearchIntent,
   type TeamControlState,
+  type TurnIntent,
 } from './intent.js';
 
 import { loadServerContent } from './server-content.js';
-import { mayCommandTurn, pickActivePlayer } from './rotation.js';
+import { snailWireState, wireCrates, wireScheduled } from './wire-views.js';
+import { researchFields } from './privacy.js';
+import { mayCommandTurn, researchTeamFor, pickActivePlayer } from './rotation.js';
 
 export type { GameIntent, IntentResult } from './intent.js';
 
@@ -85,6 +88,10 @@ export interface GameSessionOptions extends SessionCallbacks {
   maxStepsPerFrame?: number;
   /** Presence check used when rotating the commanding player (default: everyone present). */
   isConnected?: (playerId: string) => boolean;
+  /** CPU players by team id; those teams are driven by the session, not by phones. */
+  cpuPlayers?: ReadonlyMap<string, CpuPlayer>;
+  /** Think time before a CPU's first command of a turn in ms (default 1000; 0 in tests). */
+  cpuThinkMs?: number;
 }
 
 /** Shape of the protocol `matchStarted` message. */
@@ -110,6 +117,7 @@ const realClock: SessionClock = {
  */
 export class GameSession {
   private readonly match: MatchSetup;
+  private readonly cpu: CpuDriver | null = null;
   private readonly terrainParams: TerrainParams;
   private readonly settings: MatchSettings;
   private readonly teamPlayers = new Map<string, string[]>();
@@ -154,6 +162,7 @@ export class GameSession {
       statuses: content.statuses.list(),
       areas: content.areas.list(),
       crates: content.crates.list(),
+      technologies: content.technologies.list(),
       teams: opts.teams.map((t) => ({
         id: t.id,
         name: t.name,
@@ -164,6 +173,11 @@ export class GameSession {
         ),
       })),
     });
+    if (opts.cpuPlayers && opts.cpuPlayers.size > 0)
+      this.cpu = new CpuDriver(this.match, {
+        players: opts.cpuPlayers,
+        ...(opts.cpuThinkMs !== undefined ? { thinkMs: opts.cpuThinkMs } : {}),
+      });
   }
 
   /** The `matchStarted` payload describing this session. */
@@ -295,6 +309,25 @@ export class GameSession {
 
   /** Applies a controller intent for `playerId`; returns a rejection reason when refused. */
   applyIntent(playerId: string, intent: GameIntent): IntentResult {
+    if (intent.type === 'queueResearch' || intent.type === 'cancelResearch')
+      return this.applyResearch(playerId, intent);
+    return this.applyTurnIntent(playerId, intent);
+  }
+
+  /**
+   * Routes a research intent to the sim for the sender's team (the active team when the sender
+   * controls it, else their first team). Allowed in any phase, not only on the team's turn.
+   */
+  private applyResearch(playerId: string, intent: ResearchIntent): IntentResult {
+    const state = this.match.sim.state;
+    const teamId = researchTeamFor(this.teamPlayers, playerId, state.turn.activeTeamId);
+    if (!teamId) return { ok: false, reason: 'unknown_player' };
+    if (this.ended || state.match.status !== 'playing') return { ok: false, reason: 'match_over' };
+    const res = this.match.sim.submit({ type: intent.type, teamId, techId: intent.techId }, teamId);
+    return res.ok ? { ok: true } : { ok: false, reason: res.reason.toLowerCase() };
+  }
+
+  private applyTurnIntent(playerId: string, intent: TurnIntent): IntentResult {
     const state = this.match.sim.state;
     const teamId = state.turn.activeTeamId;
     if (![...this.teamPlayers.values()].some((ids) => ids.includes(playerId)))
@@ -350,6 +383,7 @@ export class GameSession {
     const { turn } = this.match.sim.state;
     if (!turn.activeTeamId || !turn.activeSnailId) return;
     this.lastTimerSecond = -1;
+    this.cpu?.planResearch();
     const pick = pickActivePlayer(
       this.teamPlayers.get(turn.activeTeamId) ?? [],
       this.cursors.get(turn.activeTeamId) ?? 0,
@@ -379,6 +413,7 @@ export class GameSession {
 
   private stepOnce(): void {
     const { sim } = this.match;
+    this.cpu?.step();
     const events = sim.step(FIXED_DT);
     this.opts.onEvents?.(encodeEventBatch(sim.state.tick, events));
     this.handleEvents(events);
@@ -410,6 +445,7 @@ export class GameSession {
     return {
       tick: s.tick,
       wind: { ...s.wind },
+      ...(s.nextWind ? { nextWind: { ...s.nextWind } } : {}),
       turn: {
         activeTeamId: s.turn.activeTeamId,
         activeSnailId: s.turn.activeSnailId,
@@ -428,6 +464,7 @@ export class GameSession {
           aim: n.aim ?? { angle: 0, power: 0 },
         })),
       ),
+      ...researchFields(s, this.match.content.technologies),
       projectiles: s.projectiles.map((p) => ({
         id: p.id,
         weaponId: p.weaponId,
@@ -456,31 +493,4 @@ export class GameSession {
       waterLevel: s.terrain.waterLevel,
     };
   }
-}
-
-/** Wire view of the telegraphed scheduled effects. */
-function wireScheduled(list: GameState['scheduled']): ScheduledState[] {
-  return list.map((e) => ({
-    id: e.id,
-    groupId: e.groupId,
-    position: e.position,
-    radius: e.telegraph.radius,
-    turnsLeft: e.turnsLeft,
-    style: e.telegraph.style,
-  }));
-}
-
-/** Wire view of the crates. */
-function wireCrates(list: GameState['crates']): CrateState[] {
-  return list.map((c) => ({
-    id: c.id,
-    defId: c.defId,
-    position: c.position,
-    grounded: c.grounded,
-  }));
-}
-
-function snailWireState(n: Snail): 'dead' | 'grounded' | 'airborne' {
-  if (!n.alive) return 'dead';
-  return n.grounded === false ? 'airborne' : 'grounded';
 }

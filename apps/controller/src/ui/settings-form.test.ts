@@ -20,7 +20,7 @@ describe('lobby settings form', () => {
   it('renders every host-changeable field once', () => {
     const html = settingsFieldsHtml();
     for (const f of SETTING_FIELDS) expect(html).toContain(`data-key="${f.key}"`);
-    expect(html.match(/<select/g)).toHaveLength(6);
+    expect(html.match(/<select/g)).toHaveLength(7);
     expect(html.match(/type="checkbox"/g)).toHaveLength(3);
   });
 

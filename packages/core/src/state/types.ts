@@ -1,3 +1,4 @@
+import type { ResearchSetting, TeamResearch } from '../research/research-types.js';
 import type { BasicEffect } from '../content/effects/effect-schemas.js';
 import type { MotionSpec } from '../physics/motion.js';
 
@@ -44,6 +45,14 @@ export interface Snail {
   statuses?: StatusInstance[];
   /** Set while the snail is being reeled along a slime strand (see `rope/rope-system.ts`). */
   rope?: RopeState;
+  /** Team that last damaged this snail (research kill credit); cleared on death. */
+  lastHitByTeam?: string;
+  /** Jumps made since leaving the ground (multi-jump techs); unset while grounded. */
+  jumpsUsed?: number;
+  /** Turn number in which the Citadel shield already absorbed a hit for this snail. */
+  shieldTurn?: number;
+  /** Position at its team's previous turn start (`healPerStillTurn` bookkeeping). */
+  stillRef?: Vec3;
 }
 
 /** A snail being reeled from `from` to `to` over `seconds`; `elapsed` advances each step. */
@@ -168,6 +177,8 @@ export interface Team {
    * `ammo` (infinite weapons are not counted), spent by `fire`, increased by crates.
    */
   inventory?: Record<string, number>;
+  /** Private research state; absent when research is off. Filtered per team on the wire. */
+  research?: TeamResearch;
 }
 
 /** Wind: `direction` radians about +Y, `strength` in m/s^2 (>= 0). */
@@ -249,6 +260,8 @@ export interface Projectile {
 export interface MatchStatus {
   status: 'playing' | 'won' | 'draw';
   winnerTeamId: string | null;
+  /** Why the match ended when not by elimination (`research`: a capstone was completed). */
+  reason?: 'research';
 }
 
 /** Top-level game state (plain JSON-serialisable data). */
@@ -256,6 +269,8 @@ export interface GameState {
   tick: number;
   seed: number;
   wind: Wind;
+  /** Pre-rolled wind of the next turn (only when research is on; the Weather Vane tech shows it). */
+  nextWind?: Wind;
   terrain: TerrainDescriptor;
   teams: Team[];
   turn: TurnState;
@@ -279,6 +294,10 @@ export interface GameState {
   rules?: MatchRules;
   /** Present once sudden death has begun. */
   suddenDeath?: SuddenDeathState;
+  /** Research preset of this match; absent means `off`. */
+  research?: ResearchSetting;
+  /** Research race: the capstone tech ids; completing any of them wins. Absent = elimination. */
+  raceCapstones?: string[];
 }
 
 /** Serialisable snapshot of a game state. */

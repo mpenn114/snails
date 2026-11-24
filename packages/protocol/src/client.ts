@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { Colour, MatchSettings, Role, TeamId } from './common.js';
+import { Colour, CpuDifficulty, CpuPersonality, MatchSettings, Role, TeamId } from './common.js';
 
 /**
  * First message after connecting. `protocolVersion` accepts any number so a mismatch is
@@ -25,6 +25,14 @@ export const SetColour = z.object({ type: z.literal('setColour'), colour: Colour
 export const SetReady = z.object({ type: z.literal('setReady'), ready: z.boolean() });
 /** Host-only: changes the lobby's match settings (shown live on the display). */
 export const SetSettings = z.object({ type: z.literal('setSettings'), settings: MatchSettings });
+/** Host-only: adds a CPU team to the lobby. */
+export const AddCpu = z.object({
+  type: z.literal('addCpu'),
+  difficulty: CpuDifficulty,
+  personality: CpuPersonality,
+});
+/** Host-only: removes a CPU team from the lobby. */
+export const RemoveCpu = z.object({ type: z.literal('removeCpu'), teamId: TeamId });
 export const StartMatch = z.object({ type: z.literal('startMatch'), settings: MatchSettings });
 
 /**
@@ -61,9 +69,16 @@ export const SelectWeapon = z.object({
 });
 export const Fire = z.object({ type: z.literal('fire'), seq: IntentSeq });
 export const EndTurn = z.object({ type: z.literal('endTurn'), seq: IntentSeq });
+/** Queues a tech for the sender's team (any phase; the sim validates tiers and Calcium). */
 export const QueueResearch = z.object({
   type: z.literal('queueResearch'),
-  technologyId: z.string(),
+  techId: z.string().min(1),
+  seq: IntentSeq,
+});
+/** Removes a queued tech or cancels the active one (refunds 50% of what was paid). */
+export const CancelResearch = z.object({
+  type: z.literal('cancelResearch'),
+  techId: z.string().min(1),
   seq: IntentSeq,
 });
 
@@ -79,6 +94,8 @@ export const ClientMessage = z.discriminatedUnion('type', [
   SetColour,
   SetReady,
   SetSettings,
+  AddCpu,
+  RemoveCpu,
   StartMatch,
   Move,
   Jump,
@@ -88,6 +105,7 @@ export const ClientMessage = z.discriminatedUnion('type', [
   Fire,
   EndTurn,
   QueueResearch,
+  CancelResearch,
   Ping,
 ]);
 

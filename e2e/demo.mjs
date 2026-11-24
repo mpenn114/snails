@@ -67,9 +67,13 @@ try {
   // Pick the active phone from the server's turnStart (activePlayerId), not from whichever page
   // shows `.ctl.mine` first: on slow CI the previous player's page can still show stale controls.
   const playerOf = (p) => p.frames.find((m) => m.type === 'welcome')?.playerId;
+  // Follow the match through Ann's phone, not the display: on CI the software-GL display page can
+  // lag seconds behind or drop its socket, while the phones stay current.
+  const ref = phones[0].frames;
+  const retries = []; // when a retried Fire was sent; a late retry may earn a harmless not_your_turn
   let turnsSeen = 0;
   for (const weapon of WEAPON_TURNS) {
-    const turnStarts = () => dFrames.filter((m) => m.type === 'turnStart');
+    const turnStarts = () => ref.filter((m) => m.type === 'turnStart');
     await until(`turn start for ${weapon}`, () => turnStarts().length > turnsSeen, 60000);
     const turn = turnStarts().at(-1);
     turnsSeen = turnStarts().length;
@@ -81,7 +85,7 @@ try {
       () => active.page.locator('.ctl.mine').count(),
       60000,
     );
-    const mark = dFrames.length;
+    const mark = ref.length;
     const turnTeam = teamOf(turn);
     await active.page.evaluate((name) => {
       const tile = [...document.querySelectorAll('.ctl-tile')].find((t) =>
@@ -93,7 +97,7 @@ try {
     // A tap can be lost while a software-GL page is busy (and lazy start never expires the turn),
     // so tap Fire again until the shot shows up on the display.
     const shotSeen = () =>
-      dFrames
+      ref
         .slice(mark)
         .some(
           (m) =>
@@ -101,20 +105,21 @@ try {
             m.events.some((e) => ['projectileFired', 'meleeStruck'].includes(e.type)),
         );
     const turnPassed = () =>
-      dFrames.slice(mark).some((m) => m.type === 'turnStart' && teamOf(m) !== turnTeam);
+      ref.slice(mark).some((m) => m.type === 'turnStart' && teamOf(m) !== turnTeam);
     const done = () => shotSeen() || turnPassed();
     for (let tries = 0; tries < 4 && !done(); tries++) {
       await active.page.waitForTimeout(300);
       if (done()) break;
+      if (tries > 0) retries.push(Date.now());
       await active.page.evaluate(() => document.querySelector('.ctl-fire')?.click());
       const until10 = Date.now() + 10000;
       while (!done() && Date.now() < until10) await active.page.waitForTimeout(250);
     }
     step(`${active.name} fired ${weapon}`);
-    const t0 = dFrames[mark - 1]?._at ?? 0;
+    const t0 = ref[mark - 1]?._at ?? 0;
     await until(
       `${weapon} resolved and the turn passed`,
-      () => dFrames.slice(mark).some((m) => m.type === 'turnStart' && teamOf(m) !== turnTeam),
+      () => ref.slice(mark).some((m) => m.type === 'turnStart' && teamOf(m) !== turnTeam),
       45000,
     ).catch((e) => {
       // Diagnostics for CI-only failures: what the phone sent and what came back.
@@ -122,16 +127,16 @@ try {
       const back = active.frames.filter(
         (m) => m._at >= t0 && !['snapshot', 'eventBatch', 'turnTimer', 'pong'].includes(m.type),
       );
-      const evs = dFrames
+      const evs = ref
         .slice(mark)
         .filter((m) => m.type === 'eventBatch')
         .flatMap((m) => m.events.map((x) => x.type).filter((t) => t !== 'tick'));
       console.log(`[e2e] ${active.name} sent: ${JSON.stringify(sent)}`);
       console.log(`[e2e] ${active.name} got: ${JSON.stringify(back).slice(0, 2000)}`);
-      console.log(`[e2e] display events: ${evs.join(',')}`);
+      console.log(`[e2e] ${phones[0].name} events: ${evs.join(',')}`);
       throw e;
     });
-    const batches = dFrames.slice(mark).filter((m) => m.type === 'eventBatch');
+    const batches = ref.slice(mark).filter((m) => m.type === 'eventBatch');
     if (
       weapon !== 'Shell Bash' &&
       !batches.some((b) => b.events.some((e) => e.type === 'projectileFired'))
@@ -142,7 +147,9 @@ try {
 
   const lists = [['display', dFrames], ...phones.map((p) => [p.name, p.frames])];
   for (const [who, f] of lists) {
-    const err = f.find((m) => m.type === 'error');
+    const lateRetry = (m) =>
+      m.code === 'not_your_turn' && retries.some((t) => m._at >= t && m._at - t < 15000);
+    const err = f.find((m) => m.type === 'error' && !lateRetry(m));
     if (!err) continue;
     for (const [name, g] of lists) {
       const recent = g.sent.filter((m) => m._at <= err._at).slice(-6);

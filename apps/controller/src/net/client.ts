@@ -54,6 +54,7 @@ const INTENT_TYPES = new Set([
   'fire',
   'endTurn',
   'queueResearch',
+  'cancelResearch',
 ]);
 const LOBBY_TYPES = new Set(['createRoom', 'setTeam', 'setColour', 'setReady', 'startMatch']);
 

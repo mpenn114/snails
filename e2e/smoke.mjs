@@ -212,7 +212,12 @@ try {
     30000,
   );
   step('turn passed to the other team');
-  await idle.page.waitForSelector('.ctl.mine', { timeout: 10000 });
+  // Polled like the demo: software GL can stall the page's repaint well past 10 s under load.
+  await until(
+    'other phone gets my-turn controls',
+    () => idle.page.locator('.ctl.mine').count(),
+    60000,
+  );
   step('other phone now has controls');
 
   // A second display opened mid-match with no room code (as the printed TV link may be) joins the

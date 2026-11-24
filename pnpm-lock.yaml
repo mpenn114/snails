@@ -73,6 +73,9 @@ importers:
 
   apps/display:
     dependencies:
+      '@snails/content-base':
+        specifier: workspace:*
+        version: link:../../packages/content-base
       '@snails/core':
         specifier: workspace:*
         version: link:../../packages/core
@@ -126,6 +129,10 @@ importers:
       '@snails/core':
         specifier: workspace:*
         version: link:../core
+    devDependencies:
+      '@snails/content-base':
+        specifier: workspace:*
+        version: link:../content-base
 
   packages/content-base:
     dependencies:

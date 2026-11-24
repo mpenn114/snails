@@ -256,6 +256,7 @@ export function registerCombat(
     statuses: registries.statuses ?? empty.statuses,
     areas: registries.areas ?? empty.areas,
     crates: registries.crates ?? empty.crates,
+    technologies: registries.technologies ?? empty.technologies,
   };
   // Teams without a stock counter (states not built by `createMatch`) get the weapons' `ammo`.
   for (const team of sim.state.teams) {

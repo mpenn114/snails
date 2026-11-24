@@ -45,7 +45,8 @@ export function spawnProjectile(state: GameState, init: ProjectileInit): Project
   return p;
 }
 
-interface Contact {
+/** A projectile contact: fraction `t` along the step, position, normal, and the snail hit (if any). */
+export interface Contact {
   t: number;
   position: Vec3;
   normal: Vec3;
@@ -63,7 +64,16 @@ function snailContact(p: Projectile, to: Vec3, snail: Snail): Contact | null {
   return { t, position: closest, normal, snailId: snail.id };
 }
 
-function findContact(ctx: SimContext, p: Projectile, to: Vec3): Contact | null {
+/**
+ * First terrain or snail contact of a projectile moving from its position to `to` this step
+ * (the owner is ignored during `OWNER_GRACE`). Used by the projectile system and by AI impact
+ * prediction so both resolve collisions identically. Does not mutate anything.
+ */
+export function findContact(
+  ctx: Pick<SimContext, 'terrain' | 'state'>,
+  p: Projectile,
+  to: Vec3,
+): Contact | null {
   let best: Contact | null = null;
   const hit = sphereSweep(ctx.terrain, p.position, to, p.radius);
   if (hit) best = { t: hit.t, position: hit.point, normal: hit.normal };
@@ -78,7 +88,8 @@ function findContact(ctx: SimContext, p: Projectile, to: Vec3): Contact | null {
   return best;
 }
 
-function outOfBounds(ctx: SimContext, pos: Vec3): boolean {
+/** True when `pos` is below the world floor or outside the horizontal world bounds. */
+export function outOfBounds(ctx: Pick<SimContext, 'terrain'>, pos: Vec3): boolean {
   const size = ctx.terrain.worldSize();
   return pos.y < WORLD_FLOOR_Y || pos.x < 0 || pos.z < 0 || pos.x > size.x || pos.z > size.z;
 }
