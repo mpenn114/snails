@@ -1,10 +1,12 @@
 import * as THREE from 'three';
+import type { SimEvent } from '@snails/core';
 import type { FrameUpdater, RenderState } from './render-loop.js';
 import { SnailAssets, canvasLabelFactory, type LabelTextureFactory } from './snail-assets.js';
 import { declutterLabels, type LabelBox } from './label-declutter.js';
 import { hashShellSeed } from './snail/shell-geometry.js';
 import type { QualityTier } from './quality.js';
 import { SnailMesh } from './snail-mesh.js';
+import { reactionsForEvent, scareStrength } from './snail/snail-expression.js';
 import { snailViewsFromSnapshot, type SnailView } from './snail-view.js';
 
 /** Camera distance (m) at which labels have their base size. */
@@ -54,8 +56,8 @@ export class SnailLayer {
     this.shadows = opts.shadows ?? false;
     this.group.name = 'snails';
     const select = opts.selectViews ?? ((s: RenderState) => snailViewsFromSnapshot(s.snapshot));
-    this.updater = (_dt, state) => {
-      if (state) this.sync(select(state));
+    this.updater = (dt, state) => {
+      if (state) this.sync(select(state), dt);
     };
   }
 
@@ -80,8 +82,11 @@ export class SnailLayer {
     return this.meshes.get(id);
   }
 
-  /** Creates, updates and removes meshes so they match `views`. */
-  sync(views: readonly SnailView[]): void {
+  /**
+   * Creates, updates and removes meshes so they match `views`; `dt` (seconds, default 0) advances
+   * the body animation and expressions.
+   */
+  sync(views: readonly SnailView[], dt = 0): void {
     const seen = new Set<string>();
     for (const v of views) {
       seen.add(v.id);
@@ -99,6 +104,7 @@ export class SnailLayer {
         this.group.add(mesh.group);
       }
       mesh.apply(v);
+      if (v.alive) mesh.animate(dt, v);
       this.faceCamera(mesh);
       mesh.billboard = () => this.faceCamera(mesh);
     }
@@ -108,6 +114,30 @@ export class SnailLayer {
       this.meshes.delete(id);
     }
     this.declutter();
+  }
+
+  /**
+   * Feeds sim events to the snails' cosmetic reactions: hit squint and squash, wide eyes when
+   * firing, stalks pulled in near explosions, cheering winners, landing squash.
+   */
+  handleEvents(events: readonly SimEvent[]): void {
+    for (const e of events) {
+      if (e.type === 'snailLanded') {
+        this.meshes.get(e.snailId)?.animator.landed(Math.min(1, e.impactSpeed / 10));
+        continue;
+      }
+      for (const r of reactionsForEvent(e)) {
+        if (r.snailId) this.meshes.get(r.snailId)?.react(r.kind, r.strength);
+        for (const mesh of this.meshes.values()) {
+          if (r.teamId !== undefined && mesh.teamId === r.teamId) mesh.react(r.kind, r.strength);
+          if (!r.near) continue;
+          const p = mesh.group.position;
+          const d = Math.hypot(p.x - r.near.x, p.y + 0.4 - r.near.y, p.z - r.near.z);
+          const k = scareStrength(d, r.near.radius);
+          if (k > 0.05) mesh.react(r.kind, k);
+        }
+      }
+    }
   }
 
   /** Orients the bar towards the camera and sizes labels for its current distance. */

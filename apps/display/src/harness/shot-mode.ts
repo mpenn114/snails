@@ -58,12 +58,19 @@ export function shotPose(
   blast: Vec3 | null,
   world: Vec3,
   facing = 0,
+  azimuth = 0.8,
+  distance = 3.4,
 ): ShotPose {
   if (cam === 'close') {
     // Three-quarter view from in front of the snail, so its face and shell both read.
-    const a = facing + 0.8;
+    // `azimuth` (radians from the facing direction) and `distance` come from ?az= and ?dist=.
+    const a = facing + azimuth;
     return {
-      eye: { x: snail.x + Math.cos(a) * 3.4, y: snail.y + 1.2, z: snail.z + Math.sin(a) * 3.4 },
+      eye: {
+        x: snail.x + Math.cos(a) * distance,
+        y: snail.y + 1.2,
+        z: snail.z + Math.sin(a) * distance,
+      },
       look: { x: snail.x, y: snail.y + 0.55, z: snail.z },
     };
   }
@@ -190,11 +197,17 @@ function makeShotRenderer(
   return { renderer, frame };
 }
 
+function num(v: string | null, fallback: number): number {
+  const n = v === null ? NaN : Number(v);
+  return Number.isFinite(n) ? n : fallback;
+}
+
 /** Pose for `cam` from the settled sim (the aim shot frames the predicted arc). */
 function poseFor(
   cam: ShotCam,
   sim: ReturnType<typeof createMatch>['sim'],
   blast: Vec3 | null,
+  params: URLSearchParams,
 ): ShotPose {
   const active = sim.state.teams[0]?.snails[0];
   const snail = active?.position ?? { x: 0, y: 0, z: 0 };
@@ -202,7 +215,15 @@ function poseFor(
     const wind = sim.snapshot().wind;
     return aimPose(predictTrajectory(snail, active.facing, AIM, HARNESS_WEAPON.launch, wind, 28));
   }
-  return shotPose(cam, snail, blast, sim.terrain.worldSize(), active?.facing ?? 0);
+  return shotPose(
+    cam,
+    snail,
+    blast,
+    sim.terrain.worldSize(),
+    active?.facing ?? 0,
+    num(params.get('az'), 0.8),
+    num(params.get('dist'), 3.4),
+  );
 }
 
 /** Pins the camera to `pose` every frame. */
@@ -248,7 +269,7 @@ export async function runShot(canvas: HTMLCanvasElement, params: URLSearchParams
   const active = sim.state.teams[0]?.snails[0];
   const snail = active?.position ?? { x: 0, y: 0, z: 0 };
   const aimInput = { snailId: active?.id ?? '', launch: HARNESS_WEAPON.launch, ...AIM };
-  const pose = poseFor(cam, sim, blast);
+  const pose = poseFor(cam, sim, blast, params);
   installShotCamera(renderer, pose);
 
   const propsSettled = (): boolean => renderer.propLayer?.settled ?? true;
@@ -278,6 +299,12 @@ export async function runShot(canvas: HTMLCanvasElement, params: URLSearchParams
     for (const ps of fl.flight) renderer.projectileLayer?.sync(ps, FIXED_DT);
     for (let i = 0; i < 3; i++) await frame(0);
   } else for (let i = 0; i < SETTLE_FRAMES; i++) await frame(FRAME_MS);
+  // ?react=hit|fire|scare|cheer|sad shows an expression on the first snail (frames of 60 fps).
+  const react = params.get('react');
+  if (react && active) {
+    renderer.snailLayer?.get(active.id)?.react(react as 'hit', 1);
+    for (let i = 0; i < num(params.get('reactFrames'), 10); i++) await frame(FRAME_MS);
+  }
   await settle();
   await frame(0);
   const w = window as unknown as ShotWindow;

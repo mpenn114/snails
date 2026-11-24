@@ -266,6 +266,7 @@ export class MatchRenderer {
   handleEvents(events: readonly SimEvent[]): void {
     this.built?.replica.applyEvents(events);
     this.built?.explosions.handleEvents(events);
+    this.built?.snails.handleEvents(events);
     const scorch = this.built?.material.scorch;
     if (!scorch) return;
     for (const e of events) {

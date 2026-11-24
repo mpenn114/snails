@@ -48,7 +48,7 @@ export const BAR_WIDTH = 1.2;
 export class SnailAssets {
   /** Body, eye stalks and pupil geometry for this level of detail. */
   readonly parts: SnailBodyParts;
-  /** Torso with tail, head and lower tentacles (vertex colours). */
+  /** Torso with tail and head (vertex colours). */
   readonly body: THREE.BufferGeometry;
   readonly ring = new THREE.RingGeometry(0.7, 0.85, 24);
   readonly grave = new THREE.BoxGeometry(0.4, 0.6, 0.15);
@@ -131,7 +131,14 @@ export class SnailAssets {
 
   /** Frees all shared GPU resources. */
   dispose(): void {
-    const geos = [this.body, this.ring, this.grave, ...this.parts.stalks, this.parts.pupil];
+    const geos = [
+      this.body,
+      this.ring,
+      this.grave,
+      ...this.parts.stalks,
+      this.parts.pupil,
+      this.parts.lid,
+    ];
     for (const g of [...geos, ...this.shells.values(), this.barFill, this.barBack]) g.dispose();
     this.shells.clear();
     const mats = [this.bodyMat, this.eyeMat, this.ringMat, this.graveMat];

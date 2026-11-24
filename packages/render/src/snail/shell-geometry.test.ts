@@ -15,13 +15,13 @@ describe('shell geometry', () => {
     for (let s = 0; s < 50; s++) {
       const p = shellParamsFromSeed(s);
       expect(p.a).toBeGreaterThanOrEqual(0.05);
-      expect(p.a).toBeLessThanOrEqual(0.12);
-      expect(p.b).toBeGreaterThanOrEqual(0.15);
-      expect(p.b).toBeLessThanOrEqual(0.3);
-      expect(p.turns).toBeGreaterThanOrEqual(3);
-      expect(p.turns).toBeLessThanOrEqual(5.5);
-      expect(p.ellipse).toBeGreaterThanOrEqual(0.8);
-      expect(p.ellipse).toBeLessThanOrEqual(1.3);
+      expect(p.a).toBeLessThanOrEqual(0.1);
+      expect(p.b).toBeGreaterThanOrEqual(0.2);
+      expect(p.b).toBeLessThanOrEqual(0.27);
+      expect(p.turns).toBeGreaterThanOrEqual(2.6);
+      expect(p.turns).toBeLessThanOrEqual(3.4);
+      expect(p.ellipse).toBeGreaterThanOrEqual(1.9);
+      expect(p.ellipse).toBeLessThanOrEqual(2.3);
       expect(p.ridges).toBeLessThanOrEqual(12);
     }
   });

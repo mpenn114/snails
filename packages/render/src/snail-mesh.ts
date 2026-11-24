@@ -6,6 +6,14 @@ import {
   type LabelTextureFactory,
 } from './snail-assets.js';
 import { EYE_OFFSETS, PUPIL_REST, STALK_ROOTS, shellSeat } from './snail/body-geometry.js';
+import { SnailAnimator, type BodyPose } from './snail/snail-anim.js';
+import {
+  REST_FACE,
+  SnailExpression,
+  type ExpressionKind,
+  type ExpressionPose,
+} from './snail/snail-expression.js';
+import { hashShellSeed } from './snail/shell-geometry.js';
 import { DAMAGE_STEPS } from './snail/shell-material.js';
 import { shellPatternForTeam } from './snail/shell-pattern.js';
 import type { SnailView } from './snail-view.js';
@@ -23,6 +31,8 @@ export interface SnailRig {
   eyes: [THREE.Group, THREE.Group];
   /** Pupil meshes; move `position` (eye space) to look around. */
   pupils: [THREE.Mesh, THREE.Mesh];
+  /** Eyelid caps (children of the eye pivots); rotation.z sweeps them over the eyeball. */
+  lids: [THREE.Mesh, THREE.Mesh];
   /** Shell mesh. */
   shell: THREE.Mesh;
   /** Body mesh. */
@@ -50,6 +60,17 @@ export class SnailMesh {
   readonly nameTag: THREE.Sprite;
   private readonly nameMaterial = new THREE.SpriteMaterial({ depthTest: false });
   private readonly assets: SnailAssets;
+  /** Body animation state (crawl, idle, aim, jump, hurt, retreat). */
+  readonly animator: SnailAnimator;
+  /** Face state (blink and event reactions). */
+  readonly expression: SnailExpression;
+  /** Team id of the last applied view (used to fan team-wide reactions out). */
+  teamId = '';
+  private lastPos: THREE.Vector3 | null = null;
+  private speed = 0;
+  private vy = 0;
+  private elapsed = 0;
+  private healthFrac = 1;
   private shellRoughness = 0.5;
   private damageStep = 0;
   private pattern: number;
@@ -72,6 +93,9 @@ export class SnailMesh {
     pattern = 0,
   ) {
     this.assets = assets;
+    const phase = (hashShellSeed(shellSeed, 'anim') % 1000) / 1000;
+    this.animator = new SnailAnimator(phase);
+    this.expression = new SnailExpression(hashShellSeed(shellSeed, 'blink') | 1);
     this.baseColour = shellColour;
     this.pattern = shellPatternForTeam(pattern);
     this.rig = this.buildRig(shellSeed);
@@ -109,12 +133,13 @@ export class SnailMesh {
     const shell = new THREE.Mesh(a.shellGeometry(shellSeed), this.shellMaterialNow());
     shell.name = 'snail-shell';
     const seat = shellSeat(a.shellGeometry(shellSeed).boundingBox as THREE.Box3);
-    shell.scale.set(seat.scale, seat.scale, seat.scale * 1.25);
+    shell.scale.set(seat.scale, seat.scale, seat.scale);
     shell.position.set(...seat.position);
     squash.add(body, shell);
     const stalks: THREE.Group[] = [];
     const eyes: THREE.Group[] = [];
     const pupils: THREE.Mesh[] = [];
+    const lids: THREE.Mesh[] = [];
     for (const side of [0, 1] as const) {
       const pivot = new THREE.Group();
       pivot.name = side === 0 ? 'stalk-left' : 'stalk-right';
@@ -126,18 +151,23 @@ export class SnailMesh {
       const pupil = new THREE.Mesh(a.parts.pupil, a.eyeMat);
       pupil.name = side === 0 ? 'pupil-left' : 'pupil-right';
       pupil.position.set(...PUPIL_REST);
-      eye.add(pupil);
+      const lid = new THREE.Mesh(a.parts.lid, a.eyeMat);
+      lid.name = side === 0 ? 'lid-left' : 'lid-right';
+      lid.visible = false;
+      eye.add(pupil, lid);
       pivot.add(eye);
       squash.add(pivot);
       stalks.push(pivot);
       eyes.push(eye);
       pupils.push(pupil);
+      lids.push(lid);
     }
     return {
       squash,
       stalks: stalks as SnailRig['stalks'],
       eyes: eyes as SnailRig['eyes'],
       pupils: pupils as SnailRig['pupils'],
+      lids: lids as SnailRig['lids'],
       shell,
       body,
     };
@@ -154,7 +184,7 @@ export class SnailMesh {
   /** Enables or disables shadow casting on the body and shell (not labels or bars). */
   setCastShadow(on: boolean): void {
     this.rig.squash.traverse((o) => {
-      if (o instanceof THREE.Mesh) o.castShadow = on;
+      if (o instanceof THREE.Mesh) o.castShadow = on && !o.name.startsWith('lid');
     });
   }
 
@@ -206,9 +236,71 @@ export class SnailMesh {
     return this.shellRoughness;
   }
 
+  /** Starts a cosmetic reaction (squint, wide eyes, retracted stalks, cheer...). */
+  react(kind: ExpressionKind, strength = 1): void {
+    this.expression.trigger(kind, strength);
+    if (kind === 'hit') this.animator.hit(strength);
+  }
+
+  /**
+   * Advances the body animation and the expression by `dt` seconds for the latest view `v` and
+   * poses the rig. Motion facts come from position deltas, so interpolated views work too.
+   */
+  animate(dt: number, v: SnailView): void {
+    const here = this.group.position;
+    if (dt > 0 && this.lastPos) {
+      const ease = 1 - Math.exp(-14 * dt);
+      const sp = Math.min(6, Math.hypot(here.x - this.lastPos.x, here.z - this.lastPos.z) / dt);
+      this.speed += (sp - this.speed) * ease;
+      const vy = Math.max(-20, Math.min(20, (here.y - this.lastPos.y) / dt));
+      this.vy += (vy - this.vy) * ease;
+    }
+    this.lastPos = (this.lastPos ?? new THREE.Vector3()).copy(here);
+    this.elapsed += dt;
+    const pose = this.animator.update(dt, {
+      speed: this.speed,
+      vy: this.vy,
+      grounded: v.grounded !== false,
+      aiming: v.aiming === true,
+      aimAngle: v.aimAngle ?? 0,
+      retreating: v.retreating === true,
+    });
+    this.healthFrac = v.maxHealth > 0 ? v.health / v.maxHealth : 1;
+    const worry = Math.max(0, 1 - this.healthFrac / 0.3);
+    this.poseRig(pose, this.expression.update(dt, v.alive ? worry : 0));
+  }
+
+  /** Writes a body pose and a face pose onto the rig transforms. */
+  private poseRig(pose: BodyPose, face: ExpressionPose = REST_FACE): void {
+    const r = this.rig;
+    r.squash.scale.set(pose.scaleX, pose.scaleY, pose.scaleZ);
+    r.squash.position.y = pose.lift;
+    r.squash.rotation.z = pose.lean;
+    r.shell.rotation.z = pose.shellRock;
+    const glance = 0.18 * Math.sin(this.elapsed * 0.9);
+    for (const i of [0, 1] as const) {
+      const sign = i === 0 ? 1 : -1;
+      const stalk = r.stalks[i];
+      stalk.rotation.z = -(pose.stalkTilt + face.droop);
+      stalk.rotation.x = sign * (pose.stalkSway + 0.12 * face.droop);
+      const wide = 1 - 0.4 * face.retract;
+      stalk.scale.set(wide, 1 - 0.68 * face.retract + 0.14 * face.stretch, wide);
+      const closed = Math.min(1, Math.max(0, face.lid[i]));
+      const lid = r.lids[i];
+      lid.visible = closed > 0.01;
+      lid.rotation.z = Math.PI / 2 - closed * Math.PI;
+      lid.scale.setScalar(0.9 + 0.17 * Math.min(1, closed * 6));
+      const eye = r.eyes[i];
+      eye.rotation.z = face.look[1] * 0.7;
+      eye.rotation.y = glance * (1 - closed) + 0.1 * face.look[0];
+      r.pupils[i].scale.setScalar(face.pupil);
+    }
+  }
+
   /** Applies a view: transform, colour, facing, health, name, active and dead state. */
   apply(v: SnailView): void {
     this.group.position.set(v.position.x, v.position.y, v.position.z);
+    this.teamId = v.teamId;
     this.bodyGroup.rotation.y = v.facing;
     if (v.colour !== this.baseColour) this.setColour(v.colour);
     this.setPattern(v.teamIndex);
