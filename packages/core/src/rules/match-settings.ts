@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { RESEARCH_SETTINGS } from '../research/research-types.js';
 import type { CrateRules } from '../crate/crate-rules.js';
 import type { WindDefinition } from '../content/types.js';
 import { DEFAULT_HAZARD_CONFIG, type HazardConfig } from './hazards.js';
@@ -59,6 +60,8 @@ export const MatchSettingsSchema = z.object({
    * otherwise, and crates on (at least the normal frequency).
    */
   demo: z.boolean().default(false),
+  /** Research preset: off (classic weapons only), on, or fast (cheaper, quicker techs). */
+  research: z.enum(RESEARCH_SETTINGS).default('on'),
 });
 
 /** Parsed, fully defaulted match settings. */
