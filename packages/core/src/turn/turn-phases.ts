@@ -3,7 +3,7 @@ import type { SimEvent } from '../sim/events.js';
 import type { SimContext } from '../sim/types.js';
 import { rollWind, type WindConfig, DEFAULT_WIND_CONFIG } from '../sim/wind.js';
 import type { Rng } from '../rng.js';
-import { evaluateMatch, evaluateTurnLimit } from '../rules/win.js';
+import { evaluateMatch, evaluateTurnLimit, resolveDraw } from '../rules/win.js';
 
 /** Durations (seconds) and thresholds for the turn state machine. */
 export interface TurnConfig {
@@ -17,6 +17,8 @@ export interface TurnConfig {
   restEpsilon: number;
   /** Turn cap: once this many turns have ended, the match is decided by total health. Undefined = unlimited. */
   maxTurns?: number;
+  /** Lazy start: the action timer only runs after the turn's first input (default off). */
+  lazyStart?: boolean;
 }
 
 /** Default turn configuration. */
@@ -96,6 +98,8 @@ export function startTurn(state: GameState, config: TurnConfig, emit: Emit, wind
   t.phaseTime = 0;
   t.fired = false;
   delete t.uses;
+  delete t.inputStarted;
+  delete t.damageDealt;
   t.timeRemaining = config.actionDuration;
   emit({
     type: 'turnStarted',
@@ -145,7 +149,7 @@ function endMatch(state: GameState, status: MatchStatus, emit: Emit): void {
 
 function endTurn(state: GameState, config: TurnConfig, emit: Emit, wind?: TurnWind): void {
   emit({ type: 'turnEnded', teamId: state.turn.activeTeamId, turnNumber: state.turn.turnNumber });
-  const elimination = evaluateMatch(state);
+  const elimination = resolveDraw(state, evaluateMatch(state));
   const outcome =
     elimination.status === 'playing' ? evaluateTurnLimit(state, config.maxTurns) : elimination;
   if (outcome.status !== 'playing') {
@@ -179,6 +183,7 @@ export function advanceTurn(
       if (t.phaseTime >= config.introDuration) setPhase(state, 'action', emit);
       break;
     case 'action':
+      if (config.lazyStart === true && t.inputStarted !== true) break;
       t.timeRemaining = Math.max(0, t.timeRemaining - dt);
       if (t.timeRemaining === 0) setPhase(state, 'settle', emit);
       break;

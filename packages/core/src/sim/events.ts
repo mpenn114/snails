@@ -108,7 +108,7 @@ export interface TerrainCollapsedEvent {
 }
 
 /** Why a snail took damage. */
-export type DamageCause = 'explosion' | 'fall' | 'status' | 'area' | 'crate';
+export type DamageCause = 'explosion' | 'fall' | 'status' | 'area' | 'crate' | 'suddenDeath';
 
 /** A snail lost health. `sourceSnailId` is null for environmental damage. */
 export interface SnailDamagedEvent {
@@ -276,6 +276,20 @@ export interface CrateDestroyedEvent {
   reason: 'explosion' | 'water';
 }
 
+/** Sudden death began (announce it). `kind` says what will happen each round. */
+export interface SuddenDeathStartedEvent {
+  type: 'suddenDeathStarted';
+  round: number;
+  kind: 'water' | 'drain' | 'both';
+}
+
+/** Sudden death raised the water; `level` is the new surface height in metres. */
+export interface WaterRoseEvent {
+  type: 'waterRose';
+  level: number;
+  delta: number;
+}
+
 /** Every event the simulation can emit. Plain JSON data only. */
 export type SimEvent =
   | TickEvent
@@ -308,7 +322,9 @@ export type SimEvent =
   | ScheduledFiredEvent
   | CrateSpawnedEvent
   | CrateCollectedEvent
-  | CrateDestroyedEvent;
+  | CrateDestroyedEvent
+  | SuddenDeathStartedEvent
+  | WaterRoseEvent;
 
 /** Discriminator values of {@link SimEvent}. */
 export type SimEventType = SimEvent['type'];
@@ -349,6 +365,8 @@ export const SIM_EVENT_TYPES: readonly SimEventType[] = [
   'crateSpawned',
   'crateCollected',
   'crateDestroyed',
+  'suddenDeathStarted',
+  'waterRose',
 ];
 
 /** Type guard: is `type` a known simulation event type? */

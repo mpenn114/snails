@@ -1,5 +1,5 @@
 import type { LobbyPlayer, MatchSettings } from '@snails/protocol';
-import { groupByTeam, readyCount, settingsSummary } from './lobby-logic';
+import { groupByTeam, readyCount, settingsChips } from './lobby-logic';
 import { encodeQr, qrToSvg } from './qr';
 
 /** Data the lobby screen renders. */
@@ -32,6 +32,13 @@ function playerRow(p: LobbyPlayer): string {
   return `<li>${dot}${esc(p.name)} <em>${state}</em></li>`;
 }
 
+function chipsHtml(s: MatchSettings): string {
+  const chips = settingsChips(s)
+    .map(([k, v]) => `<li><span>${esc(k)}</span> <b>${esc(v)}</b></li>`)
+    .join('');
+  return `<ul class="chips" aria-label="Match settings">${chips}</ul>`;
+}
+
 function render(m: LobbyModel): string {
   const groups = groupByTeam(m.players)
     .map((g) => {
@@ -46,7 +53,7 @@ function render(m: LobbyModel): string {
     <div class="qr">${qrSvg(m.joinUrl)}</div></div>
     <div class="roster-side"><h2>Players ${ready}/${total} ready</h2>
     <div class="teams">${groups || '<p>Scan the code to join.</p>'}</div>
-    <p class="settings">${esc(settingsSummary(m.settings))}</p></div></div>`;
+    ${chipsHtml(m.settings)}</div></div>`;
 }
 
 /** Thin DOM lobby screen on the TV; re-renders from a model. */

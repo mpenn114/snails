@@ -1,4 +1,4 @@
-import { MatchSettings } from '@snails/protocol';
+import { MatchSettings, type MatchSettingsInput } from '@snails/protocol';
 import { startBlocker } from './start-rules.js';
 import type { IntentMessage } from '../net/connection.js';
 import type { ErrorCode, LobbyPlayer, Role, ServerMessage } from '@snails/protocol';
@@ -12,7 +12,8 @@ export type LobbyAction =
   | { type: 'toggleTeam'; teamId: string }
   | { type: 'setColour'; colour: string }
   | { type: 'setReady'; ready: boolean }
-  | { type: 'startMatch'; settings: MatchSettings };
+  | { type: 'setSettings'; settings: MatchSettingsInput }
+  | { type: 'startMatch'; settings: MatchSettingsInput };
 
 /** One connected participant, stored by session token. */
 export interface Member {
@@ -52,12 +53,7 @@ export interface ActiveMatch {
 }
 
 /** Default match settings for a fresh lobby. */
-export const DEFAULT_SETTINGS: MatchSettings = {
-  turnTimeSeconds: 30,
-  snailsPerTeam: 3,
-  seed: 1,
-  controlMode: 'perPlayer',
-};
+export const DEFAULT_SETTINGS: MatchSettings = MatchSettings.parse({});
 
 type Failure = [ErrorCode, string] | undefined;
 
@@ -191,6 +187,8 @@ export class Room {
         return undefined;
       case 'setColour':
         return this.setColour(member, action.colour);
+      case 'setSettings':
+        return this.setSettings(member, action.settings);
       case 'setReady':
         if (action.ready && member.teamIds.length === 0) return ['not_ready', 'Pick a team first'];
         member.ready = action.ready;
@@ -208,7 +206,16 @@ export class Room {
     return undefined;
   }
 
-  private start(member: Member, raw: MatchSettings): Failure {
+  /** Host edits the settings in the lobby; everyone (the display especially) sees them. */
+  private setSettings(member: Member, raw: MatchSettingsInput): Failure {
+    if (member.id !== this.hostId) return ['not_host', 'Only the host can change settings'];
+    const parsed = MatchSettings.safeParse(raw);
+    if (!parsed.success) return ['invalid_settings', 'Invalid match settings'];
+    this.settings = parsed.data;
+    return undefined;
+  }
+
+  private start(member: Member, raw: MatchSettingsInput): Failure {
     if (member.id !== this.hostId) return ['not_host', 'Only the host can start'];
     if (this.phase !== 'lobby') return ['match_in_progress', 'Match already started'];
     const parsed = MatchSettings.safeParse(raw);

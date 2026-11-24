@@ -1,6 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import type { LobbyPlayer } from '@snails/protocol';
-import { buildJoinUrl, fetchInfo, groupByTeam, readyCount, settingsSummary } from './lobby-logic';
+import {
+  buildJoinUrl,
+  fetchInfo,
+  groupByTeam,
+  readyCount,
+  settingsChips,
+  settingsSummary,
+} from './lobby-logic';
 
 const p = (id: string, teamId: string | null, ready = false, role = 'controller'): LobbyPlayer =>
   ({ id, name: id, role, teamId, colour: null, ready, connected: true }) as LobbyPlayer;
@@ -32,6 +39,33 @@ describe('display lobby logic', () => {
     expect(readyCount([p('a', 'A', true), p('b', 'B'), p('d', null, true, 'display')])).toEqual({
       ready: 1,
       total: 2,
+    });
+  });
+
+  it('lists a chip per host-changeable rule, with Classic defaults', () => {
+    const chips = Object.fromEntries(settingsChips({ seed: 5 }));
+    expect(chips).toMatchObject({
+      Turn: '30 s',
+      Health: '100',
+      Wind: 'Normal',
+      Crates: 'Normal',
+      'Sudden death': 'Round 20, water and drain',
+      'Fall damage': 'On',
+      'Friendly fire': 'On',
+    });
+    const edited = Object.fromEntries(
+      settingsChips({
+        wind: 'storm',
+        suddenDeathRound: null,
+        friendlyFire: false,
+        lazyStart: true,
+      }),
+    );
+    expect(edited).toMatchObject({
+      Wind: 'Storm',
+      'Sudden death': 'Off',
+      'Friendly fire': 'Off',
+      Turn: '30 s (lazy start)',
     });
   });
 

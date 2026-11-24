@@ -202,6 +202,24 @@ export interface TurnState {
   fired: boolean;
   /** Uses of each weapon this turn (weapon id to count); absent means none. Reset every turn. */
   uses?: Record<string, number>;
+  /** Lazy start: set once the turn's first non-`endTurn` command arrived (timer starts then). */
+  inputStarted?: boolean;
+  /** Damage each team (key) dealt to other teams this turn; resolves simultaneous eliminations. */
+  damageDealt?: Record<string, number>;
+}
+
+/** Rules fixed at match creation that systems consult (absent fields mean the Classic default). */
+export interface MatchRules {
+  /** False: explosions do not damage teammates of the firer. */
+  friendlyFire?: boolean;
+}
+
+/** Progress of sudden death once it has begun (serialisable). */
+export interface SuddenDeathState {
+  /** Round it began in. */
+  startRound: number;
+  /** Max health removed from every snail at each round start (0 when not draining). */
+  drainStep: number;
 }
 
 /** A projectile in flight. */
@@ -257,6 +275,10 @@ export interface GameState {
   /** Counter used to assign deterministic crate ids. */
   nextCrateId: number;
   match: MatchStatus;
+  /** Rules chosen for this match; absent = Classic defaults. */
+  rules?: MatchRules;
+  /** Present once sudden death has begun. */
+  suddenDeath?: SuddenDeathState;
 }
 
 /** Serialisable snapshot of a game state. */

@@ -49,6 +49,15 @@ describe('water', () => {
     expect(box.min.x).toBeLessThan(0);
     expect(box.max.z).toBeGreaterThan(48);
   });
+  it('follows a rising level (sudden death) and ignores an unchanged one', () => {
+    const w = createWater({ tier: 'high', bounds, level: 4 });
+    w.setLevel(5.5);
+    expect(w.level).toBe(5.5);
+    expect(w.mesh.position.y).toBe(5.5);
+    expect(w.material.uniforms['uLevel']?.value).toBe(5.5);
+    w.setLevel(5.5);
+    expect(w.mesh.position.y).toBe(5.5);
+  });
   it('advances time and uses simpler material on mobile', () => {
     const w = createWater({ tier: 'mobile', bounds, level: 4 });
     w.update(0.5);

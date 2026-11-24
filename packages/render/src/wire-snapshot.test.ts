@@ -94,4 +94,10 @@ describe('WireSnapshotMapper', () => {
     expect(s?.maxHealth).toBe(150);
     expect(s?.alive).toBe(false);
   });
+
+  it('takes the water level from the snapshot when the server sends one', () => {
+    const mapper = new WireSnapshotMapper(info);
+    expect(mapper.map(snap(1, 100)).terrain.waterLevel).toBe(1);
+    expect(mapper.map({ ...snap(2, 100), waterLevel: 3.5 }).terrain.waterLevel).toBe(3.5);
+  });
 });

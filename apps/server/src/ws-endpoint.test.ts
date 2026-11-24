@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import WebSocket from 'ws';
 import type { FastifyInstance } from 'fastify';
-import { PROTOCOL_VERSION } from '@snails/protocol';
+import { MatchSettings, PROTOCOL_VERSION } from '@snails/protocol';
 import { buildServer } from './app.js';
 
 type Msg = Record<string, unknown> & { type: string };
@@ -85,7 +85,10 @@ describe('/ws integration', () => {
     const started = await tv.next(
       (m) => m.type === 'lobbyState' && (m['settings'] as { seed: number }).seed === 99,
     );
-    expect(started['settings']).toEqual({ ...settings, controlMode: 'perPlayer' });
+    expect(started['settings']).toEqual({
+      ...MatchSettings.parse(settings),
+      controlMode: 'perPlayer',
+    });
 
     c1.send({ type: 'ping', t: 3 });
     expect(await c1.next((m) => m.type === 'pong')).toEqual({ type: 'pong', t: 3 });

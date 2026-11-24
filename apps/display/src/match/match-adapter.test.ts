@@ -113,6 +113,21 @@ describe('MatchAdapter', () => {
     expect(t.renderer.handleEvents).toHaveBeenCalledWith([ev]);
   });
 
+  it('announces sudden death on the HUD until the match ends', () => {
+    const t = setup();
+    t.a.handle(started);
+    t.a.handle(encodeSnapshot(snap));
+    expect(t.huds.at(-1)!.notice).toBeNull();
+    t.a.handle(encodeEventBatch(5, [{ type: 'suddenDeathStarted', round: 20, kind: 'both' }]));
+    expect(t.huds.at(-1)!.notice).toMatch(/Sudden death.*water.*health/);
+    t.a.handle(encodeSnapshot(snap));
+    expect(t.huds.at(-1)!.notice).toMatch(/Sudden death/);
+    t.a.handle({ type: 'lobbyState', phase: 'lobby' } as ServerMessage);
+    t.a.handle(started);
+    t.a.handle(encodeSnapshot(snap));
+    expect(t.huds.at(-1)!.notice).toBeNull();
+  });
+
   it('shows the winner then returns to lobby', () => {
     const t = setup();
     t.a.handle(started);

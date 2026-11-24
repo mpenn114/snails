@@ -10,9 +10,10 @@ export const gooSplat = {
 } satisfies AreaDefinition;
 
 /**
- * Puddle: water, 0.9 m deep (a snail resting on the lowest ground is 0.5 m up, so it drowns).
- * Settles into the lowest terrain within its radius; snails below the surface drown and salt
- * is put out for snails touching it. Lasts 3 turns.
+ * Puddle: water up to 0.9 m deep, capped at the lowest point of the rim around it. Settles into
+ * the lowest terrain within its radius; on flat ground it is only a thin film (nobody drowns),
+ * in a genuine dip (a snail resting on the floor is 0.5 m up) snails below the surface drown;
+ * salt is put out for snails touching it. Lasts 3 turns.
  */
 export const puddle = {
   id: 'base:puddle',

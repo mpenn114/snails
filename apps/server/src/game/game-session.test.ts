@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { Inventory, MatchStarted } from '@snails/protocol';
+import { Inventory, MatchStarted, decodeSnapshot } from '@snails/protocol';
 import {
   GameSession,
   type GameSessionOptions,
@@ -31,6 +31,17 @@ function toAction(s: GameSession): string {
 describe('GameSession', () => {
   it('produces a valid matchStarted message', () => {
     expect(() => MatchStarted.parse(make().matchStartedMessage())).not.toThrow();
+  });
+
+  it('honours match settings: health, wind and the water level in snapshots', () => {
+    const s = make({
+      settings: { ...settings, startingHealth: 60, wind: 'off', suddenDeathRound: null },
+    });
+    const snap = decodeSnapshot(s.snapshot());
+    expect(snap.snails.every((n) => n.health === 60)).toBe(true);
+    expect(snap.wind.strength).toBe(0);
+    expect(snap.waterLevel).toBe(s.matchStartedMessage().terrain.waterLevel);
+    expect(s.matchStartedMessage().settings).toMatchObject({ startingHealth: 60, wind: 'off' });
   });
 
   it('is deterministic for equal seed and intents', () => {

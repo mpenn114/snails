@@ -22,6 +22,8 @@ export interface Water {
   material: THREE.ShaderMaterial;
   /** World Y of the (undisturbed) surface. */
   readonly level: number;
+  /** Moves the surface to `level` (sudden death raises it); view-only, a no-op when unchanged. */
+  setLevel(level: number): void;
   /** Advances the animation clock by `dt` seconds. */
   update(dt: number): void;
   /** Current animation time (s). */
@@ -139,10 +141,19 @@ export function createWater(opts: WaterOptions): Water {
   let time = 0;
   let heightTex: THREE.DataTexture | null = null;
   const u = material.uniforms as Record<string, THREE.IUniform>;
+  let level = opts.level;
   return {
     mesh,
     material,
-    level: opts.level,
+    get level() {
+      return level;
+    },
+    setLevel(next) {
+      if (next === level) return;
+      level = next;
+      mesh.position.y = next;
+      u['uLevel']!.value = next;
+    },
     update(dt) {
       time += dt;
       u['uTime']!.value = time;

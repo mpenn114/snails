@@ -8,7 +8,7 @@ import type { SimContext } from '../sim/types.js';
 import { applyStatus } from '../status/status-system.js';
 import type { AreaInstance, Snail, Vec3 } from '../state/types.js';
 import { skipTurnIfActiveDead } from '../turn/turn-hooks.js';
-import { applyWater, findLowPoint, isWaterArea } from './water-area.js';
+import { applyWater, findLowPoint, isWaterArea, waterSurfaceY } from './water-area.js';
 
 /** Overrides when creating an area. */
 export interface AreaSpawn {
@@ -20,14 +20,15 @@ export interface AreaSpawn {
 
 /**
  * Creates an area from its definition (id `a<counter>`) and emits `areaCreated`. A water area
- * (`waterDepth`) settles to the lowest terrain within its radius first.
+ * (`waterDepth`) settles to the lowest terrain within its radius first and is only as deep as
+ * the lowest point of its rim allows (see `waterSurfaceY`).
  */
 export function spawnArea(ctx: SimContext, def: AreaDefinition, spawn: AreaSpawn): AreaInstance {
   const radius = spawn.radius ?? def.defaultRadius;
   let position = { ...spawn.position };
   if (def.waterDepth !== undefined) {
     const low = findLowPoint(ctx.terrain, position, radius);
-    position = { x: low.x, y: low.y + def.waterDepth, z: low.z };
+    position = { x: low.x, y: waterSurfaceY(ctx.terrain, low, radius, def.waterDepth), z: low.z };
   }
   const area: AreaInstance = {
     id: `a${ctx.state.nextAreaId}`,

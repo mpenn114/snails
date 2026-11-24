@@ -15,6 +15,17 @@ import type { TurnStartHook } from '../turn/turn-hooks.js';
 import { requestEndTurn } from '../turn/turn-phases.js';
 import { validateCommand, type ValidationContext, type ValidationResult } from './validation.js';
 
+/** Adds damage one team dealt to another to the turn's tally (self and friendly damage excluded). */
+function tallyDamage(state: GameState, e: SimEvent): void {
+  if (e.type !== 'snailDamaged' || e.sourceSnailId === null) return;
+  const snails = state.teams.flatMap((t) => t.snails);
+  const source = snails.find((s) => s.id === e.sourceSnailId);
+  const target = snails.find((s) => s.id === e.snailId);
+  if (!source || !target || source.teamId === target.teamId) return;
+  const tally = (state.turn.damageDealt ??= {});
+  tally[source.teamId] = (tally[source.teamId] ?? 0) + e.amount;
+}
+
 interface QueuedCommand {
   cmd: Command;
   /** Present only for commands that went through {@link Simulation.submit}. */
@@ -128,7 +139,10 @@ export class Simulation {
       terrain: this.terrain,
       rng: this.rng,
       dt,
-      emit: (e) => events.push(e),
+      emit: (e) => {
+        events.push(e);
+        tallyDamage(this.state, e);
+      },
     };
     for (const { cmd, validate } of this.queue.splice(0)) {
       if (validate) {
@@ -140,6 +154,7 @@ export class Simulation {
       }
       const handler = this.handlers.get(cmd.type) as CommandHandler | undefined;
       handler?.(ctx, cmd as never);
+      if (cmd.type !== 'endTurn') this.state.turn.inputStarted = true;
     }
     for (const sys of this.systems) sys.fn(ctx);
     if (this.state.turn.turnNumber !== this.hookedTurn) {
