@@ -197,20 +197,20 @@ the MG-03 harness to its PR. After the first round looked poor, MG-13 to MG-15 s
 
 | ID | Task | Area | Depends on | Status |
 |---|---|---|---|---|
-| M5-01 | Calcium economy: income sources, per-team balance, events | core | M4-17 | ⬜ |
-| M5-02 | Tech definition schema (tier, branch, cost, prerequisites, effects) | content | M4-01 | ⬜ |
-| M5-03 | Research queue: queueing, progress per turn, completion events | core | M5-01, M5-02 | ⬜ |
-| M5-04 | Tier gating and branch prerequisites, capstone limits | core | M5-03 | ⬜ |
-| M5-05 | Tech effect application (stat modifiers, weapon unlocks, hooks) | core | M5-03, M4-03 | ⬜ |
-| M5-06 | Implement 20 techs across Weaponry, Shell, Mobility, Utility (first 10) | content | M5-05 | ⬜ |
-| M5-07 | Implement remaining techs and the four capstones | content | M5-06 | ⬜ |
-| M5-08 | Research race game mode and win rule | core | M5-04, M4-17 | ⬜ |
-| M5-09 | Anti-snowball rules (catch-up income, cost scaling, stalemate pressure) | core | M5-05 | ⬜ |
-| M5-10 | Protocol messages for private research state, queues and reveals | protocol | M5-03, M3-02 | ⬜ |
-| M5-11 | Server: per-team private state filtering in snapshots | server | M5-10, M3-09 | ⬜ |
-| M5-12 | Phone research screen (tree view, queue, hold-to-reveal for hot-seat) | controller | M5-10, M3-28 | ⬜ |
-| M5-13 | Display research feedback (reveal moments, tech unlock VFX) | display | M5-03, M2-09 | ⬜ |
-| M5-14 | Headless balance runner and dashboard output (win rates per tech) | ci | M5-07, M6-12 | ⬜ |
+| M5-01 | Calcium economy: income sources, per-team balance, events | core | M4-17 | ✅ |
+| M5-02 | Tech definition schema (tier, branch, cost, prerequisites, effects) | content | M4-01 | ✅ |
+| M5-03 | Research queue: queueing, progress per turn, completion events | core | M5-01, M5-02 | ✅ |
+| M5-04 | Tier gating and branch prerequisites, capstone limits | core | M5-03 | ✅ |
+| M5-05 | Tech effect application (stat modifiers, weapon unlocks, hooks) | core | M5-03, M4-03 | ✅ |
+| M5-06 | Implement 20 techs across Weaponry, Shell, Mobility, Utility (first 10) | content | M5-05 | ✅ |
+| M5-07 | Implement remaining techs and the four capstones | content | M5-06 | ✅ |
+| M5-08 | Research race game mode and win rule | core | M5-04, M4-17 | ✅ |
+| M5-09 | Anti-snowball rules (catch-up income, cost scaling, stalemate pressure) | core | M5-05 | ✅ |
+| M5-10 | Protocol messages for private research state, queues and reveals | protocol | M5-03, M3-02 | ✅ |
+| M5-11 | Server: per-team private state filtering in snapshots | server | M5-10, M3-09 | ✅ |
+| M5-12 | Phone research screen (tree view, queue, hold-to-reveal for hot-seat) | controller | M5-10, M3-28 | ✅ |
+| M5-13 | Display research feedback (reveal moments, tech unlock VFX) | display | M5-03, M2-09 | ✅ |
+| M5-14 | Headless balance runner and dashboard output (win rates per tech) | ci | M5-07, M6-12 | ✅ |
 | M5-15 | Balance tuning pass; match with research completes under 30 min | docs | M5-14 | ⬜ |
 
 ## M6: CPU players
