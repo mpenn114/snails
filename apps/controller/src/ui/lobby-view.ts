@@ -21,6 +21,7 @@ export interface LobbyView {
 }
 
 const SKELETON = `<h1>Lobby <span class="room"></span></h1>
+  <p class="tvlink"><a class="tv" target="_blank" rel="noopener">Open TV view</a> (on the host PC)</p>
   <ul class="roster"></ul>
   <label class="share"><input class="multi" type="checkbox" /> This phone plays several teams</label>
   <div class="row teams"></div>
@@ -66,6 +67,7 @@ type Query = <T extends HTMLElement>(sel: string) => T;
 function paintLobby(q: Query, s: LobbyStateMsg, meId: string): void {
   const me = s.players.find((p) => p.id === meId);
   q('.room').textContent = s.roomCode;
+  q<HTMLAnchorElement>('.tv').href = `/display/?room=${encodeURIComponent(s.roomCode)}`;
   q('.roster').innerHTML = rosterHtml(s.players, s.hostId);
   q('.teams').innerHTML = choiceHtml(TEAMS, me ? playerTeams(me) : null, new Set(), 'team');
   const taken = takenColours(s.players, meId);

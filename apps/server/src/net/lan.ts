@@ -94,6 +94,16 @@ export function findLanIPv4(): string {
 }
 
 /**
+ * Builds the URL the host PC opens to watch the match on the TV view.
+ * @param port server port
+ * @param roomCode room code to attach to
+ * @returns the display URL (localhost, since the host PC runs the server)
+ */
+export function displayUrl(port: number, roomCode: string): string {
+  return `http://localhost:${port}/display/?room=${roomCode}`;
+}
+
+/**
  * Builds the URL phones open to join a room.
  * @param host host or IP phones use
  * @param port server port

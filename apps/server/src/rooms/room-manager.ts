@@ -56,6 +56,7 @@ export class RoomManager {
   private emptyTimers = new Map<string, unknown>();
   private dropTimers = new Map<string, unknown>();
   private nextId = 1;
+  private defaultCode: string | null = null;
   private readonly random: () => number;
   private readonly token: () => string;
   private readonly timers: Timers;
@@ -89,6 +90,16 @@ export class RoomManager {
     };
     this.rooms.set(code, room);
     return room;
+  }
+
+  /** Marks the room a display with no room code attaches to (the one the server created at start). */
+  setDefaultRoom(code: string): void {
+    this.defaultCode = code.toUpperCase();
+  }
+
+  /** The default room for code-less displays, if it still exists. */
+  getDefaultRoom(): Room | undefined {
+    return this.defaultCode ? this.rooms.get(this.defaultCode) : undefined;
   }
 
   /** Returns a room by code (case-insensitive). */

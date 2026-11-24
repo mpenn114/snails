@@ -6,7 +6,7 @@ const PORT = 3000;
 /** Starts the in-process server and opens the display window. */
 async function boot(): Promise<void> {
   const server = await startServer(PORT);
-  console.log(`Snails join URL: ${server.url}`);
+  console.log(`Snails join URL: ${server.url}\nTV view: ${server.displayUrl}`);
   const win = new BrowserWindow({ width: 1280, height: 720, fullscreenable: true });
   // Display build is served by the server in packaged releases; in dev use the Vite server.
   const displayUrl = process.env['SNAILS_DISPLAY_URL'] ?? `http://localhost:5173`;

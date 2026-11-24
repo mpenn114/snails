@@ -154,6 +154,21 @@ try {
   });
   const idle = phones.find((p) => p !== active);
   step(`active phone: ${active.name}`);
+  // A second display opened mid-match (no room code, as the printed TV link may be) must catch up.
+  const late = await dctx.newPage();
+  const lFrames = watch(late, 'late display', errors);
+  await late.goto(`${base}/display/`);
+  await until('late display welcomed into the running room', () =>
+    lFrames.some((m) => m.type === 'welcome' && m.roomCode === code),
+  );
+  await until('late display gets matchStarted and a snapshot', () =>
+    ['matchStarted', 'snapshot'].every((t) => has(lFrames, t)),
+  );
+  await until('late display has its canvas', () =>
+    late.evaluate(() => !!document.querySelector('canvas')),
+  );
+  step('display opened mid-match caught up');
+  await late.close();
   await display.waitForTimeout(1500);
   if (shots) {
     await display.screenshot({ path: join(shots, 'display-match.png') });
