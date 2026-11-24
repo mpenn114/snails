@@ -29,6 +29,7 @@ export * from './terrain/terrain-replica.js';
 export * from './effects/particles.js';
 export * from './effects/projectile-layer.js';
 export * from './effects/explosion-effects.js';
+export * from './effects/splash-effects.js';
 export * from './match-renderer.js';
 export * from './props/model-loader.js';
 export * from './props/prop-plan.js';

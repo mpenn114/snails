@@ -3,6 +3,7 @@ import { SdfGrid } from '@snails/core';
 import type { GameSnapshot, SimEvent } from '@snails/core';
 import { CameraRig, type CameraMode } from './camera/camera-rig.js';
 import { ExplosionEffects } from './effects/explosion-effects.js';
+import { SplashEffects } from './effects/splash-effects.js';
 import { createWindParticles, type WindParticles } from './environment/wind-particles.js';
 import { ProjectileLayer } from './effects/projectile-layer.js';
 import { SnapshotBuffer } from './interpolation.js';
@@ -98,6 +99,7 @@ interface Built {
   projectiles: ProjectileLayer;
   props: PropLayer | null;
   explosions: ExplosionEffects;
+  splashes: SplashEffects;
   rig: CameraRig;
   wind: WindParticles;
   material: TerrainMaterial;
@@ -206,15 +208,11 @@ export class MatchRenderer {
     view.roots.entities.add(snails.group);
     const props = this.makeProps(grid, waterLevel, q.propCount, q.shadows);
     if (props) view.roots.entities.add(props.group);
-    view.roots.effects.add(projectiles.group, explosions.group);
+    const splashes = this.makeSplashes(view, source, waterLevel);
+    view.roots.effects.add(projectiles.group, explosions.group, splashes.group);
 
-    const ws = grid.worldSize();
     const rig = createRig(view.camera, grid);
-    const wind = createWindParticles({
-      bounds: { min: new THREE.Vector3(0, 0, 0), max: new THREE.Vector3(ws.x, ws.y, ws.z) },
-      count: Math.round(WIND_PARTICLE_BASE_COUNT * q.particleScale),
-      ...(this.deps.random ? { random: this.deps.random } : {}),
-    });
+    const wind = this.makeWind(grid, q.particleScale);
     view.roots.effects.add(wind.object);
     const built: Built = {
       view,
@@ -224,6 +222,7 @@ export class MatchRenderer {
       projectiles,
       props,
       explosions,
+      splashes,
       rig,
       wind,
       material,
@@ -231,6 +230,24 @@ export class MatchRenderer {
     };
     this.registerUpdaters(built);
     return built;
+  }
+
+  private makeWind(grid: SdfGrid, particleScale: number): WindParticles {
+    const ws = grid.worldSize();
+    return createWindParticles({
+      bounds: { min: new THREE.Vector3(0, 0, 0), max: new THREE.Vector3(ws.x, ws.y, ws.z) },
+      count: Math.round(WIND_PARTICLE_BASE_COUNT * particleScale),
+      ...(this.deps.random ? { random: this.deps.random } : {}),
+    });
+  }
+
+  private makeSplashes(view: GameView, source: SdfGrid, waterLevel: number): SplashEffects {
+    view.water?.setTerrain(source);
+    return new SplashEffects({
+      level: waterLevel,
+      quality: view.quality.particleScale,
+      ...(this.deps.random ? { random: this.deps.random } : {}),
+    });
   }
 
   private registerUpdaters(b: Built): void {
@@ -247,6 +264,7 @@ export class MatchRenderer {
     if (b.props) add(b.props.updater);
     add(b.projectiles.updater);
     add(b.explosions.updater);
+    add(b.splashes.updater);
     add((dt) => b.material.scorch.advance(dt));
     add(b.wind.updater);
     for (const e of this.extras) this.attachExtra(b, e);
@@ -320,6 +338,7 @@ export class MatchRenderer {
     b.props?.dispose();
     b.projectiles.dispose();
     b.explosions.dispose();
+    b.splashes.dispose();
     b.wind.dispose();
     b.material.dispose();
     b.view.dispose();
