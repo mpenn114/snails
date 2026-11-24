@@ -26,6 +26,7 @@ describe('effect handler table', () => {
       'carve',
       'damage',
       'move',
+      'reel',
       'spawn',
       'status',
     ]);

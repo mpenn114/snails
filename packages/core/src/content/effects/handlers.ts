@@ -2,6 +2,7 @@ import { spawnArea } from '../../area/area-system.js';
 import { applyWater, isWaterArea } from '../../area/water-area.js';
 import { findSnail, livingSnails } from '../../entities/snail.js';
 import { distance, normalize } from '../../math/vec3.js';
+import { attachRope } from '../../rope/rope-system.js';
 import { carveAt, damageAround } from '../../physics/explosion.js';
 import { SNAIL_RADIUS, spawnProjectile } from '../../physics/projectile-system.js';
 import { applyStatus } from '../../status/status-system.js';
@@ -13,6 +14,8 @@ import type { Effect, EffectOf, EffectType } from './effect-schemas.js';
 export interface EffectSource {
   weaponId: string;
   ownerSnailId: string;
+  /** True for melee strikes: damage and status effects skip the owner. */
+  excludeOwner?: boolean;
 }
 
 /** Handler for one effect type: runs the effect at `at`, mutating state and emitting events. */
@@ -34,6 +37,7 @@ const damage: EffectHandler<EffectOf<'damage'>> = (ctx, e, at, source) => {
       falloff: e.falloff ?? 'linear',
     },
     source,
+    e.announce !== false,
   );
 };
 
@@ -45,6 +49,7 @@ const status: EffectHandler<EffectOf<'status'>> = (ctx, e, at, source) => {
   const def = ctx.content.statuses.get(e.statusId);
   if (!def) return;
   for (const snail of livingSnails(ctx.state)) {
+    if (source.excludeOwner && snail.id === source.ownerSnailId) continue;
     if (distance(at, snail.position) - SNAIL_RADIUS > e.radius) continue;
     applyStatus(ctx, snail, def, {
       turns: e.turns ?? def.defaultTurns ?? 1,
@@ -107,6 +112,12 @@ const move: EffectHandler<EffectOf<'move'>> = (ctx, e, at, source) => {
   ctx.emit({ type: 'snailMoved', snailId: snail.id, from, to: { ...snail.position } });
 };
 
+const reel: EffectHandler<EffectOf<'reel'>> = (ctx, e, at, source) => {
+  const snail = findSnail(ctx.state, source.ownerSnailId);
+  if (!snail || !snail.alive || snail.rope) return;
+  attachRope(ctx, snail, at, e.seconds, e.standoff);
+};
+
 /**
  * The effect handler table: ONE handler per effect type. Adding an effect type means adding
  * its schema to `EffectSchema` and one entry here; weapons never get weapon-specific code.
@@ -117,6 +128,7 @@ export const effectHandlers: { [T in EffectType]: EffectHandler<EffectOf<T>> } =
   status,
   spawn,
   move,
+  reel,
 };
 
 /** Runs effects in order at a detonation point. */

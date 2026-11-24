@@ -17,6 +17,7 @@ export * from './area/water-area.js';
 export * from './turn/turn-hooks.js';
 export * from './sim/lingering.js';
 export * from './combat/pattern.js';
+export * from './rope/rope-system.js';
 export * from './content/registries.js';
 export * from './state/types.js';
 export * from './turn/turn-manager.js';

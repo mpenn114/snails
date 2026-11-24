@@ -23,6 +23,7 @@ export interface AimPort {
       snailId: string;
       launch?: WeaponLaunchSpec;
       motion?: { kind: string };
+      melee?: { reach: number };
       angle: number;
       power: number;
     } | null,

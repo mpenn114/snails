@@ -69,6 +69,13 @@ export const WeaponSchema = z
     requiresTech: z.string().min(1).optional(),
     /** Maximum uses per turn (default 1). */
     perTurn: posInt.optional(),
+    /**
+     * Melee delivery: no projectile; `effects` run at a point `reach` metres in front of the
+     * firer along the facing, and the firer is never hurt by them.
+     */
+    melee: z.object({ reach: pos }).strict().optional(),
+    /** False for weapons that do not end the action phase when used (utilities); default true. */
+    endsAction: z.boolean().optional(),
   })
   .strict();
 

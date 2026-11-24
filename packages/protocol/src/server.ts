@@ -95,6 +95,11 @@ export const AimPreview = z.object({
    * ballistic weapons, so displays preview a drill as a straight line.
    */
   motion: z.object({ kind: z.string() }).passthrough().optional(),
+  /**
+   * Set for melee weapons (no projectile, no power): displays show only a strike marker
+   * `reach` metres ahead instead of an arc.
+   */
+  melee: z.object({ reach: z.number().positive() }).optional(),
   angle: z.number().min(-Math.PI).max(Math.PI),
   power: z.number().min(0).max(1),
 });

@@ -41,6 +41,18 @@ export interface Snail {
   pendingLanding?: PendingLanding;
   /** Active statuses (salt, goo, ...) in application order; absent means none. */
   statuses?: StatusInstance[];
+  /** Set while the snail is being reeled along a slime strand (see `rope/rope-system.ts`). */
+  rope?: RopeState;
+}
+
+/** A snail being reeled from `from` to `to` over `seconds`; `elapsed` advances each step. */
+export interface RopeState {
+  /** Where the strand is anchored on the terrain. */
+  anchor: Vec3;
+  from: Vec3;
+  to: Vec3;
+  seconds: number;
+  elapsed: number;
 }
 
 /** A status active on a snail (serialisable). Definition lives in the `statuses` registry. */
@@ -139,6 +151,8 @@ export interface TurnState {
   phaseTime: number;
   /** True once a shot was fired this turn. */
   fired: boolean;
+  /** Uses of each weapon this turn (weapon id to count); absent means none. Reset every turn. */
+  uses?: Record<string, number>;
 }
 
 /** A projectile in flight. */

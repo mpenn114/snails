@@ -5,6 +5,15 @@ export interface WeaponLike {
   ammo: number | 'infinite';
   /** Motion kind lets the controls know a weapon is guided (joystick steers it in flight). */
   motion?: { kind: string } | undefined;
+  /** Weapon category: melee weapons need no power, utilities (rope) are not attacks. */
+  category?: string | undefined;
+}
+
+/** Label of the fire button for a weapon: melee strikes, utilities are used, others fire. */
+export function fireLabel(weapon: Pick<WeaponLike, 'category'> | undefined): string {
+  if (weapon?.category === 'melee') return 'Bash';
+  if (weapon?.category === 'utility') return 'Use';
+  return 'Fire';
 }
 
 /** One picker tile. */

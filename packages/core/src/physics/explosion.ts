@@ -28,6 +28,8 @@ export interface ExplosionSpec {
 export interface ExplosionSource {
   weaponId: string;
   ownerSnailId: string;
+  /** True for melee strikes: the owner is never damaged, pushed or affected. */
+  excludeOwner?: boolean;
 }
 
 /** One damaged snail in an explosion summary. */
@@ -119,6 +121,7 @@ export function damageAround(
   const damaged: ExplosionHit[] = [];
   const killed: string[] = [];
   for (const snail of livingSnails(ctx.state)) {
+    if (source.excludeOwner && snail.id === source.ownerSnailId) continue;
     const dist = Math.max(0, distance(centre, snail.position) - SNAIL_RADIUS);
     const f = computeFalloff(dist, spec.radius, spec.falloff);
     if (f <= 0) continue;

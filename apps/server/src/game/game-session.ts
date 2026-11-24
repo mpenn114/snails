@@ -194,6 +194,12 @@ export class GameSession {
     return (id ? this.match.weapons.get(id)?.motion : undefined) ?? null;
   }
 
+  /** Melee parameters of the active team's selected weapon, or null for projectile weapons. */
+  get activeMelee(): { reach: number } | null {
+    const id = this.activeWeaponId;
+    return (id ? this.match.weapons.get(id)?.melee : undefined) ?? null;
+  }
+
   /** Current aim (angle, power) of the active snail, or null. */
   get activeAim(): { angle: number; power: number } | null {
     const s = this.activeSnail();

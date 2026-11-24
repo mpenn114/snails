@@ -46,8 +46,19 @@ A small union discriminated on `type` (`content/effects/effect-schemas.ts`). Eac
 | `status` | `statusId`, `radius`, `turns?`, `magnitude?`                                                                                   | applies a status to snails in range                           |
 | `spawn`  | `spawn: { what: 'area', areaId, radius?, turns? }` or `{ what: 'projectiles', weaponId, count, speed, spread? }` | creates an area, or sub-projectiles of another weapon         |
 | `move`   | `mode: 'teleport'`, `lift?`                                                                                                    | moves the firer to the detonation point, emits `snailMoved`   |
+| `reel`   | `seconds`, `standoff`                                                                                                          | if the detonation point touches terrain, reels the firer along a strand to `standoff` m off the surface (`rope/rope-system.ts`), emits `ropeAttached`/`ropeReleased`; fizzles in open air |
 
 To add an effect type: add its schema to `EffectSchema`, add one entry to `effectHandlers` (the table type forces you to), and add a protocol event if clients must see it.
+
+### Melee delivery, per-turn limits and utilities
+
+Three optional weapon fields cover melee and utility weapons without any weapon-specific code:
+
+- `melee: { reach }` replaces the projectile: `fire` emits `meleeStruck` and runs `effects` at a point `reach` metres in front of the firer along its facing (horizontal; the aim angle is not used and power is irrelevant). Effects skip the firer (`EffectSource.excludeOwner`). A `damage` effect with `announce: false` skips the `explosion` event, so there is no blast visual or scorch (`base:shell-bash`: 20 damage, 12 m/s knockback, radius 1.2 at reach 1).
+- `perTurn: n` limits uses per turn (`turn.uses`, reset each turn). It is enforced by `validateCommand` (`NO_USES_LEFT`, when the weapon registry offers `get`) and again in the `fire` handler. Weapons without `perTurn` (or `endsAction: false`) are not limited.
+- `endsAction: false` means firing does not end the action phase (no `notifyFired`): the snail can still aim and fire a real weapon afterwards.
+
+`base:slime-rope` combines them: a 40 m/s straight projectile with a 0.3 s fuse (about 12 m), effect `reel`, `perTurn: 1`, `endsAction: false`. The `reel` effect checks that the detonation point is within 0.35 m of terrain (a strand that ends in open air or on a snail does nothing), sets `snail.rope` (anchor, from, to, seconds, elapsed) and the `rope` system (registered by `registerCombat`, after movement) eases the snail along the straight line to `anchor + normal * standoff`, zeroing velocity and the fall height so the reel causes no fall damage. A step into terrain ends the reel early. At the end `ropeReleased` fires and normal falling takes over (so aiming at a wall behind a ledge drops the snail onto the ledge). Clients draw the strand (`render/src/effects/strand-effects.ts`, from `ropeAttached`/`ropeReleased` plus the snapshot) and a puff on `meleeStruck`; `aimPreview` carries `melee: { reach }` so displays show a strike marker instead of an arc, and the controller's fire button reads "Bash"/"Use" for melee/utility weapons.
 
 ### Motion strategies
 

@@ -3,14 +3,18 @@ import { PALETTE } from '../style/palette.js';
 import { buildMissileGeometry } from './missile-geometry.js';
 import { buildPebbleGeometry, pebbleJitter, TRAIL_COLOUR } from './pebble-geometry.js';
 
+/** Slime green of the rope's leading blob and its trail (matches the goo and the strand). */
+const SLIME_COLOUR = 0x9bdc3c;
+
 /** Visual family of a projectile; chosen from the weapon id, the sim knows nothing of it. */
-export type ProjectileLook = 'pebble' | 'roller' | 'drill' | 'missile';
+export type ProjectileLook = 'pebble' | 'roller' | 'drill' | 'missile' | 'strand';
 
 /** Weapons with their own look; every other weapon uses the pebble. */
 const LOOKS: Readonly<Record<string, ProjectileLook>> = {
   'base:pebble-roller': 'roller',
   'base:shell-drill': 'drill',
   'base:radula-missile': 'missile',
+  'base:slime-rope': 'strand',
 };
 
 /** Look for a weapon id (the plain pebble when it has none of its own). */
@@ -24,6 +28,7 @@ export const LOOK_SCALE: Readonly<Record<ProjectileLook, number>> = {
   roller: 2.4,
   drill: 2.6,
   missile: 1.9,
+  strand: 1.6,
 };
 
 /** Spin rate in rad/s about the flight axis (the drill bit turns fast, the stone tumbles). */
@@ -32,6 +37,7 @@ export const LOOK_SPIN: Readonly<Record<ProjectileLook, number>> = {
   roller: 5,
   drill: 28,
   missile: 0,
+  strand: 0,
 };
 
 /** Trail colour of a look: paper smoke for stones, soil dust for the drill. */
@@ -40,6 +46,7 @@ export const LOOK_TRAIL: Readonly<Record<ProjectileLook, number>> = {
   roller: TRAIL_COLOUR,
   drill: PALETTE.soil,
   missile: TRAIL_COLOUR,
+  strand: SLIME_COLOUR,
 };
 
 function paint(geo: THREE.BufferGeometry, pick: (face: number, ny: number) => THREE.Color): void {
@@ -100,10 +107,20 @@ export function buildDrillGeometry(): THREE.BufferGeometry {
   return flat;
 }
 
+/** Sticky slime blob: a small jittered icosahedron in slime green (20 triangles). */
+export function buildStrandGeometry(): THREE.BufferGeometry {
+  const geo = new THREE.IcosahedronGeometry(1, 0);
+  const slime = new THREE.Color(SLIME_COLOUR);
+  const paper = new THREE.Color(PALETTE.uiPaper);
+  paint(geo, (_face, ny) => (ny > 0.5 ? paper : slime));
+  return geo;
+}
+
 /** Builds the geometry of one look. */
 export function buildLookGeometry(look: ProjectileLook): THREE.BufferGeometry {
   if (look === 'roller') return buildRollerGeometry();
   if (look === 'drill') return buildDrillGeometry();
   if (look === 'missile') return buildMissileGeometry();
+  if (look === 'strand') return buildStrandGeometry();
   return buildPebbleGeometry();
 }

@@ -14,6 +14,8 @@ export const DamageEffectSchema = z
     maxDamage: nonNeg,
     knockback: nonNeg.optional(),
     falloff: FalloffSchema.optional(),
+    /** False suppresses the `explosion` event (no blast visuals or scorch); default true. */
+    announce: z.boolean().optional(),
   })
   .strict();
 
@@ -71,6 +73,15 @@ export const MoveEffectSchema = z
   .object({ type: z.literal('move'), mode: z.enum(['teleport']), lift: nonNeg.optional() })
   .strict();
 
+/**
+ * Reels the firer along a strand to the surface point at the detonation point: it only attaches
+ * when that point touches terrain, then pulls the firer to `standoff` metres off the surface
+ * over `seconds` (see `rope/rope-system.ts`).
+ */
+export const ReelEffectSchema = z
+  .object({ type: z.literal('reel'), seconds: pos, standoff: nonNeg })
+  .strict();
+
 /** The effect vocabulary: a small union discriminated on `type`. */
 export const EffectSchema = z.discriminatedUnion('type', [
   DamageEffectSchema,
@@ -78,6 +89,7 @@ export const EffectSchema = z.discriminatedUnion('type', [
   StatusEffectSchema,
   SpawnEffectSchema,
   MoveEffectSchema,
+  ReelEffectSchema,
 ]);
 
 /** One effect run when a weapon detonates. */

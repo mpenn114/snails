@@ -9,7 +9,7 @@ import { trackTurns } from './turn-tracker';
 import type { TurnTracker } from './turn-tracker';
 import { formatTimer, isWarning, remainingAt } from './turn-timer';
 import { SLOT_TOP } from '../shell/layers';
-import { buildWeaponTiles } from './weapon-list';
+import { buildWeaponTiles, fireLabel } from './weapon-list';
 import type { WeaponLike } from './weapon-list';
 
 /** Options for `mountControls`. */
@@ -142,13 +142,16 @@ export function mountControls(
   const tracker = trackTurns(client, opts.playerId);
   const sheet = q(root, '.ctl-sheet');
   let selected: string | null = opts.weapons[0]?.id ?? null;
-  const rebuild = (): void =>
+  const fireBtn = q(root, '.ctl-fire');
+  const rebuild = (): void => {
+    fireBtn.textContent = fireLabel(opts.weapons.find((w) => w.id === selected));
     renderTiles(q(root, '.ctl-grid'), opts.weapons, selected, tracker.view.myTurn, (id) => {
       selected = id;
       client.send({ type: 'selectWeapon', weaponId: id });
       sheet.classList.remove('open');
       rebuild();
     });
+  };
 
   const facing = opts.screenFacing ?? (() => DEFAULT_SCREEN_FACING);
   const steering = trackSteering(client, opts.weapons);

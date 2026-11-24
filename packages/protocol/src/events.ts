@@ -111,6 +111,19 @@ const plain = [
   z.object({ type: z.literal('areaExpired'), areaId: z.string(), kind: z.string() }),
   z.object({ type: z.literal('areaMoved'), areaId: z.string(), position: V }),
   z.object({ type: z.literal('snailMoved'), snailId: z.string(), from: V, to: V }),
+  z.object({
+    type: z.literal('ropeAttached'),
+    snailId: z.string(),
+    anchor: V,
+    seconds: z.number(),
+  }),
+  z.object({ type: z.literal('ropeReleased'), snailId: z.string() }),
+  z.object({
+    type: z.literal('meleeStruck'),
+    snailId: z.string(),
+    weaponId: z.string(),
+    position: V,
+  }),
 ] as const;
 
 const carvedBase = {

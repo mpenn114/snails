@@ -1,4 +1,5 @@
 import type { GameState } from '../state/types.js';
+import { usesPerTurn } from '../combat/combat.js';
 import type { Command } from './types.js';
 
 /** Stable machine-readable codes for why a command was refused. */
@@ -10,6 +11,7 @@ export type RejectionReason =
   | 'UNKNOWN_SNAIL'
   | 'UNKNOWN_WEAPON'
   | 'ALREADY_FIRED'
+  | 'NO_USES_LEFT'
   | 'INVALID_VALUE'
   | 'MATCH_OVER';
 
@@ -20,7 +22,13 @@ export type ValidationResult =
 /** Extra inputs for {@link validateCommand}. */
 export interface ValidationContext {
   /** Weapon registry; when omitted, weapon ids are not checked. */
-  weapons?: { has(id: string): boolean };
+  weapons?: {
+    has(id: string): boolean;
+    /** When present, use-limited weapons are checked against `turn.uses`. */
+    get?(
+      id: string,
+    ): { perTurn?: number | undefined; endsAction?: boolean | undefined } | undefined;
+  };
   /** Team issuing the command; when omitted, issuer is not checked. */
   issuerTeamId?: string;
 }
@@ -101,6 +109,10 @@ export function validateCommand(
       return reject('UNKNOWN_WEAPON', `unknown weapon ${cmd.weaponId}`);
     }
     if (turn.fired) return reject('ALREADY_FIRED', 'a shot was already fired this turn');
+    const def = ctx.weapons?.get?.(cmd.weaponId);
+    if (def && (turn.uses?.[cmd.weaponId] ?? 0) >= usesPerTurn(def)) {
+      return reject('NO_USES_LEFT', `${cmd.weaponId} has no uses left this turn`);
+    }
   }
   return OK;
 }

@@ -13,7 +13,7 @@ import type { SimEvent } from './events.js';
 import { FIXED_DT } from '../physics/ballistics.js';
 import type { TurnStartHook } from '../turn/turn-hooks.js';
 import { requestEndTurn } from '../turn/turn-phases.js';
-import { validateCommand, type ValidationResult } from './validation.js';
+import { validateCommand, type ValidationContext, type ValidationResult } from './validation.js';
 
 interface QueuedCommand {
   cmd: Command;
@@ -27,7 +27,7 @@ export interface SimulationOptions {
   terrain: SdfGrid;
   rng: SimRng;
   /** Weapon registry used to validate `fire` commands (optional). */
-  weapons?: { has(id: string): boolean };
+  weapons?: ValidationContext['weapons'];
 }
 
 /** Error thrown on misuse of the driver (not on gameplay conditions). */
@@ -50,7 +50,7 @@ export class Simulation {
   readonly terrain: SdfGrid;
   readonly rng: SimRng;
   private readonly queue: QueuedCommand[] = [];
-  private readonly weapons?: { has(id: string): boolean };
+  private readonly weapons?: ValidationContext['weapons'];
   private readonly handlers = new Map<CommandType, CommandHandler<never>>();
   private readonly systems: { name: string; fn: SystemFn }[] = [];
   private readonly turnStartHooks: { name: string; fn: TurnStartHook }[] = [];

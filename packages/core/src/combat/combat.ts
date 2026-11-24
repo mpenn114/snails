@@ -1,11 +1,12 @@
 import { runEffects } from '../content/effects/handlers.js';
 import { buildMatchContent, withContent, type MatchContent } from '../content/match-content.js';
-import type { WeaponDefinition, WeaponLaunchSpec } from '../content/types.js';
 import type { ContentRegistry } from '../content/registry.js';
-import { findSnail, setFacing } from '../entities/snail.js';
+import type { WeaponDefinition, WeaponLaunchSpec } from '../content/types.js';
+import { facingVector, findSnail, setFacing } from '../entities/snail.js';
 import { FIXED_DT, type ProjectileState } from '../physics/ballistics.js';
 import { isGuidable, resolveMotion, type MotionSpec } from '../physics/motion.js';
 import { distance } from '../math/vec3.js';
+import { ropeSystem } from '../rope/rope-system.js';
 import { patternOffsets } from './pattern.js';
 import {
   createProjectileSystem,
@@ -131,14 +132,61 @@ export function predictTrajectory(
   return out;
 }
 
-/** Creates the `fire` handler: spawns the weapon's projectile(s) and notifies the turn machine. */
+/** Uses per turn allowed for a weapon, or Infinity when the weapon is not use-limited. */
+export function usesPerTurn(weapon: Pick<WeaponDefinition, 'perTurn' | 'endsAction'>): number {
+  return weapon.perTurn !== undefined || weapon.endsAction === false
+    ? (weapon.perTurn ?? 1)
+    : Number.POSITIVE_INFINITY;
+}
+
+/**
+ * Melee delivery: runs the weapon's effects at a point `reach` metres in front of the snail
+ * (horizontally along its facing); the snail itself is never affected.
+ */
+function strikeMelee(
+  ctx: SimContext,
+  content: MatchContent,
+  weapon: WeaponDefinition,
+  snail: Snail,
+  reach: number,
+): void {
+  const f = facingVector(snail);
+  const at = {
+    x: snail.position.x + f.x * reach,
+    y: snail.position.y,
+    z: snail.position.z + f.z * reach,
+  };
+  ctx.emit({ type: 'meleeStruck', snailId: snail.id, weaponId: weapon.id, position: { ...at } });
+  runEffects(withContent(ctx, content), weapon.effects, at, {
+    weaponId: weapon.id,
+    ownerSnailId: snail.id,
+    excludeOwner: true,
+  });
+}
+
+/**
+ * Creates the `fire` handler: spawns the weapon's projectile(s) (or strikes, for melee) and
+ * notifies the turn machine unless the weapon does not end the action phase. Use-limited weapons
+ * (`perTurn`, or `endsAction: false`) are ignored once their per-turn uses are spent.
+ */
 export function fireCommandHandler(
-  weapons: ContentRegistry<WeaponDefinition>,
+  content: MatchContent,
 ): (ctx: SimContext, cmd: FireCommand) => void {
   return (ctx, cmd) => {
-    const weapon = weapons.get(cmd.weaponId);
+    const weapon = content.weapons.get(cmd.weaponId);
     const snail = findSnail(ctx.state, cmd.snailId);
     if (!weapon || !snail || !snail.alive) return;
+    const limit = usesPerTurn(weapon);
+    if (limit !== Number.POSITIVE_INFINITY) {
+      const uses = (ctx.state.turn.uses ??= {});
+      if ((uses[weapon.id] ?? 0) >= limit) return;
+      uses[weapon.id] = (uses[weapon.id] ?? 0) + 1;
+    }
+    if (weapon.melee) {
+      strikeMelee(ctx, content, weapon, snail, weapon.melee.reach);
+      if (weapon.endsAction !== false) notifyFired(ctx.state, (e) => ctx.emit(e));
+      return;
+    }
     const aim = getAim(snail);
     for (const off of patternOffsets(weapon.pattern, aim.power)) {
       const angle = clamp(aim.angle + off.angle, -Math.PI / 2, Math.PI / 2);
@@ -169,7 +217,7 @@ export function fireCommandHandler(
         velocity: { ...p.velocity },
       });
     }
-    notifyFired(ctx.state, (e) => ctx.emit(e));
+    if (weapon.endsAction !== false) notifyFired(ctx.state, (e) => ctx.emit(e));
   };
 }
 
@@ -204,7 +252,8 @@ export function registerCombat(
     areas: registries.areas ?? empty.areas,
   };
   sim.registerCommandHandler('aim', aimCommandHandler);
-  sim.registerCommandHandler('fire', fireCommandHandler(content.weapons));
+  sim.registerCommandHandler('fire', fireCommandHandler(content));
+  sim.addSystem('rope', ropeSystem());
   sim.registerCommandHandler('steer', steerCommandHandler);
   sim.addSystem('projectiles', createProjectileSystem(createDetonationHandler(content)));
 }

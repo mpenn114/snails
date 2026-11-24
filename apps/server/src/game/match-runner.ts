@@ -200,6 +200,7 @@ export class MatchRunner implements ActiveMatch {
     const launch = this.session.activeLaunch;
     if (!snailId || !weaponId || !launch) return;
     const motion = this.session.activeMotion;
+    const melee = this.session.activeMelee;
     this.pendingAim = {
       msg: {
         type: 'aimPreview',
@@ -207,6 +208,7 @@ export class MatchRunner implements ActiveMatch {
         weaponId,
         launch,
         ...(motion ? { motion } : {}),
+        ...(melee ? { melee } : {}),
         angle,
         power,
       },

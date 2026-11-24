@@ -95,6 +95,7 @@ export function startTurn(state: GameState, config: TurnConfig, emit: Emit, wind
   t.phase = 'intro';
   t.phaseTime = 0;
   t.fired = false;
+  delete t.uses;
   t.timeRemaining = config.actionDuration;
   emit({
     type: 'turnStarted',

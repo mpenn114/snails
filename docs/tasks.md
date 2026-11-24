@@ -175,8 +175,8 @@ the MG-03 harness to its PR. After the first round looked poor, MG-13 to MG-15 s
 | M4-07 | Radula Missile (guided steering input) | content | M4-03, M3-21 | ✅ |
 | M4-08 | Spore Cloud (lingering area effect over turns) | content | M4-03 | ⬜ |
 | M4-09 | Shell Drill (digger tunnel) | content | M4-03, M1-05 | ✅ |
-| M4-10 | Shell Bash (melee, knockback) | content | M4-03 | ⬜ |
-| M4-11 | Slime Rope (utility, swing or climb) | content | M4-03, M1-10 | ⬜ |
+| M4-10 | Shell Bash (melee, knockback) | content | M4-03 | ✅ |
+| M4-11 | Slime Rope (utility, swing or climb) | content | M4-03, M1-10 | ✅ |
 | M4-12 | Dew Bomb (temporary puddle, drowning, extinguish salt) | content | M4-03 | ✅ |
 | M4-13 | Beetle Barrage and Snail Mail (research-unlocked, telegraphed) | content | M4-03 | ⬜ |
 | M4-14 | Crates and pickups (drop rules, health, ammo, weapon crates) | core | M4-01, M1-20 | ⬜ |

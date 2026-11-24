@@ -201,6 +201,28 @@ export interface SnailMovedEvent {
   to: Vec3;
 }
 
+/** A snail's slime strand stuck to terrain and the snail starts being reeled in. */
+export interface RopeAttachedEvent {
+  type: 'ropeAttached';
+  snailId: string;
+  anchor: Vec3;
+  seconds: number;
+}
+
+/** The reel ended (arrived, blocked or the snail died); the strand is gone. */
+export interface RopeReleasedEvent {
+  type: 'ropeReleased';
+  snailId: string;
+}
+
+/** A melee weapon struck at `position` (a point just in front of the attacker). */
+export interface MeleeStruckEvent {
+  type: 'meleeStruck';
+  snailId: string;
+  weaponId: string;
+  position: Vec3;
+}
+
 /** Every event the simulation can emit. Plain JSON data only. */
 export type SimEvent =
   | TickEvent
@@ -225,7 +247,10 @@ export type SimEvent =
   | AreaCreatedEvent
   | AreaExpiredEvent
   | AreaMovedEvent
-  | SnailMovedEvent;
+  | SnailMovedEvent
+  | RopeAttachedEvent
+  | RopeReleasedEvent
+  | MeleeStruckEvent;
 
 /** Discriminator values of {@link SimEvent}. */
 export type SimEventType = SimEvent['type'];
@@ -258,6 +283,9 @@ export const SIM_EVENT_TYPES: readonly SimEventType[] = [
   'areaExpired',
   'areaMoved',
   'snailMoved',
+  'ropeAttached',
+  'ropeReleased',
+  'meleeStruck',
 ];
 
 /** Type guard: is `type` a known simulation event type? */

@@ -4,10 +4,22 @@ import { pebbleRoller } from './pebble-roller.js';
 import { pebbleToss } from './pebble-toss.js';
 import { radulaMissile } from './radula-missile.js';
 import { saltShaker } from './salt-shaker.js';
+import { shellBash } from './shell-bash.js';
 import { shellDrill } from './shell-drill.js';
 import { slimeGrenade } from './slime-grenade.js';
+import { slimeRope } from './slime-rope.js';
 
-export { dewBomb, pebbleRoller, pebbleToss, radulaMissile, saltShaker, shellDrill, slimeGrenade };
+export {
+  dewBomb,
+  pebbleRoller,
+  pebbleToss,
+  radulaMissile,
+  saltShaker,
+  shellBash,
+  shellDrill,
+  slimeGrenade,
+  slimeRope,
+};
 
 /**
  * Base-game weapons in picker order (the first is the default). To add a weapon: create
@@ -22,4 +34,6 @@ export const weapons: WeaponDefinition[] = [
   radulaMissile,
   dewBomb,
   shellDrill,
+  shellBash,
+  slimeRope,
 ];

@@ -15,6 +15,8 @@ export interface AimHintInput {
    * unparseable or omitted means a plain ballistic arc.
    */
   motion?: { kind: string };
+  /** Melee weapons show a strike marker this far ahead instead of an arc. */
+  melee?: { reach: number };
   /** Pitch in radians. */
   angle: number;
   /** Power 0..1. */
@@ -169,8 +171,16 @@ export function createAimHint(opts: AimHintOptions = {}): AimHint {
         : undefined;
       const snail = team?.snails.find((s) => s.id === aim?.snailId);
       const launch = aim?.launch;
+      const teamIndex = team ? (state?.snapshot.teams.indexOf(team) ?? 0) : 0;
       if (!aim || !state || !team || !snail || !snail.alive || !launch) {
         parts.group.visible = false;
+        return;
+      }
+      if (aim.melee) {
+        const layout = strikeLayout(snail, aim.melee.reach);
+        writeDots(parts, layout, buf);
+        placeMarker(parts, layout, resolveTeamColour(team.colour, teamIndex), time);
+        parts.group.visible = true;
         return;
       }
       const pts = predictTrajectory(
@@ -186,8 +196,7 @@ export function createAimHint(opts: AimHintOptions = {}): AimHint {
       const phase = (time * MARCH_SPEED) % spacing;
       const layout = layoutDots(pts, spacing, phase, SKIP, MAX_DOTS, buf, opts.isSolid);
       writeDots(parts, layout, buf);
-      const index = state.snapshot.teams.indexOf(team);
-      placeMarker(parts, layout, resolveTeamColour(team.colour, index), time);
+      placeMarker(parts, layout, resolveTeamColour(team.colour, teamIndex), time);
       parts.group.visible = layout.count > 0;
     },
   };
@@ -204,6 +213,16 @@ export function createAimHint(opts: AimHintOptions = {}): AimHint {
       parts.group.removeFromParent();
     },
   };
+}
+
+/** Marker-only layout for a melee strike `reach` metres ahead of the snail (no dots). */
+function strikeLayout(snail: { position: DotPoint; facing: number }, reach: number): DotLayout {
+  const impact = {
+    x: snail.position.x + Math.cos(snail.facing) * reach,
+    y: snail.position.y - 0.3,
+    z: snail.position.z - Math.sin(snail.facing) * reach,
+  };
+  return { count: 0, impact, length: 0 };
 }
 
 function placeMarker(parts: Parts, layout: DotLayout, colour: number, time: number): void {
