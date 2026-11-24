@@ -148,7 +148,7 @@ the MG-03 harness to its PR. After the first round looked poor, MG-13 to MG-15 s
 | M7-08 | Snail body animation set: squash-and-stretch crawl, idle, aim, jump, hurt, retreat (moved from M7) | render | MG-06 | ⬜ |
 | M7-09 | Expression system (eyes and stalks reacting to events) (moved from M7) | render | M7-08, M1-17 | ⬜ |
 | MG-07 | Garden props made in code (mushrooms, pebbles, clover, leaves): seeded, instanced, purely cosmetic, cleared when the ground under them is carved | render | MG-05 | ✅ |
-| MG-08 | Stylised water: toon shading, depth-based foam edge, gentle waves, splash ring | render | MG-04 | ⬜ |
+| MG-08 | Stylised water: toon shading, depth-based foam edge, gentle waves, splash ring | render | MG-04 | ✅ |
 | MG-09 | Explosion and impact VFX restyle: puffy smoke, flash, chunky debris coloured by strata, dust; pooled with tier caps | render | MG-05, M2-09 | ✅ |
 | MG-10 | Projectile and aim visuals: pebble model, trail ribbon, dotted aim arc and landing marker in palette colours | render | MG-02 | ✅ |
 | M7-13 | Post-processing on the display High tier: SSAO, bloom, colour grade, optional outline; phones keep tone mapping and FXAA only (moved from M7) | render | MG-02, MG-04 | ✅ |
