@@ -1,5 +1,5 @@
 import type { GameSnapshot, GameState } from '../state/types.js';
-import { createSnapshot } from '../state/game-state.js';
+import { cloneState, createSnapshot } from '../state/game-state.js';
 import type { SdfGrid } from '../terrain/sdf-grid.js';
 import {
   type Command,
@@ -10,6 +10,7 @@ import {
   type SystemFn,
 } from './types.js';
 import type { SimEvent } from './events.js';
+import { RngStreams } from '../rng-streams.js';
 import { FIXED_DT } from '../physics/ballistics.js';
 import type { TurnStartHook } from '../turn/turn-hooks.js';
 import { requestEndTurn } from '../turn/turn-phases.js';
@@ -192,6 +193,32 @@ export class Simulation {
     this.state.tick += 1;
     events.push({ type: 'tick', tick: this.state.tick });
     return events;
+  }
+
+  /**
+   * Independent copy for lookahead: deep-cloned state, terrain grid and RNG stream positions,
+   * with the same handlers, systems, turn-start hooks and pending commands. Systems read all
+   * state through the step context, so sharing their closures is safe; stepping the fork with
+   * the same commands reproduces the original exactly and never touches it.
+   */
+  fork(): Simulation {
+    const copy = new Simulation({
+      state: cloneState(this.state),
+      terrain: this.terrain.clone(),
+      rng: RngStreams.fromState(this.rng.saveState()),
+      weapons: this.weapons,
+    });
+    for (const [type, fn] of this.handlers) copy.handlers.set(type, fn);
+    copy.systems.push(...this.systems);
+    copy.turnStartHooks.push(...this.turnStartHooks);
+    copy.hookedTurn = this.hookedTurn;
+    for (const q of this.queue) {
+      copy.queue.push({
+        cmd: { ...q.cmd },
+        validate: q.validate && { ...q.validate },
+      });
+    }
+    return copy;
   }
 
   /** Deep, plain-data copy of the current state. */
