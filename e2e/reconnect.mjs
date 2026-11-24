@@ -96,12 +96,16 @@ try {
   const welcome = fresh().find((m) => m.type === 'welcome');
   if (welcome.playerId !== playerId) fail(`playerId changed: ${playerId} -> ${welcome.playerId}`);
   const roster = (m) => m.type === 'lobbyState' && m.players.find((p) => p.id === playerId);
-  const states = dFrames
-    .slice(dMark)
-    .filter(roster)
-    .map((m) => roster(m).connected);
-  if (!states.includes(false) || states.at(-1) !== true)
-    fail(`lobbyState connected sequence wrong: ${JSON.stringify(states)}`);
+  const states = () =>
+    dFrames
+      .slice(dMark)
+      .filter(roster)
+      .map((m) => roster(m).connected);
+  // The display (busy rendering on software GL) may report the reconnect lobbyState late.
+  await until('display sees the phone drop and come back', () => {
+    const st = states();
+    return st.includes(false) && st.at(-1) === true;
+  }).catch(() => fail(`lobbyState connected sequence wrong: ${JSON.stringify(states())}`));
   if (dFrames.slice(dMark).some((m) => m.type === 'lobbyState' && m.phase === 'lobby'))
     fail('display was sent back to the lobby');
   if (

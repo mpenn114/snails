@@ -63,6 +63,8 @@ export class PhoneView {
   private readonly saver: BatterySaverState;
   private renderer: MatchRenderer | null = null;
   private mapper: WireSnapshotMapper | null = null;
+  /** Identity of the match the renderer was built for (seed, terrain, demo flag). */
+  private builtFor: string | null = null;
   private overlay: MatchOverlay | null = null;
   private aiming = false;
   private aimStore: AimStore | null = null;
@@ -146,6 +148,12 @@ export class PhoneView {
     const r = this.renderer;
     if (!r) return;
     if (msg.type === 'matchStarted') {
+      // A reconnect re-sends matchStarted for the same match: keep the built scene (rebuilding
+      // the terrain freezes the phone for seconds); the terrainHistory that follows brings it
+      // up to date (re-applying carves is idempotent and in-order replay converges).
+      const key = JSON.stringify([msg.seed, msg.terrain, msg.settings.demo]);
+      if (key === this.builtFor && this.mapper) return;
+      this.builtFor = key;
       this.mapper = new WireSnapshotMapper({
         seed: msg.seed,
         teams: msg.teams,
