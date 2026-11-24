@@ -53,6 +53,12 @@ export const MatchSettingsSchema = z.object({
    * applied by `createMatch` through `initialInventory` (unknown weapon ids are ignored).
    */
   startingLoadout: z.record(z.string(), z.number().int().min(0).max(99)).default({}),
+  /**
+   * Weapons demo: a fixed test arena (slope, pit, ledge, rock and clay bands, water edge), every
+   * weapon unlocked (all technologies researched) with 99 uses each unless `startingLoadout` says
+   * otherwise, and crates on (at least the normal frequency).
+   */
+  demo: z.boolean().default(false),
 });
 
 /** Parsed, fully defaulted match settings. */

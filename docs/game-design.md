@@ -196,9 +196,21 @@ Modes are content definitions; custom modes are possible via the event bus.
 | Fall damage | Off / **On** / High |
 | Friendly fire | **On** / Off |
 | Team colours | Auto or picked in the lobby |
+| Weapons demo | **Off** / On (see below) |
 
 Presets: *Quick* (2 snails each, fast research, round 12 sudden death), *Standard*, *Epic*
 (4 snails, slow research, large map).
+
+### Weapons demo map
+
+Ticking "Weapons demo map" in the host's lobby settings (`demo: true` in the match settings)
+starts a fixed, deterministic test arena instead of a generated island. Seen side-on from the
+west: a beach and sea (Shell Bash knockback into the water), a start plateau, a step up to a
+ledge (Slime Rope), a long slope (Pebble Roller), a narrow pit (Dew Bomb puddle drowning), a
+landing terrace and a tall block banded with rock and clay (Shell Drill). Every weapon is
+unlocked (every required technology counts as researched) with 99 uses per team, unless the
+`startingLoadout` setting overrides a weapon, and crates drop at least at the Normal rate. Other
+settings (wind, health, sudden death) apply as usual. Teams spawn on the arena's gentle ground.
 
 ## Local multiplayer modes
 

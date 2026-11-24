@@ -139,7 +139,7 @@ export class PhoneView {
         terrain: msg.terrain,
         initialMaxHealth: msg.settings.startingHealth,
       });
-      r.init(buildTerrainInit(msg.seed, msg.terrain));
+      r.init(buildTerrainInit(msg.seed, msg.terrain, msg.settings.demo));
       this.startOverlay(r, msg.teams);
     } else if (msg.type === 'snapshot' && this.mapper) {
       const snap = this.mapper.map(decodeSnapshot(msg));

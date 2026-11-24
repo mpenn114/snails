@@ -78,3 +78,17 @@ before and after any visual change.
   (keep a copy of the previous run's directory, or download the CI artifact).
 - A run takes about 3 minutes under software WebGL. CI uploads the directory as the
   `shots` artifact from the e2e job.
+
+## Weapons demo (playing and testing every weapon)
+
+- Play it: start the server (`pnpm dev`), open the TV view, join with two phones, and on the host
+  phone tick **Weapons demo map (all weapons, 99 each)** under Match settings, then start. Open
+  the "Arms" sheet on your turn to pick any weapon. Pick a different seed with "Random seed" for
+  different spawn points; the terrain itself is always the same.
+- Simulation tests: `packages/content-base/src/demo.test.ts` fires every base weapon in a demo
+  match twice and compares state checksums, so a new weapon is covered as soon as it is in the
+  pack. Per-weapon outcome tests live next to it in `src/weapons/*.test.ts`.
+- e2e: `e2e/demo.mjs` (part of `pnpm e2e`) starts a demo match through the lobby and fires Pebble
+  Toss, Salt Shaker and Shell Bash (melee), asserting each resolves and the turn passes.
+- CPU: `chooseWeapon(team, weapons)` in `@snails/ai` only returns weapons the team can use
+  (researched and in stock).

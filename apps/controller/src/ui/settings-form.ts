@@ -48,6 +48,7 @@ export const SETTING_FIELDS: readonly SettingField[] = [
   { kind: 'select', key: 'suddenDeathRound', label: 'Sudden death', options: SUDDEN_ROUND },
   { kind: 'select', key: 'suddenDeathType', label: 'Sudden death type', options: SUDDEN_TYPE },
   { kind: 'select', key: 'fallDamage', label: 'Fall damage', options: FALL },
+  { kind: 'check', key: 'demo', label: 'Weapons demo map (all weapons, 99 each)' },
   { kind: 'check', key: 'friendlyFire', label: 'Friendly fire' },
   { kind: 'check', key: 'lazyStart', label: 'Lazy start (timer starts on first input)' },
 ];

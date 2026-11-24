@@ -21,7 +21,7 @@ describe('lobby settings form', () => {
     const html = settingsFieldsHtml();
     for (const f of SETTING_FIELDS) expect(html).toContain(`data-key="${f.key}"`);
     expect(html.match(/<select/g)).toHaveLength(6);
-    expect(html.match(/type="checkbox"/g)).toHaveLength(2);
+    expect(html.match(/type="checkbox"/g)).toHaveLength(3);
   });
 
   it('reads values back as typed settings', () => {

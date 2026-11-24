@@ -1,0 +1,107 @@
+// End-to-end Weapons demo: the host ticks "Weapons demo map" in the lobby settings, then three
+// turns fire three different weapons (two ballistic, one melee) and each must resolve cleanly.
+// Usage: pnpm build && node e2e/demo.mjs   (needs `playwright`, see smoke.mjs)
+import { chromium, devices, fail, has, startServer, step, teamOf, until, watch } from './lib.mjs';
+
+const WEAPON_TURNS = ['Pebble Toss', 'Salt Shaker', 'Shell Bash'];
+const { server, base } = await startServer();
+let browser;
+const errors = [];
+try {
+  browser = await chromium.launch({
+    args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'],
+  });
+  const dctx = await browser.newContext({ viewport: { width: 1280, height: 720 } });
+  const display = await dctx.newPage();
+  const dFrames = watch(display, 'display', errors);
+  await display.goto(`${base}/display/`);
+  const code = (
+    await until('room code on display', () =>
+      display
+        .locator('.lobby .code')
+        .first()
+        .textContent({ timeout: 500 })
+        .catch(() => ''),
+    )
+  ).trim();
+
+  const phones = [];
+  for (const [i, team, name] of [
+    [0, 'A', 'Ann'],
+    [1, 'B', 'Bob'],
+  ]) {
+    const ctx = await browser.newContext({ ...devices['Pixel 7'] });
+    const page = await ctx.newPage();
+    const frames = watch(page, `phone${i + 1}`, errors);
+    await page.goto(`${base}/?room=${code}`);
+    await page.fill('#name', name);
+    await page.fill('#room', code);
+    await page.click('form.join button[type=submit]');
+    await page.waitForSelector('.lobby .teams');
+    await page.click(`.lobby .teams button[data-v="${team}"]`);
+    await page.click(`.lobby .colours button.pick:not([disabled]) >> nth=${i}`);
+    await page.click('.lobby button.ready');
+    phones.push({ page, frames, name });
+  }
+
+  const host = phones[0].page;
+  await host.check('.lobby .settings [data-key="demo"]');
+  step('host ticked the Weapons demo map');
+  await until('start enabled', () => host.locator('.lobby .start:not([disabled])').count());
+  await host.click('.lobby .start');
+  await until('matchStarted with demo on both phones and the display', () =>
+    [dFrames, phones[0].frames, phones[1].frames].every((f) =>
+      f.some((m) => m.type === 'matchStarted' && m.settings.demo === true),
+    ),
+  );
+  await until('inventory with 99 of every weapon', () =>
+    phones[0].frames.some(
+      (m) =>
+        m.type === 'inventory' &&
+        m.teams.every((t) => t.stock['base:shell-bash'] === 99 && !Object.keys(t.locked).length),
+    ),
+  );
+  step('demo match started with every weapon stocked and unlocked');
+
+  for (const weapon of WEAPON_TURNS) {
+    const active = await until(`a phone gets my-turn controls for ${weapon}`, async () => {
+      for (const p of phones) if (await p.page.locator('.ctl.mine').count()) return p;
+      return null;
+    });
+    const mark = dFrames.length;
+    const turnTeam = teamOf(dFrames.filter((m) => m.type === 'turnStart').at(-1));
+    await active.page.evaluate((name) => {
+      const tile = [...document.querySelectorAll('.ctl-tile')].find((t) =>
+        t.textContent.includes(name),
+      );
+      if (!tile) throw new Error(`no weapon tile ${name}`);
+      tile.click();
+    }, weapon);
+    await active.page.waitForTimeout(300);
+    await active.page.evaluate(() => document.querySelector('.ctl-fire').click());
+    step(`${active.name} fired ${weapon}`);
+    await until(
+      `${weapon} resolved and the turn passed`,
+      () => dFrames.slice(mark).some((m) => m.type === 'turnStart' && teamOf(m) !== turnTeam),
+      45000,
+    );
+    const batches = dFrames.slice(mark).filter((m) => m.type === 'eventBatch');
+    if (
+      weapon !== 'Shell Bash' &&
+      !batches.some((b) => b.events.some((e) => e.type === 'projectileFired'))
+    )
+      fail(`${weapon}: no projectileFired event`);
+    step(`${weapon} resolved`);
+  }
+
+  for (const f of [dFrames, ...phones.map((p) => p.frames)])
+    if (has(f, 'error')) fail(`server error: ${JSON.stringify(f.find((m) => m.type === 'error'))}`);
+  if (errors.length) fail(`uncaught page errors:\n${errors.join('\n')}`);
+  step('PASS');
+} catch (e) {
+  console.error(`[e2e] FAIL: ${e.message}`);
+  process.exitCode = 1;
+} finally {
+  await browser?.close();
+  server.kill();
+}

@@ -28,7 +28,8 @@ import {
 import { registerSuddenDeath } from '../rules/sudden-death.js';
 import { createInitialState, type TeamConfig } from '../state/game-state.js';
 import type { Vec3 } from '../state/types.js';
-import { DEFAULT_TERRAIN_CONFIG, findSpawnPoints, generateTerrain } from '../terrain/generator.js';
+import { generateMatchTerrain } from '../terrain/demo-map.js';
+import { DEFAULT_TERRAIN_CONFIG, findSpawnPoints } from '../terrain/generator.js';
 import type { TerrainGenConfig } from '../terrain/generator.js';
 import {
   DEFAULT_TURN_CONFIG,
@@ -92,6 +93,8 @@ export interface MatchSetup {
 
 /** Minimum horizontal spacing (m) between spawn points. */
 const SPAWN_SPACING = 4;
+/** Uses of every weapon in the Weapons demo. */
+const DEMO_STOCK = 99;
 
 function namesOf(t: MatchTeamOptions, s: MatchSettings): string[] {
   return t.snailNames ?? Array.from({ length: s.snailsPerTeam }, (_, i) => `${t.name} ${i + 1}`);
@@ -120,6 +123,20 @@ function faceEnemies(sim: Simulation): void {
   }
 }
 
+/** Weapons demo stock: 99 of every weapon, overridden by the `startingLoadout` setting. */
+function demoLoadout(
+  weapons: readonly WeaponDefinition[],
+  s: MatchSettings,
+): Record<string, number> {
+  const all = s.demo ? Object.fromEntries(weapons.map((w) => [w.id, DEMO_STOCK])) : {};
+  return { ...all, ...s.startingLoadout };
+}
+
+/** Every technology id some weapon requires (what the demo researches for each team). */
+function gatedTechs(weapons: readonly WeaponDefinition[]): string[] {
+  return [...new Set(weapons.flatMap((w) => (w.requiresTech ? [w.requiresTech] : [])))].sort();
+}
+
 /** Registers crates (per settings) and sudden death, in that order, after lingering effects. */
 function registerMatchRules(
   sim: Simulation,
@@ -127,9 +144,13 @@ function registerMatchRules(
   settings: MatchSettings,
   override: Partial<CrateRules> | undefined,
 ): void {
+  const wanted =
+    settings.demo && settings.crates === 'off'
+      ? { ...settings, crates: 'normal' as const }
+      : settings;
   const crates = override
     ? { ...DEFAULT_CRATE_RULES, ...override }
-    : crateRulesFromSettings(settings);
+    : crateRulesFromSettings(wanted);
   if (crates) registerCrates(sim, content, crates);
   if (settings.suddenDeathRound !== null) {
     registerSuddenDeath(sim, {
@@ -151,8 +172,8 @@ function registerMatchRules(
 export function createMatch(options: MatchOptions): MatchSetup {
   const rng = new RngStreams(options.seed);
   const config: TerrainGenConfig = { ...DEFAULT_TERRAIN_CONFIG, ...options.terrain };
-  const { grid, descriptor } = generateTerrain(config, rng.terrain);
   const settings = parseMatchSettings(options.settings);
+  const { grid, descriptor } = generateMatchTerrain(config, rng.terrain, settings.demo);
   const total = options.teams.reduce((n, t) => n + namesOf(t, settings).length, 0);
   const points = findSpawnPoints(grid, descriptor, total, rng.terrain, SPAWN_SPACING);
   if (points.length < total) throw new Error(`only ${points.length}/${total} spawn points found`);
@@ -161,8 +182,9 @@ export function createMatch(options: MatchOptions): MatchSetup {
     teams: buildTeams(options.teams, points, settings),
     terrain: descriptor,
   });
-  const loadout = { ...settings.startingLoadout, ...options.loadout };
+  const loadout = { ...demoLoadout(options.weapons, settings), ...options.loadout };
   for (const team of state.teams) team.inventory = initialInventory(options.weapons, loadout);
+  if (settings.demo) for (const team of state.teams) team.researched = gatedTechs(options.weapons);
   const content = buildMatchContent(options);
   const weapons = content.weapons;
   const sim = new Simulation({ state, terrain: grid, rng, weapons });

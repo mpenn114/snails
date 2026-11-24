@@ -1,4 +1,4 @@
-import { RngStreams, generateTerrain } from '@snails/core';
+import { RngStreams, generateMatchTerrain } from '@snails/core';
 import type { MatchInit } from '@snails/render';
 import type { MatchStarted } from './match-adapter';
 
@@ -7,6 +7,6 @@ import type { MatchStarted } from './match-adapter';
  * generator parameters), so no grid is sent over the wire.
  */
 export function buildTerrainInit(m: MatchStarted): MatchInit {
-  const { grid } = generateTerrain(m.terrain, new RngStreams(m.seed).terrain);
+  const { grid } = generateMatchTerrain(m.terrain, new RngStreams(m.seed).terrain, m.settings.demo);
   return { grid, waterLevel: m.terrain.waterLevel };
 }
