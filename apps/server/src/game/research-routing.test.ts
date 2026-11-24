@@ -37,7 +37,7 @@ function start(hotSeat = false): { runner: MatchRunner; tv: Fake; a: Fake; b: Fa
   const a = member('a1', 'controller', hotSeat ? ['a', 'b'] : ['a']);
   const b = member('b1', 'controller', ['b']);
   const all = hotSeat ? [tv, a] : [tv, a, b];
-  const room = { members: new Map(all.map((m) => [m.id, m])) } as unknown as Room;
+  const room = { members: new Map(all.map((m) => [m.id, m])), cpuTeams: [] } as unknown as Room;
   const cfg = { ...settings, controlMode: hotSeat ? ('hotSeat' as const) : ('perPlayer' as const) };
   return { runner: new MatchRunner(room, MatchSettings.parse(cfg), all), tv, a, b };
 }

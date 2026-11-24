@@ -1,7 +1,22 @@
 import { MatchSettings, type MatchSettingsInput } from '@snails/protocol';
 import { startBlocker } from './start-rules.js';
+import {
+  MAX_TEAMS,
+  cpuLobbyPlayer,
+  cpuName,
+  freeColour,
+  nextCpuId,
+  type CpuTeam,
+} from './cpu-teams.js';
 import type { IntentMessage } from '../net/connection.js';
-import type { ErrorCode, LobbyPlayer, Role, ServerMessage } from '@snails/protocol';
+import type {
+  CpuDifficulty,
+  CpuPersonality,
+  ErrorCode,
+  LobbyPlayer,
+  Role,
+  ServerMessage,
+} from '@snails/protocol';
 
 /** Delivers one server message to a client (transport-agnostic). */
 export type SendFn = (message: ServerMessage) => void;
@@ -13,6 +28,8 @@ export type LobbyAction =
   | { type: 'setColour'; colour: string }
   | { type: 'setReady'; ready: boolean }
   | { type: 'setSettings'; settings: MatchSettingsInput }
+  | { type: 'addCpu'; difficulty: CpuDifficulty; personality: CpuPersonality }
+  | { type: 'removeCpu'; teamId: string }
   | { type: 'startMatch'; settings: MatchSettingsInput };
 
 /** One connected participant, stored by session token. */
@@ -65,6 +82,8 @@ export class Room {
   /** Members by session token, in join order. */
   readonly members = new Map<string, Member>();
   hostId: string | null = null;
+  /** CPU teams added by the host; they have no phone and count as ready. */
+  cpuTeams: CpuTeam[] = [];
   settings: MatchSettings = { ...DEFAULT_SETTINGS };
   phase: 'lobby' | 'playing' = 'lobby';
   /** Plug-in point for the game session; no-op by default. */
@@ -136,6 +155,7 @@ export class Room {
       ready: m.ready,
       connected: m.connected,
     }));
+    players.push(...this.cpuTeams.map(cpuLobbyPlayer));
     return {
       type: 'lobbyState',
       roomCode: this.code,
@@ -189,6 +209,10 @@ export class Room {
         return this.setColour(member, action.colour);
       case 'setSettings':
         return this.setSettings(member, action.settings);
+      case 'addCpu':
+        return this.addCpu(member, action);
+      case 'removeCpu':
+        return this.removeCpu(member, action.teamId);
       case 'setReady':
         if (action.ready && member.teamIds.length === 0) return ['not_ready', 'Pick a team first'];
         member.ready = action.ready;
@@ -198,9 +222,9 @@ export class Room {
 
   private setColour(member: Member, colour: string): Failure {
     const wanted = colour.toLowerCase();
-    const taken = [...this.members.values()].some(
-      (m) => m !== member && m.colour?.toLowerCase() === wanted,
-    );
+    const taken =
+      this.cpuTeams.some((c) => c.colour.toLowerCase() === wanted) ||
+      [...this.members.values()].some((m) => m !== member && m.colour?.toLowerCase() === wanted);
     if (taken) return ['invalid_settings', 'Colour already taken'];
     member.colour = colour;
     return undefined;
@@ -215,13 +239,49 @@ export class Room {
     return undefined;
   }
 
+  /** Ids of every team in the lobby (phones' teams and CPU teams). */
+  private teamIdSet(): Set<string> {
+    const ids = new Set<string>(this.cpuTeams.map((c) => c.id));
+    for (const m of this.members.values()) for (const t of m.teamIds) ids.add(t);
+    return ids;
+  }
+
+  /** Host adds a CPU team with the next free id and colour. */
+  private addCpu(
+    member: Member,
+    a: { difficulty: CpuDifficulty; personality: CpuPersonality },
+  ): Failure {
+    if (member.id !== this.hostId) return ['not_host', 'Only the host can add a CPU'];
+    const ids = this.teamIdSet();
+    if (ids.size >= MAX_TEAMS) return ['room_full', 'No room for another team'];
+    const claimed = new Set<string>(this.cpuTeams.map((c) => c.colour.toLowerCase()));
+    for (const m of this.members.values()) if (m.colour) claimed.add(m.colour.toLowerCase());
+    this.cpuTeams.push({
+      id: nextCpuId(ids),
+      name: cpuName(a, this.cpuTeams),
+      colour: freeColour(claimed, this.cpuTeams.length),
+      difficulty: a.difficulty,
+      personality: a.personality,
+    });
+    return undefined;
+  }
+
+  /** Host removes a CPU team. */
+  private removeCpu(member: Member, teamId: string): Failure {
+    if (member.id !== this.hostId) return ['not_host', 'Only the host can remove a CPU'];
+    if (!this.cpuTeams.some((c) => c.id === teamId)) return ['bad_message', 'No such CPU team'];
+    this.cpuTeams = this.cpuTeams.filter((c) => c.id !== teamId);
+    return undefined;
+  }
+
   private start(member: Member, raw: MatchSettingsInput): Failure {
     if (member.id !== this.hostId) return ['not_host', 'Only the host can start'];
     if (this.phase !== 'lobby') return ['match_in_progress', 'Match already started'];
     const parsed = MatchSettings.safeParse(raw);
     if (!parsed.success) return ['invalid_settings', 'Invalid match settings'];
     const players = [...this.members.values()].filter((m) => m.role === 'controller');
-    const blocked = startBlocker(players, parsed.data.controlMode);
+    const cpuPlayers = this.cpuTeams.map((c) => ({ ready: true, teamIds: [c.id] }));
+    const blocked = startBlocker([...players, ...cpuPlayers], parsed.data.controlMode);
     if (blocked) return ['not_ready', blocked];
     this.settings = parsed.data;
     this.phase = 'playing';

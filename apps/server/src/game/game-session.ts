@@ -24,6 +24,8 @@ import {
   type TerrainParams,
   type WirePhase,
 } from '@snails/protocol';
+import type { CpuPlayer } from '@snails/ai';
+import { CpuDriver } from './cpu-driver.js';
 import {
   intentToCommand,
   type GameIntent,
@@ -86,6 +88,10 @@ export interface GameSessionOptions extends SessionCallbacks {
   maxStepsPerFrame?: number;
   /** Presence check used when rotating the commanding player (default: everyone present). */
   isConnected?: (playerId: string) => boolean;
+  /** CPU players by team id; those teams are driven by the session, not by phones. */
+  cpuPlayers?: ReadonlyMap<string, CpuPlayer>;
+  /** Think time before a CPU's first command of a turn in ms (default 1000; 0 in tests). */
+  cpuThinkMs?: number;
 }
 
 /** Shape of the protocol `matchStarted` message. */
@@ -111,6 +117,7 @@ const realClock: SessionClock = {
  */
 export class GameSession {
   private readonly match: MatchSetup;
+  private readonly cpu: CpuDriver | null = null;
   private readonly terrainParams: TerrainParams;
   private readonly settings: MatchSettings;
   private readonly teamPlayers = new Map<string, string[]>();
@@ -166,6 +173,11 @@ export class GameSession {
         ),
       })),
     });
+    if (opts.cpuPlayers && opts.cpuPlayers.size > 0)
+      this.cpu = new CpuDriver(this.match, {
+        players: opts.cpuPlayers,
+        ...(opts.cpuThinkMs !== undefined ? { thinkMs: opts.cpuThinkMs } : {}),
+      });
   }
 
   /** The `matchStarted` payload describing this session. */
@@ -371,6 +383,7 @@ export class GameSession {
     const { turn } = this.match.sim.state;
     if (!turn.activeTeamId || !turn.activeSnailId) return;
     this.lastTimerSecond = -1;
+    this.cpu?.planResearch();
     const pick = pickActivePlayer(
       this.teamPlayers.get(turn.activeTeamId) ?? [],
       this.cursors.get(turn.activeTeamId) ?? 0,
@@ -400,6 +413,7 @@ export class GameSession {
 
   private stepOnce(): void {
     const { sim } = this.match;
+    this.cpu?.step();
     const events = sim.step(FIXED_DT);
     this.opts.onEvents?.(encodeEventBatch(sim.state.tick, events));
     this.handleEvents(events);

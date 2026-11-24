@@ -74,6 +74,8 @@ const LOBBY_TYPES = new Set([
   'setColour',
   'setReady',
   'setSettings',
+  'addCpu',
+  'removeCpu',
   'startMatch',
 ]);
 const INTENT_TYPES = new Set([

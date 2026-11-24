@@ -1,5 +1,13 @@
 import { z } from 'zod';
-import { Colour, ErrorCode, MatchSettings, Role, TeamId, TerrainParams } from './common.js';
+import {
+  Colour,
+  CpuInfo,
+  ErrorCode,
+  MatchSettings,
+  Role,
+  TeamId,
+  TerrainParams,
+} from './common.js';
 import { EventBatch, TerrainHistory } from './events.js';
 import { Snapshot } from './snapshot.js';
 import { PROTOCOL_VERSION } from './version.js';
@@ -26,6 +34,8 @@ export const LobbyPlayer = z.object({
   colour: Colour.nullable(),
   ready: z.boolean(),
   connected: z.boolean(),
+  /** Present for a CPU team's lobby entry (no phone behind it). */
+  cpu: CpuInfo.optional(),
 });
 /** Lobby participant type. */
 export type LobbyPlayer = z.infer<typeof LobbyPlayer>;
