@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { TechEffectSchema, TechVisualSchema } from '../research/research-types.js';
 import { MotionSchema } from '../physics/motion.js';
 import { EffectSchema } from './effects/effect-schemas.js';
 
@@ -179,6 +180,16 @@ export const TechnologySchema = z
     cost: nonNeg,
     prerequisites: z.array(z.string().min(1)),
     description: z.string(),
+    /** At least one of these must be researched too (an "A or B" prerequisite). */
+    anyOf: z.array(z.string().min(1)).optional(),
+    /** Team turns of research (1 to 3); omitted means 1. */
+    researchTurns: z.number().int().min(1).max(3).optional(),
+    /** Tier 4 capstone: one per team, and the Research race objective. */
+    capstone: z.boolean().optional(),
+    /** What completing the tech does; omitted means nothing beyond unlocking gated content. */
+    effects: z.array(TechEffectSchema).optional(),
+    /** Visible change on the team's snails. */
+    visual: TechVisualSchema.optional(),
   })
   .strict();
 

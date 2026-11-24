@@ -1,3 +1,4 @@
+import type { ResearchSetting, TeamResearch } from '../research/research-types.js';
 import type { BasicEffect } from '../content/effects/effect-schemas.js';
 import type { MotionSpec } from '../physics/motion.js';
 
@@ -168,6 +169,8 @@ export interface Team {
    * `ammo` (infinite weapons are not counted), spent by `fire`, increased by crates.
    */
   inventory?: Record<string, number>;
+  /** Private research state; absent when research is off. Filtered per team on the wire. */
+  research?: TeamResearch;
 }
 
 /** Wind: `direction` radians about +Y, `strength` in m/s^2 (>= 0). */
@@ -279,6 +282,8 @@ export interface GameState {
   rules?: MatchRules;
   /** Present once sudden death has begun. */
   suddenDeath?: SuddenDeathState;
+  /** Research preset of this match; absent means `off`. */
+  research?: ResearchSetting;
 }
 
 /** Serialisable snapshot of a game state. */
