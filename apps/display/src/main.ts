@@ -17,6 +17,7 @@ import { MatchAdapter } from './match/match-adapter';
 import { mountHud } from './match/hud-view';
 import { buildTerrainInit } from './match/terrain-init';
 import { mountDebugOverlay } from './debug/debug-overlay';
+import { createTerrainProbe } from './debug/terrain-probe';
 import { TERRAIN_TEXTURES } from './terrain-textures';
 
 const canvas = document.getElementById('view') as HTMLCanvasElement;
@@ -58,6 +59,9 @@ const adapter = new MatchAdapter({
   onHud: hud.update,
   onMatchVisible: (visible) => hud.setVisible(visible),
 });
+(window as unknown as { __snailsTerrain: unknown }).__snailsTerrain = createTerrainProbe(
+  () => renderer.terrainReplica,
+);
 const info = fetchInfo((u) => fetch(u));
 const client = new DisplayClient(relativeWsUrl(location), params.get('room') ?? undefined);
 const debug = mountDebugOverlay(location.search);

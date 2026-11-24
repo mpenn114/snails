@@ -1,4 +1,9 @@
-import type { MatchSettings, ServerMessage } from '@snails/protocol';
+import {
+  isTerrainEvent,
+  type MatchSettings,
+  type ServerMessage,
+  type WireEvent,
+} from '@snails/protocol';
 import type { IntentMessage } from '../net/connection.js';
 import type { ActiveMatch, Member, Room } from '../rooms/room.js';
 import { GameSession, type SessionClock, type SessionTeam } from './game-session.js';
@@ -82,6 +87,11 @@ export class MatchRunner implements ActiveMatch {
   private readonly session: GameSession;
   private latest: ServerMessage | null = null;
   private lastInventory = '';
+  /**
+   * Ordered wire-form terrain events of the whole match, replayed to late clients. A match has at
+   * most a few hundred carves/collapses (a few hundred KB), so it is kept unbounded.
+   */
+  private readonly terrainLog: WireEvent[] = [];
   private readonly lastReject = new Map<string, number>();
   private pendingAim: { msg: ServerMessage; from: string } | null = null;
   private aimTimer: unknown = null;
@@ -111,7 +121,10 @@ export class MatchRunner implements ActiveMatch {
         this.broadcast(s);
         this.broadcastInventory();
       },
-      onEvents: (b) => this.broadcast(b),
+      onEvents: (b) => {
+        for (const e of b.events) if (isTerrainEvent(e)) this.terrainLog.push(e);
+        this.broadcast(b);
+      },
       onTurnStart: (i) => {
         this.broadcast({ type: 'turnStart', ...i });
         this.membersChanged();
@@ -126,9 +139,15 @@ export class MatchRunner implements ActiveMatch {
     this.session.start();
   }
 
-  /** Sends `matchStarted`, a fresh snapshot and the current turn state to a (re)joining member. */
+  /** Sends `matchStarted`, the terrain history, a fresh snapshot and the current turn state to a (re)joining member. */
   catchUp(member: Member): void {
     member.send(this.session.matchStartedMessage());
+    if (this.terrainLog.length > 0)
+      member.send({
+        type: 'terrainHistory',
+        tick: this.session.tick,
+        events: [...this.terrainLog],
+      });
     member.send(this.session.snapshot());
     member.send(this.session.inventoryMessage());
     const turn = this.session.currentTurn();

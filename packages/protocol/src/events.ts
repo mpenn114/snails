@@ -215,6 +215,25 @@ export const EventBatch = z.object({
 /** Event batch message. */
 export type EventBatch = z.infer<typeof EventBatch>;
 
+/**
+ * Ordered log of every terrain-changing event (`terrainCarved`, `terrainCollapsed`) of the running
+ * match, sent to a late or reconnecting client right after `matchStarted` and before the first
+ * snapshot. Clients apply it silently (no explosion, dust or sound effects) in one batch.
+ */
+export const TerrainHistory = z.object({
+  type: z.literal('terrainHistory'),
+  /** Simulation tick the history is current to. */
+  tick: int.nonnegative(),
+  events: z.array(WireEvent),
+});
+/** Terrain history message. */
+export type TerrainHistory = z.infer<typeof TerrainHistory>;
+
+/** Whether a simulation event changes the terrain (and so belongs in the history). */
+export function isTerrainEvent(e: { type: string }): boolean {
+  return e.type === 'terrainCarved' || e.type === 'terrainCollapsed';
+}
+
 /** Delta-encodes an ascending id list (first value kept as is). */
 export function deltaEncode(values: readonly number[]): number[] {
   return values.map((v, i) => (i === 0 ? v : v - (values[i - 1] as number)));
@@ -263,4 +282,9 @@ export function encodeEventBatch(tick: number, events: readonly SimEventData[]):
 /** Expands a batch back into simulation events. */
 export function decodeEventBatch(batch: EventBatch): SimEventData[] {
   return batch.events.map(decodeEvent);
+}
+
+/** Expands a terrain history back into simulation events. */
+export function decodeTerrainHistory(msg: TerrainHistory): SimEventData[] {
+  return msg.events.map(decodeEvent);
 }

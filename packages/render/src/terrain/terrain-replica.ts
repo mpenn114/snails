@@ -30,16 +30,34 @@ export class TerrainReplica {
     this.grid = opts.grid;
   }
 
+  /** Number of carve and collapse events applied so far (live and history). */
+  applied = 0;
+
   /** Applies relevant events (carve, collapse); everything else and repeats are ignored. */
   applyEvents(events: readonly SimEvent[]): void {
+    this.apply(events, true);
+  }
+
+  /**
+   * Applies a catch-up history silently: same grid writes and dirty marking as live events but no
+   * `onFallen` debris callback. Chunks are only flagged dirty, so the mesh manager rebuilds them
+   * in its normal budgeted pass instead of once per event.
+   */
+  applyHistory(events: readonly SimEvent[]): void {
+    this.apply(events, false);
+  }
+
+  private apply(events: readonly SimEvent[], notify: boolean): void {
     for (const e of events) {
       if (this.seen.has(e)) continue;
       if (e.type === 'terrainCarved') {
         this.seen.add(e);
+        this.applied++;
         this.carve(e.centre, e.radius, e.power);
         this.markChunks(e.chunks);
       } else if (e.type === 'terrainCollapsed') {
         this.seen.add(e);
+        this.applied++;
         const g = this.grid;
         const plane = g.nx * g.ny;
         e.cellIndices.forEach((i, k) => {
@@ -51,7 +69,7 @@ export class TerrainReplica {
           );
         });
         this.markChunks(e.chunks);
-        this.opts.onFallen?.(e.fallen);
+        if (notify) this.opts.onFallen?.(e.fallen);
       }
     }
   }

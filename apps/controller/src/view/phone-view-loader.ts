@@ -30,7 +30,14 @@ export interface PhoneViewHandle {
   dispose(): void;
 }
 
-const VIEW_TYPES = ['matchStarted', 'snapshot', 'eventBatch', 'turnStart', 'aimPreview'] as const;
+const VIEW_TYPES = [
+  'matchStarted',
+  'terrainHistory',
+  'snapshot',
+  'eventBatch',
+  'turnStart',
+  'aimPreview',
+] as const;
 
 const loadPhoneView: PhoneViewFactory = async () => {
   const mod = await import('./phone-view');

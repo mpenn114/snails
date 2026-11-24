@@ -57,7 +57,12 @@ const snap: DecodedSnapshot = {
 };
 
 function setup() {
-  const renderer = { init: vi.fn(), pushSnapshot: vi.fn(), handleEvents: vi.fn() };
+  const renderer = {
+    init: vi.fn(),
+    pushSnapshot: vi.fn(),
+    handleEvents: vi.fn(),
+    applyTerrainHistory: vi.fn(),
+  };
   const aim = { set: vi.fn() };
   const huds: HudModel[] = [];
   const visible: boolean[] = [];
@@ -91,6 +96,21 @@ describe('MatchAdapter', () => {
     expect(hud.turnSnail).toBe('Sid');
     expect(hud.timerSeconds).toBe(13);
     expect(hud.bars[1]!.fraction).toBe(0.5);
+  });
+
+  it('applies terrain history silently (not as live events)', () => {
+    const t = setup();
+    t.a.handle(started);
+    const carve = {
+      type: 'terrainCarved',
+      centre: { x: 1, y: 2, z: 3 },
+      radius: 2,
+      chunks: [1, 4],
+    };
+    const batch = encodeEventBatch(8, [carve] as never);
+    t.a.handle({ type: 'terrainHistory', tick: 8, events: batch.events });
+    expect(t.renderer.applyTerrainHistory).toHaveBeenCalledWith([carve]);
+    expect(t.renderer.handleEvents).not.toHaveBeenCalled();
   });
 
   it('timer, aim and events', () => {

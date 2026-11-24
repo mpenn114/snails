@@ -226,6 +226,34 @@ try {
   step('turn passed to the other team');
   await idle.page.waitForSelector('.ctl.mine', { timeout: 10000 });
   step('other phone now has controls');
+
+  // A display opened after the crater exists must receive the terrain history and end up with
+  // exactly the same terrain as the display that watched it happen.
+  const probe = (pg) =>
+    pg.evaluate(() => ({
+      applied: window.__snailsTerrain?.applied() ?? 0,
+      sum: window.__snailsTerrain?.checksum() ?? '',
+    }));
+  const late2 = await dctx.newPage();
+  const l2Frames = watch(late2, 'late display 2', errors);
+  await late2.goto(`${base}/display/`);
+  await until(
+    'late display 2 gets matchStarted, history and snapshot',
+    () => ['matchStarted', 'terrainHistory', 'snapshot'].every((t) => has(l2Frames, t)),
+    60000,
+  );
+  const history = l2Frames.find((m) => m.type === 'terrainHistory');
+  if (!history.events.some((e) => e.type === 'terrainCarved')) fail('history has no carve');
+  await until(
+    'late display terrain equals the live display terrain',
+    async () => {
+      const [a, b] = [await probe(display), await probe(late2)];
+      return a.sum !== '' && a.sum === b.sum && b.applied >= 1;
+    },
+    60000,
+  );
+  step('late display reached the cratered terrain');
+  await late2.close();
   if (shots) await display.screenshot({ path: join(shots, 'display-after-turn.png') });
 
   if (errors.length) fail(`uncaught page errors:\n${errors.join('\n')}`);

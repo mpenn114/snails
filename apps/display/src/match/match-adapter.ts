@@ -1,7 +1,7 @@
 import type { GameSnapshot, SimEvent, WeaponLaunchSpec } from '@snails/core';
 import type { MatchInit } from '@snails/render';
 import { WireSnapshotMapper } from '@snails/render';
-import { decodeEventBatch, decodeSnapshot } from '@snails/protocol';
+import { decodeEventBatch, decodeSnapshot, decodeTerrainHistory } from '@snails/protocol';
 import type { ServerMessage } from '@snails/protocol';
 import { EMPTY_HUD, hudFromSnapshot, suddenDeathNotice } from './hud-model';
 import type { HudModel } from './hud-model';
@@ -14,6 +14,8 @@ export interface RendererPort {
   init(init: MatchInit): void;
   pushSnapshot(snapshot: GameSnapshot): unknown;
   handleEvents(events: readonly SimEvent[]): void;
+  /** Applies catch-up terrain edits silently (no effects). */
+  applyTerrainHistory(events: readonly SimEvent[]): void;
 }
 
 /** Aim hint surface. */
@@ -71,6 +73,10 @@ export class MatchAdapter {
         return this.snapshot(m);
       case 'eventBatch':
         return this.events(m);
+      case 'terrainHistory':
+        if (this.inMatch)
+          this.deps.renderer.applyTerrainHistory(decodeTerrainHistory(m) as unknown as SimEvent[]);
+        return;
       case 'turnStart':
         this.timerMs = m.durationMs;
         this.deps.aim.set(null);

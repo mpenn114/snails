@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { Colour, ErrorCode, MatchSettings, Role, TeamId, TerrainParams } from './common.js';
-import { EventBatch } from './events.js';
+import { EventBatch, TerrainHistory } from './events.js';
 import { Snapshot } from './snapshot.js';
 import { PROTOCOL_VERSION } from './version.js';
 
@@ -163,6 +163,7 @@ export const ServerMessage = z.discriminatedUnion('type', [
   Ack,
   Snapshot,
   EventBatch,
+  TerrainHistory,
   ErrorMessage,
 ]);
 

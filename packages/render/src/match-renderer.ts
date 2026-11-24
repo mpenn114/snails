@@ -313,6 +313,11 @@ export class MatchRenderer {
     return this.buffer.push(snapshot);
   }
 
+  /** Applies a catch-up terrain history silently (no effects); the mesh rebuilds in one budgeted pass. */
+  applyTerrainHistory(events: readonly SimEvent[]): void {
+    this.built?.replica.applyHistory(events);
+  }
+
   /** Fans events out to the terrain replica and explosion effects. */
   handleEvents(events: readonly SimEvent[]): void {
     this.built?.replica.applyEvents(events);

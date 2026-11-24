@@ -6,7 +6,7 @@ import {
   qualitySettings,
 } from '@snails/render';
 import type { GameView, QualityTier, ViewEnvironment } from '@snails/render';
-import { decodeEventBatch, decodeSnapshot } from '@snails/protocol';
+import { decodeEventBatch, decodeSnapshot, decodeTerrainHistory } from '@snails/protocol';
 import type { ServerMessage } from '@snails/protocol';
 import type { SimEvent } from '@snails/core';
 import type { MatchStarted } from './wire-types';
@@ -145,6 +145,8 @@ export class PhoneView {
       const snap = this.mapper.map(decodeSnapshot(msg));
       r.pushSnapshot(snap);
       this.overlay?.onSnapshot(snap);
+    } else if (msg.type === 'terrainHistory') {
+      r.applyTerrainHistory(decodeTerrainHistory(msg) as unknown as SimEvent[]);
     } else if (msg.type === 'eventBatch') {
       const events = decodeEventBatch(msg) as unknown as SimEvent[];
       r.handleEvents(events);
