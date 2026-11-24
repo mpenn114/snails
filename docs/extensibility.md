@@ -214,14 +214,23 @@ Planned: behaviour ids registered by code packs (`entry`), `snailsApi` compatibi
 
 ## Walkthrough: add a new weapon
 
-1. **Pick the parts.** Reuse the existing effects (`damage`, `carve`, `status`, `spawn`, `move`) and `ballistic` motion. If you need a new motion or effect type, add it first (see above) with a unit test.
-2. **Create `packages/content-base/src/weapons/sticky-bomb.ts`** exporting a constant `satisfies WeaponDefinition` with id `base:sticky-bomb`.
-3. **Register it** with one export line and one array entry in `weapons/index.ts` (array order is the picker order; the first is the default).
-4. **Supporting content.** A status or area it refers to goes in `statuses/` (or an areas file) and into `basePack`. Cross references are checked when the pack loads, so a typo fails `pnpm test`.
+Data alone is enough: a weapon built from existing effects and motions needs one new file and nothing else. The worked example is **Acorn Mortar** (`packages/content-base/src/examples/acorn-pack/`, a high bouncing arc, a 3-shot cluster, damage, carve and the `base:salt` status). It is a test fixture, not part of the base game, and `acorn-pack.test.ts` there runs this exact flow end to end.
+
+1. **Pick the parts.** Reuse the existing effects (`damage`, `carve`, `status`, `spawn`, `move`, `reel`, `schedule`) and a motion (`ballistic`, `bounce`, `guided`, `drill`). Copy the closest weapon in `packages/content-base/src/weapons/` as a starting point. A new motion or effect type is code: add it in core first (see above) with a unit test.
+2. **Create the data file** `acorn-mortar.ts` exporting a constant `satisfies WeaponDefinition`. The id is `<pack>:<kebab-name>` (`acorn:acorn-mortar`). For a base weapon the file is `packages/content-base/src/weapons/<name>.ts` with id `base:<name>`. Unknown fields, bad ids and out-of-range numbers fail validation with the pack, kind and id in the message.
+3. **Register it.**
+   - Base game: one export line and one array entry in `packages/content-base/src/weapons/index.ts` (array order is the picker order; the first is the default).
+   - Your own pack: list it in your pack's `weapons` array. The pack is `{ manifest: { id, name, version, dependencies: { base: '^0.1.0' } }, weapons: [acornMortar] }` (see `examples/acorn-pack/index.ts`). The server loads packs in `loadServerContent()` (`apps/server/src/game/server-content.ts`): add the pack to its `loadContentPacks([...])` list. Nothing else in the server, controller or display names weapons.
+4. **Supporting content.** A status or area it refers to goes in your pack's `statuses` / `areas` (base ones: `statuses/`, `areas.ts`, both listed in `basePack`). Cross references (`status`/`spawn` ids, `requiresTech`) are checked when the pack loads and all problems are reported together, so a typo fails the test below.
 5. **Gate it** (optional): `requiresTech` pointing at a technology, or a crate that stocks it.
-6. **Test.** Follow `packages/content-base/src/weapons/weapons.test.ts`: fire it from a flat test field at a known seed and assert damage, carve, statuses, areas or position.
-7. **AI hint** (planned): the CPU scores weapons generically from their `damage` effects.
-8. Run `pnpm lint && pnpm test`.
+6. **Test.** Copy `examples/acorn-pack/acorn-pack.test.ts`: `loadContentPacks([basePack, yourPack])`, `buildMatchContent` from the registries, `registerCombat`, enqueue `aim` and `fire`, step, and assert damage, carve, statuses, areas or position at a fixed seed. Run `pnpm exec vitest run <path>`.
+7. **Check everything:** `pnpm lint && pnpm typecheck && pnpm test`.
+
+Everything below is optional polish; a weapon without it works:
+
+- **Projectile look.** The renderer picks a look from `LOOKS` in `packages/render/src/effects/projectile-looks.ts`; any weapon id not listed uses the plain pebble. Add one entry (and, for a new shape, a geometry) to give it its own.
+- **Picker and AI.** The phone picker lists whatever the match content offers with its name and stock, and the CPU scores weapons generically by `category` and `ammo` (`packages/ai/src/weapon-choice.ts`); neither needs an entry per weapon.
+- **Guided weapons** are drawn as a missile only if listed in `MISSILE_WEAPON_IDS`; otherwise they fly with the pebble look.
 
 ## Walkthrough: add a new technology
 
