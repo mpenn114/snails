@@ -27,7 +27,9 @@ export interface ClientContext {
 /** Controller intent messages (gameplay input). */
 export type IntentMessage = Extract<
   ClientMessage,
-  { type: 'move' | 'jump' | 'aim' | 'selectWeapon' | 'fire' | 'endTurn' | 'queueResearch' }
+  {
+    type: 'move' | 'jump' | 'aim' | 'steer' | 'selectWeapon' | 'fire' | 'endTurn' | 'queueResearch';
+  }
 >;
 /** Heartbeat message. */
 export type PingMessage = Extract<ClientMessage, { type: 'ping' }>;
@@ -57,11 +59,19 @@ export interface ConnectionOptions {
 
 /** Websocket close code for policy violations. */
 const POLICY = 1008;
-const LOBBY_TYPES = new Set(['setTeam', 'toggleTeam', 'setColour', 'setReady', 'startMatch']);
+const LOBBY_TYPES = new Set([
+  'setTeam',
+  'toggleTeam',
+  'setColour',
+  'setReady',
+  'setSettings',
+  'startMatch',
+]);
 const INTENT_TYPES = new Set([
   'move',
   'jump',
   'aim',
+  'steer',
   'selectWeapon',
   'fire',
   'endTurn',
@@ -191,7 +201,9 @@ export class Connection {
     }
     const { role, name, roomCode } = check.hello;
     const { rooms } = this.opts;
-    const code = roomCode ?? (role === 'display' ? rooms.createRoom().code : undefined);
+    const code =
+      roomCode ??
+      (role === 'display' ? (rooms.getDefaultRoom() ?? rooms.createRoom()).code : undefined);
     if (!code) return this.fail('no_room');
     const detach = (): void => this.supersede();
     const res = rooms.join(code, name, role, (m) => this.send(m), {

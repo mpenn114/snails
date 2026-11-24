@@ -31,8 +31,10 @@ describe('client messages', () => {
       { type: 'setReady', ready: true },
       { type: 'startMatch', settings },
       { type: 'move', direction: 'stop' },
+      { type: 'move', direction: 'right', turn: -0.5 },
       { type: 'jump' },
       { type: 'aim', angle: 0.5, power: 0.5 },
+      { type: 'steer', input: -0.5 },
       { type: 'selectWeapon', weaponId: 'bazooka' },
       { type: 'fire' },
       { type: 'endTurn' },
@@ -45,6 +47,8 @@ describe('client messages', () => {
     expect(() => parseClientMessage({ type: 'nope' })).toThrow();
     expect(() => parseClientMessage({ type: 'aim', angle: 4, power: 0.5 })).toThrow();
     expect(() => parseClientMessage({ type: 'aim', angle: 1, power: 2 })).toThrow();
+    expect(() => parseClientMessage({ type: 'steer', input: 1.5 })).toThrow();
+    expect(() => parseClientMessage({ type: 'steer' })).toThrow();
     expect(() =>
       parseClientMessage({ type: 'startMatch', settings: { ...settings, snailsPerTeam: 0 } }),
     ).toThrow();
@@ -63,6 +67,16 @@ describe('server messages', () => {
     };
     expect(parseServerMessage(m)).toEqual(m);
     expect(() => parseServerMessage({ ...m, power: 2 })).toThrow();
+  });
+  it('parses inventory and rejects negative stock', () => {
+    const m = {
+      type: 'inventory',
+      teams: [{ teamId: 'a', stock: { 'base:x': 2 }, locked: { 'base:y': 'tech' } }],
+    };
+    expect(parseServerMessage(m)).toEqual(m);
+    expect(() =>
+      parseServerMessage({ ...m, teams: [{ teamId: 'a', stock: { 'base:x': -1 }, locked: {} }] }),
+    ).toThrow();
   });
   it('parses lobby, welcome, error and match start', () => {
     expect(

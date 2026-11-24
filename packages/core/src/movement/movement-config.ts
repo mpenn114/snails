@@ -14,6 +14,8 @@ export interface MovementConfig {
   radius: number;
   /** Largest ledge a snail steps up or down while crawling, in metres. */
   stepHeight: number;
+  /** Turn speed at full turn input in rad/s. */
+  turnRate: number;
   /** Gravity acceleration in m/s^2 while airborne. */
   gravity: number;
 }
@@ -26,5 +28,6 @@ export const DEFAULT_MOVEMENT_CONFIG: MovementConfig = {
   jumpUpSpeed: 5,
   radius: 0.5,
   stepHeight: 0.3,
+  turnRate: 2.5,
   gravity: GRAVITY,
 };

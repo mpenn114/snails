@@ -26,6 +26,8 @@ export interface HudModel {
   bars: TeamBar[];
   /** Set once the match ended: winning team (`name` null for a draw). */
   winner: { name: string | null; colour: string | null } | null;
+  /** Standing announcement (sudden death is on), or null. */
+  notice: string | null;
 }
 
 /** An empty HUD. */
@@ -36,6 +38,7 @@ export const EMPTY_HUD: HudModel = {
   timerSeconds: 0,
   bars: [],
   winner: null,
+  notice: null,
 };
 
 /** Builds the HUD model from a renderable snapshot; `timerMs` overrides the snapshot clock. */
@@ -43,6 +46,7 @@ export function hudFromSnapshot(
   s: GameSnapshot,
   timerMs: number | null,
   winner: HudModel['winner'],
+  notice: string | null = null,
 ): HudModel {
   const activeTeam = s.teams.find((t) => t.id === s.turn.activeTeamId);
   const activeSnail = activeTeam?.snails.find((n) => n.id === s.turn.activeSnailId);
@@ -66,5 +70,16 @@ export function hudFromSnapshot(
     timerSeconds: Math.max(0, Math.ceil((timerMs ?? s.turn.timeRemaining * 1000) / 1000)),
     bars,
     winner,
+    notice,
   };
+}
+
+/** Announcement text for a `suddenDeathStarted` event. */
+export function suddenDeathNotice(kind: 'water' | 'drain' | 'both'): string {
+  const what = {
+    water: 'The water is rising!',
+    drain: 'Health is draining!',
+    both: 'The water is rising and health is draining!',
+  };
+  return `Sudden death! ${what[kind]}`;
 }

@@ -1,5 +1,7 @@
+import type { ZodType, ZodTypeDef } from 'zod';
+
 /** Stable machine-readable codes for content registry failures. */
-export type ContentErrorCode = 'DUPLICATE_ID' | 'UNKNOWN_ID' | 'FROZEN';
+export type ContentErrorCode = 'DUPLICATE_ID' | 'UNKNOWN_ID' | 'FROZEN' | 'INVALID_DEFINITION';
 
 /** Error thrown by {@link ContentRegistry} for invalid registry operations. */
 export class ContentError extends Error {
@@ -25,15 +27,44 @@ export class ContentRegistry<T extends { id: string }> {
   private readonly items = new Map<string, T>();
   private frozen = false;
 
-  /** Registers a definition. Throws `DUPLICATE_ID` or `FROZEN` on failure. */
-  register(item: T): void {
+  /**
+   * @param kind - Human-readable kind used in error messages (e.g. `weapon`).
+   * @param schema - If given, every registered definition is validated against it and the
+   *   parsed copy is stored.
+   */
+  constructor(
+    private readonly kind = 'content',
+    private readonly schema?: ZodType<T, ZodTypeDef, unknown>,
+  ) {}
+
+  /**
+   * Registers a definition. Throws `INVALID_DEFINITION` (naming pack, kind and id),
+   * `DUPLICATE_ID` or `FROZEN` on failure.
+   * @param pack - Id of the pack providing the definition, for error messages.
+   */
+  register(item: T, pack = '?'): void {
     if (this.frozen) {
       throw new ContentError('FROZEN', `Cannot register "${item.id}": registry is frozen`);
     }
-    if (this.items.has(item.id)) {
-      throw new ContentError('DUPLICATE_ID', `Duplicate content id: ${item.id}`);
+    const checked = this.validate(item, pack);
+    if (this.items.has(checked.id)) {
+      throw new ContentError('DUPLICATE_ID', `Duplicate ${this.kind} id: ${checked.id}`);
     }
-    this.items.set(item.id, item);
+    this.items.set(checked.id, checked);
+  }
+
+  private validate(item: T, pack: string): T {
+    if (!this.schema) return item;
+    const result = this.schema.safeParse(item);
+    if (result.success) return result.data;
+    const issues = result.error.issues
+      .map((i) => `${i.path.join('.') || '(root)'}: ${i.message}`)
+      .join('; ');
+    const id = typeof item.id === 'string' ? item.id : '(no id)';
+    throw new ContentError(
+      'INVALID_DEFINITION',
+      `Invalid ${this.kind} "${id}" from pack "${pack}": ${issues}`,
+    );
   }
 
   /** Returns the definition for an id, or undefined. */

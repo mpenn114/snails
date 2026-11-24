@@ -1,18 +1,26 @@
 import * as THREE from 'three';
 import { SdfGrid } from '@snails/core';
 import type { GameSnapshot, SimEvent } from '@snails/core';
-import { CameraRig, type CameraMode } from './camera/camera-rig.js';
+import { CameraRig, type CameraMode, type CameraRigOptions } from './camera/camera-rig.js';
 import { ExplosionEffects } from './effects/explosion-effects.js';
+import { SplashEffects } from './effects/splash-effects.js';
 import { createWindParticles, type WindParticles } from './environment/wind-particles.js';
+import { ScheduledLayer } from './effects/scheduled-layer.js';
+import { AreaLayer } from './effects/area-layer.js';
+import { StrandEffects } from './effects/strand-effects.js';
+import { CrateLayer } from './effects/crate-layer.js';
 import { ProjectileLayer } from './effects/projectile-layer.js';
 import { SnapshotBuffer } from './interpolation.js';
+import { createGltfModelLoader, type ModelLoader } from './props/model-loader.js';
+import { PropLayer } from './props/prop-layer.js';
 import type { QualityTier } from './quality.js';
 import type { FrameUpdater, RenderState } from './render-loop.js';
 import type { LabelTextureFactory } from './snail-assets.js';
 import { SnailLayer } from './snail-layer.js';
 import { snailViewsFromSnapshot } from './snail-view.js';
 import { createWorkerPool, type MeshTransport } from './terrain/mesh-transport.js';
-import { createTerrainMaterialForTier } from './terrain/terrain-material.js';
+import { createTerrainMaterialForTier, type TerrainMaterial } from './terrain/terrain-material.js';
+import type { TerrainTextureSources } from './terrain/terrain-textures.js';
 import { TerrainMeshManager } from './terrain/terrain-mesh-manager.js';
 import { TerrainReplica } from './terrain/terrain-replica.js';
 import type { GameView } from './view.js';
@@ -47,6 +55,17 @@ export interface MatchRendererDeps {
   random?: () => number;
   /** Name-tag texture factory for snail labels (inject in Node). */
   labelFactory?: LabelTextureFactory;
+  /**
+   * URL prefix (ending in `/`) the scenery models are served from, e.g. `./models/`. Without it
+   * no props are drawn (tests, headless use).
+   */
+  modelBaseUrl?: string;
+  /** Model loader override (tests inject a fake; default fetches glTF with GLTFLoader). */
+  modelLoader?: ModelLoader;
+  /** Terrain texture URLs (loaded async; the palette colours show until they arrive). */
+  terrainTextures?: TerrainTextureSources;
+  /** Camera rig overrides (the phone uses a three-quarter follow yaw offset). */
+  rigOptions?: Partial<CameraRigOptions>;
 }
 
 /** An extra per-frame layer plugged in via {@link MatchRenderer.addLayer}. */
@@ -84,10 +103,16 @@ interface Built {
   replica: TerrainReplica;
   snails: SnailLayer;
   projectiles: ProjectileLayer;
+  areas: AreaLayer;
+  strands: StrandEffects;
+  scheduled: ScheduledLayer;
+  crates: CrateLayer;
+  props: PropLayer | null;
   explosions: ExplosionEffects;
+  splashes: SplashEffects;
   rig: CameraRig;
   wind: WindParticles;
-  material: THREE.Material;
+  material: TerrainMaterial;
   removers: (() => void)[];
 }
 
@@ -101,6 +126,7 @@ export class MatchRenderer {
   private tier: QualityTier | null = null;
   private readonly buffer: SnapshotBuffer;
   private readonly extras: ExtraLayer[] = [];
+  private ownedLoader: ModelLoader | null = null;
 
   /** Creates an idle renderer; nothing is built until `init`. */
   constructor(private readonly deps: MatchRendererDeps) {
@@ -123,6 +149,10 @@ export class MatchRenderer {
   get explosionEffects(): ExplosionEffects | null {
     return this.built?.explosions ?? null;
   }
+  /** Scenery props (null before `init`, or when no `modelBaseUrl` was given). */
+  get propLayer(): PropLayer | null {
+    return this.built?.props ?? null;
+  }
   /** Terrain mesh manager (null before `init`). */
   get terrainMeshes(): TerrainMeshManager | null {
     return this.built?.terrain ?? null;
@@ -130,6 +160,10 @@ export class MatchRenderer {
   /** Terrain replica (null before `init`). */
   get terrainReplica(): TerrainReplica | null {
     return this.built?.replica ?? null;
+  }
+  /** Resolves true once terrain textures loaded (false if none or failed); null before `init`. */
+  get terrainTexturesReady(): Promise<boolean> | null {
+    return this.built?.material.texturesReady ?? null;
   }
   /** Camera rig, follow mode by default (null before `init`). */
   get cameraRig(): CameraRig | null {
@@ -144,15 +178,18 @@ export class MatchRenderer {
     const view = this.deps.makeView({ bounds, waterLevel: init.waterLevel });
     if (this.tier) view.setTier(this.tier);
     if (this.size) view.resize(this.size.w, this.size.h);
-    this.built = this.build(view, init.grid);
+    this.built = this.build(view, init.grid, init.waterLevel);
     view.setSource(this.buffer);
   }
 
-  private build(view: GameView, source: SdfGrid): Built {
+  private build(view: GameView, source: SdfGrid, waterLevel: number): Built {
     const q = view.quality;
     const grid = cloneGrid(source);
     const transport = this.deps.makeTransport?.() ?? createWorkerPool(2);
-    const material = createTerrainMaterialForTier(view.tier);
+    const material = createTerrainMaterialForTier(view.tier, {
+      originalGrid: source,
+      ...(this.deps.terrainTextures ? { textures: this.deps.terrainTextures } : {}),
+    });
     const terrain = new TerrainMeshManager({
       grid,
       transport,
@@ -161,44 +198,42 @@ export class MatchRenderer {
       lodDistance: q.terrainLodDistance,
       shadows: q.shadows,
     });
-    const replica = new TerrainReplica({ grid });
     terrain.markAllDirty();
     view.roots.terrain.add(terrain.group);
-
     const snails = new SnailLayer({
       camera: view.camera,
+      tier: view.tier,
       shadows: q.shadows,
       selectViews: (s: RenderState) => snailViewsFromSnapshot(s.snapshot),
       ...(this.deps.labelFactory ? { labelFactory: this.deps.labelFactory } : {}),
     });
-    const projectiles = new ProjectileLayer({ shadows: q.shadows });
-    const explosions = new ExplosionEffects({
-      quality: q.particleScale,
-      maxLights: q.maxDynamicLights,
-      ...(this.deps.random ? { random: this.deps.random } : {}),
-    });
-    view.roots.entities.add(snails.group);
-    view.roots.effects.add(projectiles.group, explosions.group);
-
-    const ws = grid.worldSize();
-    const rig = new CameraRig(view.camera, {
-      mode: 'follow',
-      bounds: { min: { x: -20, y: 0, z: -20 }, max: { x: ws.x + 20, y: ws.y + 40, z: ws.z + 20 } },
-      heightAt: (x, z) => groundHeight(grid, x, z),
-    });
-    const wind = createWindParticles({
-      bounds: { min: new THREE.Vector3(0, 0, 0), max: new THREE.Vector3(ws.x, ws.y, ws.z) },
-      count: Math.round(WIND_PARTICLE_BASE_COUNT * q.particleScale),
-      ...(this.deps.random ? { random: this.deps.random } : {}),
-    });
-    view.roots.effects.add(wind.object);
+    const projectiles = new ProjectileLayer({ shadows: q.shadows, quality: q.particleScale });
+    const areas = new AreaLayer();
+    const strands = this.makeStrands(q.particleScale);
+    const [scheduled, crates] = [new ScheduledLayer(), new CrateLayer()];
+    const explosions = this.makeExplosions(q.particleScale, q.maxDynamicLights);
+    const props = this.makeProps(grid, waterLevel, q.propCount, q.shadows);
+    view.roots.entities.add(snails.group, ...(props ? [props.group] : []));
+    const splashes = this.makeSplashes(view, source, waterLevel);
+    const wind = this.makeWind(grid, q.particleScale);
+    const effects = [projectiles, areas, scheduled, explosions, splashes, strands, crates].map(
+      (l) => l.group,
+    );
+    view.roots.effects.add(...effects, wind.object);
+    const rig = createRig(view.camera, grid, this.deps.rigOptions);
     const built: Built = {
       view,
       terrain,
-      replica,
+      replica: new TerrainReplica({ grid }),
       snails,
       projectiles,
+      areas,
+      strands,
+      scheduled,
+      crates,
+      props,
       explosions,
+      splashes,
       rig,
       wind,
       material,
@@ -206,6 +241,39 @@ export class MatchRenderer {
     };
     this.registerUpdaters(built);
     return built;
+  }
+
+  private makeStrands(quality: number): StrandEffects {
+    return new StrandEffects({
+      quality,
+      ...(this.deps.random ? { random: this.deps.random } : {}),
+    });
+  }
+
+  private makeExplosions(quality: number, maxLights: number): ExplosionEffects {
+    return new ExplosionEffects({
+      quality,
+      maxLights,
+      ...(this.deps.random ? { random: this.deps.random } : {}),
+    });
+  }
+
+  private makeWind(grid: SdfGrid, particleScale: number): WindParticles {
+    const ws = grid.worldSize();
+    return createWindParticles({
+      bounds: { min: new THREE.Vector3(0, 0, 0), max: new THREE.Vector3(ws.x, ws.y, ws.z) },
+      count: Math.round(WIND_PARTICLE_BASE_COUNT * particleScale),
+      ...(this.deps.random ? { random: this.deps.random } : {}),
+    });
+  }
+
+  private makeSplashes(view: GameView, source: SdfGrid, waterLevel: number): SplashEffects {
+    view.water?.setTerrain(source);
+    return new SplashEffects({
+      level: waterLevel,
+      quality: view.quality.particleScale,
+      ...(this.deps.random ? { random: this.deps.random } : {}),
+    });
   }
 
   private registerUpdaters(b: Built): void {
@@ -219,8 +287,18 @@ export class MatchRenderer {
       b.terrain.update();
     });
     add(b.snails.updater);
+    if (b.props) add(b.props.updater);
     add(b.projectiles.updater);
+    add(b.areas.updater);
+    add(b.strands.updater);
+    add(b.scheduled.updater);
+    add(b.crates.updater);
     add(b.explosions.updater);
+    add((_dt, s) => {
+      if (s) b.view.water?.setLevel(s.snapshot.terrain.waterLevel);
+    });
+    add(b.splashes.updater);
+    add((dt) => b.material.scorch.advance(dt));
     add(b.wind.updater);
     for (const e of this.extras) this.attachExtra(b, e);
   }
@@ -235,10 +313,23 @@ export class MatchRenderer {
     return this.buffer.push(snapshot);
   }
 
+  /** Applies a catch-up terrain history silently (no effects); the mesh rebuilds in one budgeted pass. */
+  applyTerrainHistory(events: readonly SimEvent[]): void {
+    this.built?.replica.applyHistory(events);
+  }
+
   /** Fans events out to the terrain replica and explosion effects. */
   handleEvents(events: readonly SimEvent[]): void {
     this.built?.replica.applyEvents(events);
     this.built?.explosions.handleEvents(events);
+    this.built?.strands.handleEvents(events);
+    this.built?.crates.handleEvents(events);
+    this.built?.snails.handleEvents(events);
+    const scorch = this.built?.material.scorch;
+    if (!scorch) return;
+    for (const e of events) {
+      if (e.type === 'explosion') scorch.add(e.position.x, e.position.y, e.position.z, e.radius);
+    }
   }
 
   /**
@@ -268,6 +359,7 @@ export class MatchRenderer {
     b.view.setTier(tier);
     b.terrain.setShadows(b.view.quality.shadows);
     b.snails.setShadows(b.view.quality.shadows);
+    b.props?.setShadows(b.view.quality.shadows);
   }
 
   /** Resizes the view; remembered until `init`. */
@@ -284,15 +376,47 @@ export class MatchRenderer {
     for (const r of b.removers) r();
     b.terrain.dispose();
     b.snails.dispose();
+    b.props?.dispose();
     b.projectiles.dispose();
+    b.areas.dispose();
+    b.strands.dispose();
+    b.scheduled.dispose();
+    b.crates.dispose();
     b.explosions.dispose();
+    b.splashes.dispose();
     b.wind.dispose();
     b.material.dispose();
     b.view.dispose();
   }
 
+  /** Builds the cosmetic prop layer when a model URL prefix is configured. */
+  private makeProps(grid: SdfGrid, waterLevel: number, count: number, shadows: boolean) {
+    const baseUrl = this.deps.modelBaseUrl;
+    if (!baseUrl || count <= 0) return null;
+    const loader = this.deps.modelLoader ?? (this.ownedLoader ??= createGltfModelLoader());
+    return new PropLayer({ grid, waterLevel, count, baseUrl, loader, shadows });
+  }
+
   /** Disposes everything. */
   dispose(): void {
     this.teardown();
+    this.ownedLoader?.dispose();
+    this.ownedLoader = null;
   }
+}
+
+/** Camera rig framing the island (overview extent 0.8 x map span) with terrain-aware clamping. */
+function createRig(
+  camera: THREE.PerspectiveCamera,
+  grid: SdfGrid,
+  extra: Partial<CameraRigOptions> = {},
+): CameraRig {
+  const ws = grid.worldSize();
+  return new CameraRig(camera, {
+    mode: 'follow',
+    shot: { kind: 'overview', rate: 0.05, extent: Math.max(ws.x, ws.z) * 0.8 },
+    bounds: { min: { x: -20, y: 0, z: -20 }, max: { x: ws.x + 20, y: ws.y + 40, z: ws.z + 20 } },
+    heightAt: (x, z) => groundHeight(grid, x, z),
+    ...extra,
+  });
 }

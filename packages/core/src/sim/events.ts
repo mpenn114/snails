@@ -89,6 +89,8 @@ export interface TerrainCarvedEvent {
   type: 'terrainCarved';
   centre: Vec3;
   radius: number;
+  /** Damage power of the carve (for indestructible materials); omitted = unlimited. */
+  power?: number;
   chunks: ChunkId[];
 }
 
@@ -106,7 +108,7 @@ export interface TerrainCollapsedEvent {
 }
 
 /** Why a snail took damage. */
-export type DamageCause = 'explosion' | 'fall';
+export type DamageCause = 'explosion' | 'fall' | 'status' | 'area' | 'crate' | 'suddenDeath';
 
 /** A snail lost health. `sourceSnailId` is null for environmental damage. */
 export interface SnailDamagedEvent {
@@ -119,7 +121,7 @@ export interface SnailDamagedEvent {
 }
 
 /** Why a snail died. */
-export type DeathCause = 'explosion' | 'fall' | 'drown' | 'void';
+export type DeathCause = 'explosion' | 'fall' | 'drown' | 'void' | 'status' | 'area';
 
 /** A snail died. */
 export interface SnailDiedEvent {
@@ -150,6 +152,144 @@ export interface CommandRejectedEvent {
   reason: RejectionReason;
 }
 
+/** A status was applied to (or refreshed on) a snail. */
+export interface StatusAppliedEvent {
+  type: 'statusApplied';
+  snailId: string;
+  statusId: string;
+  turnsLeft: number;
+  magnitude: number;
+  sourceSnailId: string;
+}
+
+/** A status ran out (or its snail died) and was removed. */
+export interface StatusExpiredEvent {
+  type: 'statusExpired';
+  snailId: string;
+  statusId: string;
+}
+
+/** An area was created. */
+export interface AreaCreatedEvent {
+  type: 'areaCreated';
+  areaId: string;
+  kind: string;
+  position: Vec3;
+  radius: number;
+  turnsLeft: number;
+}
+
+/** An area ran out and was removed. */
+export interface AreaExpiredEvent {
+  type: 'areaExpired';
+  areaId: string;
+  kind: string;
+}
+
+/** An area drifted with the wind to a new position. */
+export interface AreaMovedEvent {
+  type: 'areaMoved';
+  areaId: string;
+  position: Vec3;
+}
+
+/** A delayed effect was scheduled (clients telegraph its target). */
+export interface ScheduledCreatedEvent {
+  type: 'scheduledCreated';
+  scheduledId: string;
+  groupId: string;
+  weaponId: string;
+  position: Vec3;
+  turnsLeft: number;
+  radius: number;
+  style: 'strike' | 'arrival';
+}
+
+/** A scheduled effect ran and was removed. */
+export interface ScheduledFiredEvent {
+  type: 'scheduledFired';
+  scheduledId: string;
+  groupId: string;
+  position: Vec3;
+}
+
+/** A snail was repositioned by a `move` effect. */
+export interface SnailMovedEvent {
+  type: 'snailMoved';
+  snailId: string;
+  from: Vec3;
+  to: Vec3;
+}
+
+/** A snail's slime strand stuck to terrain and the snail starts being reeled in. */
+export interface RopeAttachedEvent {
+  type: 'ropeAttached';
+  snailId: string;
+  anchor: Vec3;
+  seconds: number;
+}
+
+/** The reel ended (arrived, blocked or the snail died); the strand is gone. */
+export interface RopeReleasedEvent {
+  type: 'ropeReleased';
+  snailId: string;
+}
+
+/** A melee weapon struck at `position` (a point just in front of the attacker). */
+export interface MeleeStruckEvent {
+  type: 'meleeStruck';
+  snailId: string;
+  weaponId: string;
+  position: Vec3;
+}
+
+/** A crate appeared in the sky and starts parachuting down. */
+export interface CrateSpawnedEvent {
+  type: 'crateSpawned';
+  crateId: string;
+  defId: string;
+  position: Vec3;
+}
+
+/** A snail picked a crate up (contents already applied). */
+export interface CrateCollectedEvent {
+  type: 'crateCollected';
+  crateId: string;
+  defId: string;
+  snailId: string;
+  position: Vec3;
+  /** Health actually restored. */
+  healed: number;
+  /** Health lost to a bad mystery outcome (never lethal). */
+  damage: number;
+  /** Weapon stock added to the snail's team inventory. */
+  weapons: { weaponId: string; count: number }[];
+  /** Status applied to the snail, if any. */
+  statusId?: string;
+}
+
+/** A crate was destroyed. */
+export interface CrateDestroyedEvent {
+  type: 'crateDestroyed';
+  crateId: string;
+  position: Vec3;
+  reason: 'explosion' | 'water';
+}
+
+/** Sudden death began (announce it). `kind` says what will happen each round. */
+export interface SuddenDeathStartedEvent {
+  type: 'suddenDeathStarted';
+  round: number;
+  kind: 'water' | 'drain' | 'both';
+}
+
+/** Sudden death raised the water; `level` is the new surface height in metres. */
+export interface WaterRoseEvent {
+  type: 'waterRose';
+  level: number;
+  delta: number;
+}
+
 /** Every event the simulation can emit. Plain JSON data only. */
 export type SimEvent =
   | TickEvent
@@ -168,7 +308,23 @@ export type SimEvent =
   | SnailDiedEvent
   | SnailDrownedEvent
   | SnailLandedEvent
-  | CommandRejectedEvent;
+  | CommandRejectedEvent
+  | StatusAppliedEvent
+  | StatusExpiredEvent
+  | AreaCreatedEvent
+  | AreaExpiredEvent
+  | AreaMovedEvent
+  | SnailMovedEvent
+  | RopeAttachedEvent
+  | RopeReleasedEvent
+  | MeleeStruckEvent
+  | ScheduledCreatedEvent
+  | ScheduledFiredEvent
+  | CrateSpawnedEvent
+  | CrateCollectedEvent
+  | CrateDestroyedEvent
+  | SuddenDeathStartedEvent
+  | WaterRoseEvent;
 
 /** Discriminator values of {@link SimEvent}. */
 export type SimEventType = SimEvent['type'];
@@ -195,6 +351,22 @@ export const SIM_EVENT_TYPES: readonly SimEventType[] = [
   'snailDrowned',
   'snailLanded',
   'commandRejected',
+  'statusApplied',
+  'statusExpired',
+  'areaCreated',
+  'areaExpired',
+  'areaMoved',
+  'scheduledCreated',
+  'scheduledFired',
+  'snailMoved',
+  'ropeAttached',
+  'ropeReleased',
+  'meleeStruck',
+  'crateSpawned',
+  'crateCollected',
+  'crateDestroyed',
+  'suddenDeathStarted',
+  'waterRose',
 ];
 
 /** Type guard: is `type` a known simulation event type? */

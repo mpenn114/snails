@@ -11,6 +11,7 @@ import { paletteColour, resolveTeamColour, type SnailView } from './snail-view.j
 const view = (id: string, over: Partial<SnailView> = {}): SnailView => ({
   id,
   teamId: 't0',
+  teamIndex: 0,
   colour: 0xff0000,
   position: { x: 1, y: 2, z: 3 },
   facing: 0,
@@ -99,6 +100,19 @@ describe('SnailLayer', () => {
     l.dispose();
   });
 
+  it('re-faces and re-scales bars at render time when the camera moves after sync', () => {
+    const { layer } = makeLayer();
+    const cam = new THREE.PerspectiveCamera();
+    layer.setCamera(cam);
+    layer.sync([view('a')]);
+    cam.position.set(0, 0, 1e4);
+    cam.quaternion.setFromEuler(new THREE.Euler(0.3, 1, 0));
+    const bar = layer.get('a')!.barGroup;
+    bar.updateMatrixWorld(true);
+    expect(bar.quaternion.equals(cam.quaternion)).toBe(true);
+    expect(bar.scale.x).toBe(LABEL_MAX_SCALE);
+  });
+
   it('billboards bars toward the camera', () => {
     const { layer } = makeLayer();
     const cam = new THREE.PerspectiveCamera();
@@ -114,7 +128,7 @@ describe('SnailLayer', () => {
     cam.position.set(0, 2, 0);
     cam.lookAt(0, 2, -50);
     layer.setCamera(cam);
-    const at = (z: number) => ({ position: { x: 0, y: 0, z } });
+    const at = (z: number) => ({ position: { x: 0, y: 0, z }, isActive: true });
     layer.sync([view('far', at(-40)), view('near', at(-10))]);
     const far = layer.get('far')!.nameTag;
     const near = layer.get('near')!.nameTag;
@@ -123,10 +137,43 @@ describe('SnailLayer', () => {
     expect(far.visible === false || far.position.y > near.position.y).toBe(true);
   });
 
+  it('separates the bars of snails standing together, and the lift survives re-billboarding', () => {
+    const { layer } = makeLayer();
+    const cam = new THREE.PerspectiveCamera(50, 1.6, 0.1, 500);
+    cam.position.set(0, 2, 8);
+    cam.lookAt(0, 2, 0);
+    layer.setCamera(cam);
+    layer.sync([
+      view('a', { position: { x: 0, y: 0, z: 0 } }),
+      view('b', { position: { x: 0.3, y: 0, z: 0.2 } }),
+    ]);
+    const a = layer.get('a')!;
+    const b = layer.get('b')!;
+    // Exactly one bar (back + fill) and one name tag per snail, however often we sync.
+    for (let i = 0; i < 3; i++) layer.sync([view('a', { position: { x: 0, y: 0, z: 0 } })]);
+    expect(a.barGroup.children).toHaveLength(2);
+    expect(a.group.children.filter((o) => o === a.nameTag)).toHaveLength(1);
+    layer.sync([
+      view('a', { position: { x: 0, y: 0, z: 0 } }),
+      view('b', { position: { x: 0.3, y: 0, z: 0.2 } }),
+    ]);
+    expect(b.group).not.toBe(a.group);
+    // The render-time billboard (matrix update) must not undo the declutter lift.
+    a.barGroup.updateMatrixWorld(true);
+    b.barGroup.updateMatrixWorld(true);
+    const near = a.labelLift === 0 ? a : b;
+    const far = near === a ? b : a;
+    expect(near.labelLift).toBe(0);
+    expect(far.labelLift).toBeGreaterThan(0);
+    expect(far.barGroup.position.y - near.barGroup.position.y).toBeGreaterThanOrEqual(
+      0.26 * far.labelScale - 1e-6,
+    );
+  });
+
   it('toggles shadow casting on existing meshes', () => {
     const { layer } = makeLayer();
     layer.sync([view('a')]);
-    const body = layer.get('a')!.bodyGroup.children[0]!;
+    const body = layer.get('a')!.rig.body;
     expect(body.castShadow).toBe(false);
     layer.setShadows(true);
     expect(body.castShadow).toBe(true);
@@ -159,8 +206,8 @@ describe('team colours', () => {
 describe('label scaling', () => {
   it('keeps base size up close, grows with distance and caps', () => {
     expect(labelScaleForDistance(0.1)).toBe(LABEL_MIN_SCALE);
-    expect(labelScaleForDistance(12)).toBeCloseTo(1);
-    expect(labelScaleForDistance(24)).toBeCloseTo(2);
+    expect(labelScaleForDistance(24)).toBeCloseTo(1);
+    expect(labelScaleForDistance(48)).toBeCloseTo(2);
     expect(labelScaleForDistance(1e6)).toBe(LABEL_MAX_SCALE);
   });
   it('scales tag and bar of far snails', () => {
@@ -169,7 +216,7 @@ describe('label scaling', () => {
     cam.position.set(1, 2, 87);
     layer.setCamera(cam);
     layer.sync([view('a')]);
-    expect(layer.get('a')?.barGroup.scale.x).toBeCloseTo(7);
+    expect(layer.get('a')?.barGroup.scale.x).toBeCloseTo(LABEL_MAX_SCALE);
   });
 
   it.each([true, false])('sets snail body castShadow to %s, never on labels or bars', (on) => {
@@ -183,6 +230,6 @@ describe('label scaling', () => {
     mesh.traverse((o) => {
       if (o instanceof THREE.Mesh || o instanceof THREE.Sprite) cast.push(o.castShadow);
     });
-    expect(cast.filter(Boolean)).toHaveLength(on ? 2 : 0);
+    expect(cast.filter(Boolean)).toHaveLength(on ? 6 : 0);
   });
 });

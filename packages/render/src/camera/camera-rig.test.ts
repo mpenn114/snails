@@ -62,6 +62,15 @@ describe('follow mode', () => {
     expect(rig.camera.position.x).toBeLessThan(10);
   });
 
+  it('applies the three-quarter follow yaw offset', () => {
+    const rig = mk({ followYawOffset: 0.7 });
+    const s = snap();
+    for (let i = 0; i < 400; i++) rig.update(0.02, st(s));
+    const diff = rig.pose().yaw - (yawBehindFacing(0) + 0.7);
+    expect(Math.sin(diff)).toBeCloseTo(0, 2);
+    expect(Math.cos(diff)).toBeGreaterThan(0.99);
+  });
+
   it('is frame-rate independent', () => {
     const a = mk();
     const b = mk();
@@ -113,6 +122,26 @@ describe('free mode', () => {
     rig.applyInput({ zoomDelta: -20 });
     for (let i = 0; i < 300; i++) rig.update(0.02, st(snap()));
     expect(rig.pose().distance).toBeCloseTo(3, 1);
+  });
+
+  it('setFreePose glides to an authored pose, including height and a negative pitch', () => {
+    const rig = mk({ limits: { minPitch: -0.5 } });
+    rig.update(0, st(snap()));
+    const pose = { target: { x: 12, y: 33, z: 8 }, yaw: 1, pitch: -0.3, distance: 7 };
+    rig.setFreePose(pose);
+    for (let i = 0; i < 50; i++) rig.update(0.02, st(snap()));
+    expect(rig.pose().target.y).not.toBeCloseTo(33, 0); // ignored outside free mode
+    rig.setMode('free');
+    rig.setFreePose(pose);
+    for (let i = 0; i < 300; i++) rig.update(0.02, st(snap()));
+    const p = rig.pose();
+    expect(p.target.y).toBeCloseTo(33, 1);
+    expect(p.pitch).toBeCloseTo(-0.3, 2);
+    expect(p.yaw).toBeCloseTo(1, 2);
+    expect(p.distance).toBeCloseTo(7, 1);
+    rig.setFreePose({ ...pose, pitch: -2 });
+    for (let i = 0; i < 300; i++) rig.update(0.02, st(snap()));
+    expect(rig.pose().pitch).toBeCloseTo(-0.5, 2);
   });
 
   it('keeps the camera inside bounds', () => {

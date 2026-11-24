@@ -5,7 +5,10 @@ import {
   createGameView,
   pickDefaultTier,
 } from '@snails/render';
+import { injectTheme } from '@snails/render';
 import type { QualityTier } from '@snails/render';
+
+injectTheme(document);
 import { DisplayClient, relativeWsUrl } from './net/client';
 import { fetchInfo, buildJoinUrl } from './lobby/lobby-logic';
 import { mountLobbyScreen } from './lobby/lobby-view';
@@ -14,6 +17,8 @@ import { MatchAdapter } from './match/match-adapter';
 import { mountHud } from './match/hud-view';
 import { buildTerrainInit } from './match/terrain-init';
 import { mountDebugOverlay } from './debug/debug-overlay';
+import { createTerrainProbe } from './debug/terrain-probe';
+import { TERRAIN_TEXTURES } from './terrain-textures';
 
 const canvas = document.getElementById('view') as HTMLCanvasElement;
 const params = new URLSearchParams(location.search);
@@ -31,15 +36,19 @@ function chooseTier(): QualityTier {
 const tier = chooseTier();
 const renderer = new MatchRenderer({
   now: () => performance.now(),
+  modelBaseUrl: `${import.meta.env.BASE_URL}models/`,
+  terrainTextures: TERRAIN_TEXTURES,
   makeView: ({ bounds, waterLevel }) =>
-    createGameView(canvas, { tier, terrainBounds: bounds, waterLevel }),
+    createGameView(canvas, { tier, terrainBounds: bounds, waterLevel, postProcessing: true }),
 });
 renderer.setTier(tier);
 const onResize = (): void => renderer.resize(window.innerWidth, window.innerHeight);
 window.addEventListener('resize', onResize);
 onResize();
 
-const aimHint = createAimHint();
+const aimHint = createAimHint({
+  isSolid: (p) => renderer.terrainReplica?.grid.isSolid(p) ?? false,
+});
 renderer.addLayer(aimHint.layer);
 const hud = mountHud(document.getElementById('lobby-root') as HTMLElement);
 const lobby = mountLobbyScreen(document.getElementById('lobby-root') as HTMLElement);
@@ -50,6 +59,9 @@ const adapter = new MatchAdapter({
   onHud: hud.update,
   onMatchVisible: (visible) => hud.setVisible(visible),
 });
+(window as unknown as { __snailsTerrain: unknown }).__snailsTerrain = createTerrainProbe(
+  () => renderer.terrainReplica,
+);
 const info = fetchInfo((u) => fetch(u));
 const client = new DisplayClient(relativeWsUrl(location), params.get('room') ?? undefined);
 const debug = mountDebugOverlay(location.search);

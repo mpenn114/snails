@@ -1,3 +1,5 @@
+import { LIGHTING, SHADOW_SOFTNESS } from '../style/palette.js';
+import { defaultSunDirection } from './sky.js';
 import * as THREE from 'three';
 import { tierProfile, type QualityTier } from '../quality.js';
 
@@ -48,8 +50,8 @@ export interface LightingOptions {
   tier: QualityTier;
   /** World bounds of the terrain used to fit the shadow camera. */
   bounds: Bounds3;
-  /** Sky/fog colour (hex). */
-  skyColor?: number;
+  /** Distance haze colour (hex); defaults to the palette haze. */
+  fogColor?: number;
   /** Direction towards the sun. */
   sunDirection?: THREE.Vector3;
 }
@@ -59,8 +61,8 @@ export interface Lighting {
   group: THREE.Group;
   hemisphere: THREE.HemisphereLight;
   sun: THREE.DirectionalLight;
-  skyColor: THREE.Color;
-  /** Applies background and fog to a scene. */
+  fogColor: THREE.Color;
+  /** Applies distance haze (the sky dome is a separate mesh) to a scene. */
   applyTo(scene: THREE.Scene): void;
   dispose(): void;
 }
@@ -73,12 +75,16 @@ export function shadowMapSize(tier: QualityTier): number {
 
 /** Creates hemisphere light and a shadow-casting sun fitted to the terrain bounds. */
 export function createLighting(opts: LightingOptions): Lighting {
-  const skyColor = new THREE.Color(opts.skyColor ?? 0x87ceeb);
+  const fogColor = new THREE.Color(opts.fogColor ?? LIGHTING.fogColor);
   const group = new THREE.Group();
   group.name = 'lighting';
-  const hemisphere = new THREE.HemisphereLight(0xffffff, 0x445522, 0.8);
-  const sun = new THREE.DirectionalLight(0xfff4e0, 1.5);
-  const frustum = fitShadowFrustum(opts.bounds, opts.sunDirection ?? new THREE.Vector3(5, 10, 5));
+  const hemisphere = new THREE.HemisphereLight(
+    LIGHTING.hemiSkyColor,
+    LIGHTING.hemiGroundColor,
+    LIGHTING.hemiIntensity,
+  );
+  const sun = new THREE.DirectionalLight(LIGHTING.sunColor, LIGHTING.sunIntensity);
+  const frustum = fitShadowFrustum(opts.bounds, opts.sunDirection ?? defaultSunDirection());
   sun.position.copy(frustum.position);
   sun.target.position.copy(frustum.target);
   const size = shadowMapSize(opts.tier);
@@ -93,6 +99,7 @@ export function createLighting(opts: LightingOptions): Lighting {
     cam.far = frustum.far;
     cam.updateProjectionMatrix();
     sun.shadow.mapSize.set(size, size);
+    sun.shadow.radius = SHADOW_SOFTNESS[opts.tier].radius;
     sun.shadow.bias = -0.0005;
     sun.shadow.normalBias = 0.05;
   }
@@ -101,10 +108,10 @@ export function createLighting(opts: LightingOptions): Lighting {
     group,
     hemisphere,
     sun,
-    skyColor,
+    fogColor,
     applyTo(scene) {
-      scene.background = skyColor;
-      scene.fog = new THREE.Fog(skyColor, frustum.far * 1.5, frustum.far * 4);
+      scene.background = null;
+      scene.fog = new THREE.Fog(fogColor, frustum.far * 1.5, frustum.far * 4);
     },
     dispose() {
       sun.shadow.dispose();

@@ -33,6 +33,14 @@ Snails are slow and committed.
 
 - **Crawl:** 1.2 m/s on flat ground (a snail is about 0.5 m long; a map is roughly 60 to 100 m wide).
   Crawl leaves a visible **slime trail** that fades over about 20 s.
+- **Turning (two axes):** the move intent has a crawl axis (forward/back along the facing) and a turn
+  axis (-1..1, `turnRate` 2.5 rad/s at full input, grounded only, also standing still). Turning is
+  its own input on `move`, not part of `aim` (aim's optional `facing` stays for the shot only). The
+  sim only integrates the standing input each fixed step, so it is deterministic and replayable.
+- **Snail collision:** snails are 0.5 m-radius spheres that cannot overlap. Crawling into another
+  snail is blocked (sliding along or backing away is fine); a jump landing on, knockback into, or a
+  spawn overlapping another snail is resolved by a deterministic horizontal separation after
+  movement (half each, pairs in team/snail order, ties broken by id).
 - **Slime trail:** Cosmetic and mechanical. Allies move 25% faster along fresh trail; enemies are
   unaffected. Trails are one of the tools for pathing and for the AI to read recent movement.
 - **Climbing:** Snails can climb slopes up to 70 degrees (other critters give up at 45). Above 70
@@ -54,7 +62,9 @@ Snails are slow and committed.
 - **Fall damage:** Free falls up to 3 m are harmless. Beyond that: 4 damage per extra metre, cap 40.
   Landing in soft soil (dug terrain, leaf piles) halves it. Retreated snails take 50%.
 - **Drowning:** Puddles are instant death for snails that enter below the surface, unless they
-  have Bubble Shell or are on a lily pad / floating prop. Water rises in sudden death.
+  have Bubble Shell or are on a lily pad / floating prop. A puddle only fills a real dip: its
+  surface is at most the lowest point of the rim around it, so on flat ground it is a thin wet
+  film and nobody drowns. Water rises in sudden death.
 - **Out of bounds:** Leaving the map edge or falling below the world floor is instant death.
 - **Knockback:** Explosions push snails away. Knockback is scaled by weapon and reduced by the
   Heavy Shell techs.
@@ -64,9 +74,19 @@ Snails are slow and committed.
 The world is a 3D voxel signed distance field (see ADR-0005). Weapons carve spheres or other
 shapes; some add material.
 
-- **Material types:** Soil (diggable), Clay (half damage radius), Stone (indestructible by
-  weak weapons; pebbles are chunky props), Roots (flexible, hold overhangs), Leaf litter (soft
-  landing).
+- **Material types:** every solid cell carries a material (a compact `Uint8Array` beside the
+  SDF, `SdfGrid.materials`; index into `materialTable`, defined in `terrain/materials.ts`).
+  Carving is resistance-scaled per cell: the carve radius in a cell is `radius * (1 - carveResistance)`,
+  so a crater is shaped by every layer it cuts and stops at rock. Base materials: Soil (0,
+  diggable), Sand (-0.2, carves slightly more, soft landing), Clay (0.5, half radius), Stone (0.8,
+  and indestructible by carves whose damage power is below 30, so weak weapons leave it untouched).
+  Resistance may go down to -0.5. Not yet implemented: Roots and Leaf litter.
+- **Material layout:** the generator lays strata deterministically from the map seed: sand on
+  beaches, a metre of soil on top, wobbly clay layers below, rock boulders and bedrock at depth.
+  Clients regenerate the grid from the seed (as for the SDF), so the material layer needs no wire
+  payload; carves and collapses never change materials. The `terrainCarved` event carries the
+  carve's damage `power` so the render replica applies the identical per-cell rule. The renderer
+  tints sand, clay and rock by material (per-vertex colour from the nearest cell).
 - **Collapse:** Unsupported soil fragments fall. Small chunks become debris that deals 5 to 10
   damage; large chunks bury snails (trapped, they must dig out using a tool or wait).
   (Core currently drops each floating cluster rigidly onto its support and lifts snails out of it;
@@ -107,10 +127,10 @@ unlocks, crates and match settings.
 | 1 | Pebble Toss | Projectile | Plain stone lobbed with power control. | 15 core, r=1.5 m | Infinite ammo; the default. |
 | 2 | Salt Shaker | Projectile | Cluster of 5 salt grains, spread by power. Salt is the snail's nemesis. | 8 each, r=1 m | Salt does an extra 4 damage per turn to the target for 2 turns (burn-like). |
 | 3 | Slime Grenade | Thrown | 3 s fuse; bursts into sticky goo. | 25, r=3 m | Goo slows snails in radius by 50% for 1 turn. |
-| 4 | Pebble Roller | Bouncing | Heavy round stone; rolls downhill and bounces; 4 s fuse. | 30, r=2.5 m | Great on slopes; terrain-dependent. |
+| 4 | Pebble Roller | Bouncing | Heavy round stone; rolls downhill and bounces; 4 s fuse. | 30, r=2.5 m | Great on slopes; terrain-dependent. Terrain never detonates it (bounce motion); only the fuse or a snail does. |
 | 5 | Radula Missile | Guided | Launches; player steers left/right with the joystick for 4 s. | 35, r=2.5 m | Short guidance window; wind has a strong effect. |
 | 6 | Spore Cloud | Area | Mushroom spore canister. Cloud lingers 3 turns. | 6 per turn start, r=4 m | Ignores shell retreat. Blown by wind. |
-| 7 | Shell Drill | Digger | Spinning drill tunnels 8 m in the aimed direction. | 0 (10 if it hits a snail) | Escape and flank tool. |
+| 7 | Shell Drill | Digger | Spinning drill tunnels 8 m in the aimed direction. | 0 (10 if it hits a snail) | Escape and flank tool. Tube 1.6 m wide; rock stops it (carve power 20 < rock 30). |
 | 8 | Shell Bash | Melee | Headbutt with the shell at point blank. | 20 + heavy knockback | Knocks enemies into puddles. Needs the shell upgraded or intact. |
 | 9 | Slime Rope | Utility | Fires a sticky strand; swing or climb. | 0 | Replaces jumping; 1 per turn. |
 | 10 | Dew Bomb | Area | Water balloon; leaves a temporary puddle for 3 turns. | 5, r=3 m | Floods low pits; extinguishes salt; can drown enemies. |
@@ -123,8 +143,9 @@ unlocks, crates and match settings.
 - **Types:** Supply (random weapon stock), Calcium (research resource, see
   [technology-research.md](technology-research.md)), Health (heal 25), Utility (one-use tool such as
   Slime Rope), and rarely a Mystery crate (random good-or-bad effect).
-- Crates are picked up by crawling over them; they take a free turn action to open, which
-  can be interrupted by damage.
+- Crates are picked up by crawling over them. Design intent: opening takes a free turn action
+  that damage can interrupt; currently (M4-14) pickup is immediate on contact. See
+  [extensibility.md](extensibility.md#crates-and-pickups) for the drop rules as built.
 - Shooting a crate destroys it; crates can be nudged by explosions and drift downhill.
 - Rare **Golden Crates** carry a research jump (instant tier advance) and are announced by the
   display with a sound cue. They are placed away from the leader.
@@ -134,10 +155,12 @@ unlocks, crates and match settings.
 - **Last team standing** (Classic).
 - **First to research goal** (Research race).
 - **Hold the zone** (King of the Hill).
-- **Sudden death:** After round 20 (configurable), water rises 1 m per round and max health
-  of every snail falls to 1 over 5 rounds. Ensures every match ends.
-- **Draw:** If the last snails die simultaneously, the team that dealt the most damage that turn
-  wins; otherwise a draw is declared.
+- **Sudden death:** From round 20 (configurable, or off), water rises 1 m per round (a share at
+  every turn start) and/or max health of every snail falls to 1 over 5 rounds, per the
+  sudden-death type setting (water, drain, or both; default both). The display announces it.
+  Ensures every match ends.
+- **Draw:** If the last snails die simultaneously, the team that dealt the most damage to other
+  teams that turn wins; on a tie, or if nobody dealt damage, a draw is declared.
 
 ## Game modes
 
@@ -169,13 +192,25 @@ Modes are content definitions; custom modes are possible via the event bus.
 | Map | Preset list or Random seed; size S / **M** / L |
 | Crates | Off / Rare / **Normal** / Frequent |
 | Research | Off (classic weapons only) / **On** / Fast |
-| Sudden death | Off / **Round 20** / Round 12 |
+| Sudden death | Off / **Round 20** / Round 12; type water / drain / **both** |
 | Fall damage | Off / **On** / High |
 | Friendly fire | **On** / Off |
 | Team colours | Auto or picked in the lobby |
+| Weapons demo | **Off** / On (see below) |
 
 Presets: *Quick* (2 snails each, fast research, round 12 sudden death), *Standard*, *Epic*
 (4 snails, slow research, large map).
+
+### Weapons demo map
+
+Ticking "Weapons demo map" in the host's lobby settings (`demo: true` in the match settings)
+starts a fixed, deterministic test arena instead of a generated island. Seen side-on from the
+west: a beach and sea (Shell Bash knockback into the water), a start plateau, a step up to a
+ledge (Slime Rope), a long slope (Pebble Roller), a narrow pit (Dew Bomb puddle drowning), a
+landing terrace and a tall block banded with rock and clay (Shell Drill). Every weapon is
+unlocked (every required technology counts as researched) with 99 uses per team, unless the
+`startingLoadout` setting overrides a weapon, and crates drop at least at the Normal rate. Other
+settings (wind, health, sudden death) apply as usual. Teams spawn on the arena's gentle ground.
 
 ## Local multiplayer modes
 

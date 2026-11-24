@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { Colour, ErrorCode, MatchSettings, Role, TeamId, TerrainParams } from './common.js';
-import { EventBatch } from './events.js';
+import { EventBatch, TerrainHistory } from './events.js';
 import { Snapshot } from './snapshot.js';
 import { PROTOCOL_VERSION } from './version.js';
 
@@ -90,9 +90,40 @@ export const AimPreview = z.object({
     windScale: z.number(),
     projectileRadius: z.number(),
   }),
+  /**
+   * That weapon's motion parameters (`{ kind: 'drill', length, ... }`), omitted for plain
+   * ballistic weapons, so displays preview a drill as a straight line.
+   */
+  motion: z.object({ kind: z.string() }).passthrough().optional(),
+  /**
+   * Set for melee weapons (no projectile, no power): displays show only a strike marker
+   * `reach` metres ahead instead of an arc.
+   */
+  melee: z.object({ reach: z.number().positive() }).optional(),
   angle: z.number().min(-Math.PI).max(Math.PI),
   power: z.number().min(0).max(1),
 });
+
+/** One team's weapon stock and locks in an {@link Inventory} message. */
+export const TeamInventory = z.object({
+  teamId: z.string(),
+  /** Uses left per finite weapon (`weaponId -> count`); infinite weapons are absent. */
+  stock: z.record(z.string(), z.number().int().nonnegative()),
+  /** Weapons the team cannot use yet (`weaponId -> required technology id`). */
+  locked: z.record(z.string(), z.string()),
+});
+
+/**
+ * Every team's inventory. Sent at match start, to rejoining members, and whenever any stock or
+ * lock changes (so phones know their own stock without reading snapshots).
+ */
+export const Inventory = z.object({
+  type: z.literal('inventory'),
+  teams: z.array(TeamInventory),
+});
+
+/** An {@link Inventory} message. */
+export type Inventory = z.infer<typeof Inventory>;
 
 /** Heartbeat reply echoing `ping.t`. */
 export const Pong = z.object({ type: z.literal('pong'), t: z.number() });
@@ -127,10 +158,12 @@ export const ServerMessage = z.discriminatedUnion('type', [
   TurnStart,
   TurnTimer,
   AimPreview,
+  Inventory,
   Pong,
   Ack,
   Snapshot,
   EventBatch,
+  TerrainHistory,
   ErrorMessage,
 ]);
 

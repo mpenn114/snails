@@ -18,7 +18,9 @@
     "check-limits": "node scripts/check-limits.mjs",
     "ci": "pnpm lint && pnpm typecheck && pnpm check-limits && pnpm test && pnpm build",
     "build:packages": "pnpm -r --workspace-concurrency=1 --filter \"./packages/*\" --filter @snails/server build",
-    "e2e": "node e2e/smoke.mjs",
+    "e2e": "node e2e/smoke.mjs && node e2e/demo.mjs",
+    "shots": "node e2e/shots.mjs",
+    "perf": "node e2e/perf.mjs",
     "e2e:reconnect": "node e2e/reconnect.mjs"
   },
   "devDependencies": {

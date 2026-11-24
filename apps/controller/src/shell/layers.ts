@@ -23,7 +23,7 @@ const SIDE_R = 'calc(env(safe-area-inset-right) + 8px)';
  * Short (landscape) viewports shrink the minimap and controls and hide the extras.
  */
 export const SHELL_CSS = `
-.shell-layer{position:fixed;inset:0;pointer-events:none;font-family:system-ui,sans-serif;color:#fff}
+.shell-layer{position:fixed;inset:0;pointer-events:none;font-family:var(--snl-font);color:var(--snl-paper)}
 #${SLOT_TOP}{position:absolute;top:calc(env(safe-area-inset-top) + 8px);left:${SIDE_L};right:${SIDE_R};
   display:flex;justify-content:center;align-items:center;gap:8px}
 #${SLOT_TOP} .ctl-hud,#${SLOT_TOP} .spec-banner{position:static;transform:none;margin:0}
@@ -31,8 +31,8 @@ export const SHELL_CSS = `
 #${SLOT_LEFT} canvas{max-width:100%}
 #${SLOT_RIGHT}{position:absolute;top:${TOP};right:${SIDE_R};display:flex;flex-direction:column;gap:6px;align-items:flex-end}
 #${SLOT_RIGHT}>*,#${SLOT_LEFT}>*{pointer-events:auto}
-.${BTN_CLASS}{min-height:40px;min-width:40px;padding:6px 10px;border:0;border-radius:10px;font-size:.8rem;
-  background:rgba(16,24,32,.78);color:#fff;-webkit-touch-callout:none;touch-action:manipulation}
+.${BTN_CLASS}{min-height:44px;min-width:44px;padding:6px 12px;border:0;border-radius:var(--snl-radius);font-family:inherit;font-size:var(--snl-text-s);font-weight:700;
+  background:rgba(var(--snl-ink-rgb),.85);color:var(--snl-paper);-webkit-touch-callout:none;touch-action:manipulation}
 @media (max-height:480px){
   #${SLOT_LEFT} canvas{width:88px!important;height:88px!important}
   .spec-hp{display:none!important}

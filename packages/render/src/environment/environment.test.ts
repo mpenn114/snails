@@ -3,7 +3,7 @@ import * as THREE from 'three';
 import { describe, expect, it, vi } from 'vitest';
 import { createEnvironment } from './environment.js';
 import { createLighting, fitShadowFrustum, shadowMapSize } from './lighting.js';
-import { createWater } from './water.js';
+import { buildWaterGeometry, createWater, waterGridLines } from './water.js';
 
 const bounds = { min: new THREE.Vector3(0, 0, 0), max: new THREE.Vector3(48, 24, 48) };
 
@@ -33,10 +33,10 @@ describe('lighting', () => {
     expect(createLighting({ tier: 'high', bounds }).sun.castShadow).toBe(true);
     expect(createLighting({ tier: 'mobile', bounds }).sun.castShadow).toBe(false);
   });
-  it('sets background and fog matching the sky', () => {
+  it('sets haze fog and leaves the background to the sky dome', () => {
     const scene = new THREE.Scene();
-    createLighting({ tier: 'high', bounds, skyColor: 0x112233 }).applyTo(scene);
-    expect((scene.background as THREE.Color).getHex()).toBe(0x112233);
+    createLighting({ tier: 'high', bounds, fogColor: 0x112233 }).applyTo(scene);
+    expect(scene.background).toBeNull();
     expect(scene.fog?.color.getHex()).toBe(0x112233);
   });
 });
@@ -48,6 +48,15 @@ describe('water', () => {
     const box = new THREE.Box3().setFromObject(w.mesh);
     expect(box.min.x).toBeLessThan(0);
     expect(box.max.z).toBeGreaterThan(48);
+  });
+  it('follows a rising level (sudden death) and ignores an unchanged one', () => {
+    const w = createWater({ tier: 'high', bounds, level: 4 });
+    w.setLevel(5.5);
+    expect(w.level).toBe(5.5);
+    expect(w.mesh.position.y).toBe(5.5);
+    expect(w.material.uniforms['uLevel']?.value).toBe(5.5);
+    w.setLevel(5.5);
+    expect(w.mesh.position.y).toBe(5.5);
   });
   it('advances time and uses simpler material on mobile', () => {
     const w = createWater({ tier: 'mobile', bounds, level: 4 });
@@ -73,5 +82,15 @@ describe('environment', () => {
     env.dispose();
     expect(spy).toHaveBeenCalled();
     expect(root.children).toHaveLength(0);
+  });
+});
+
+describe('water grid', () => {
+  it('has dense lines across the pad and one far line per side', () => {
+    const lines = waterGridLines(0, 48, 24, 1.5, 2000);
+    expect(lines[0]).toBe(-2000);
+    expect(lines[lines.length - 1]).toBe(2048);
+    expect(lines.length).toBeGreaterThan(40);
+    expect(buildWaterGeometry([0, 1, 2], [0, 1]).getIndex()?.count).toBe(12);
   });
 });

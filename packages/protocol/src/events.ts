@@ -71,13 +71,13 @@ const plain = [
     amount: z.number(),
     remaining: z.number(),
     sourceSnailId: z.string().nullable(),
-    cause: z.enum(['explosion', 'fall']),
+    cause: z.enum(['explosion', 'fall', 'status', 'area', 'crate', 'suddenDeath']),
   }),
   z.object({
     type: z.literal('snailDied'),
     snailId: z.string(),
     teamId: z.string(),
-    cause: z.enum(['explosion', 'fall', 'drown', 'void']),
+    cause: z.enum(['explosion', 'fall', 'drown', 'void', 'status', 'area']),
   }),
   z.object({ type: z.literal('snailDrowned'), snailId: z.string() }),
   z.object({
@@ -88,15 +88,94 @@ const plain = [
   }),
   z.object({
     type: z.literal('commandRejected'),
-    command: z.enum(['move', 'aim', 'fire', 'endTurn']),
+    command: z.enum(['move', 'aim', 'steer', 'fire', 'endTurn']),
     reason: z.string(),
   }),
+  z.object({
+    type: z.literal('statusApplied'),
+    snailId: z.string(),
+    statusId: z.string(),
+    turnsLeft: int,
+    magnitude: z.number(),
+    sourceSnailId: z.string(),
+  }),
+  z.object({ type: z.literal('statusExpired'), snailId: z.string(), statusId: z.string() }),
+  z.object({
+    type: z.literal('areaCreated'),
+    areaId: z.string(),
+    kind: z.string(),
+    position: V,
+    radius: z.number(),
+    turnsLeft: int,
+  }),
+  z.object({ type: z.literal('areaExpired'), areaId: z.string(), kind: z.string() }),
+  z.object({ type: z.literal('areaMoved'), areaId: z.string(), position: V }),
+  z.object({
+    type: z.literal('scheduledCreated'),
+    scheduledId: z.string(),
+    groupId: z.string(),
+    weaponId: z.string(),
+    position: V,
+    turnsLeft: int,
+    radius: z.number(),
+    style: z.enum(['strike', 'arrival']),
+  }),
+  z.object({
+    type: z.literal('scheduledFired'),
+    scheduledId: z.string(),
+    groupId: z.string(),
+    position: V,
+  }),
+  z.object({ type: z.literal('snailMoved'), snailId: z.string(), from: V, to: V }),
+  z.object({
+    type: z.literal('ropeAttached'),
+    snailId: z.string(),
+    anchor: V,
+    seconds: z.number(),
+  }),
+  z.object({ type: z.literal('ropeReleased'), snailId: z.string() }),
+  z.object({
+    type: z.literal('meleeStruck'),
+    snailId: z.string(),
+    weaponId: z.string(),
+    position: V,
+  }),
+  z.object({
+    type: z.literal('crateSpawned'),
+    crateId: z.string(),
+    defId: z.string(),
+    position: V,
+  }),
+  z.object({
+    type: z.literal('crateCollected'),
+    crateId: z.string(),
+    defId: z.string(),
+    snailId: z.string(),
+    position: V,
+    healed: z.number(),
+    damage: z.number(),
+    weapons: z.array(z.object({ weaponId: z.string(), count: z.number() })),
+    statusId: z.string().optional(),
+  }),
+  z.object({
+    type: z.literal('crateDestroyed'),
+    crateId: z.string(),
+    position: V,
+    reason: z.enum(['explosion', 'water']),
+  }),
+  z.object({
+    type: z.literal('suddenDeathStarted'),
+    round: int,
+    kind: z.enum(['water', 'drain', 'both']),
+  }),
+  z.object({ type: z.literal('waterRose'), level: z.number(), delta: z.number() }),
 ] as const;
 
 const carvedBase = {
   type: z.literal('terrainCarved'),
   centre: V,
   radius: z.number(),
+  power: z.number().optional(),
 };
 
 /** A simulation event as consumers see it (same shape as core's `SimEvent`). */
@@ -135,6 +214,25 @@ export const EventBatch = z.object({
 });
 /** Event batch message. */
 export type EventBatch = z.infer<typeof EventBatch>;
+
+/**
+ * Ordered log of every terrain-changing event (`terrainCarved`, `terrainCollapsed`) of the running
+ * match, sent to a late or reconnecting client right after `matchStarted` and before the first
+ * snapshot. Clients apply it silently (no explosion, dust or sound effects) in one batch.
+ */
+export const TerrainHistory = z.object({
+  type: z.literal('terrainHistory'),
+  /** Simulation tick the history is current to. */
+  tick: int.nonnegative(),
+  events: z.array(WireEvent),
+});
+/** Terrain history message. */
+export type TerrainHistory = z.infer<typeof TerrainHistory>;
+
+/** Whether a simulation event changes the terrain (and so belongs in the history). */
+export function isTerrainEvent(e: { type: string }): boolean {
+  return e.type === 'terrainCarved' || e.type === 'terrainCollapsed';
+}
 
 /** Delta-encodes an ascending id list (first value kept as is). */
 export function deltaEncode(values: readonly number[]): number[] {
@@ -184,4 +282,9 @@ export function encodeEventBatch(tick: number, events: readonly SimEventData[]):
 /** Expands a batch back into simulation events. */
 export function decodeEventBatch(batch: EventBatch): SimEventData[] {
   return batch.events.map(decodeEvent);
+}
+
+/** Expands a terrain history back into simulation events. */
+export function decodeTerrainHistory(msg: TerrainHistory): SimEventData[] {
+  return msg.events.map(decodeEvent);
 }

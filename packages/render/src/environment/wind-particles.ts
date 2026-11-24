@@ -1,3 +1,4 @@
+import { PALETTE } from '../style/palette.js';
 import { DEFAULT_WIND_CONFIG } from '@snails/core';
 import * as THREE from 'three';
 import { createSoftSpriteTexture } from '../effects/soft-sprite.js';
@@ -166,7 +167,7 @@ export interface WindParticles {
 /** Dust-mote material, starting invisible (no wind). */
 function createMoteMaterial(maxStrength: number): THREE.PointsMaterial {
   return new THREE.PointsMaterial({
-    color: 0xf2e6c9,
+    color: PALETTE.uiPaper,
     size: 0.2,
     map: createSoftSpriteTexture(16),
     sizeAttenuation: true,

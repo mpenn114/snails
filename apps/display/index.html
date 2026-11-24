@@ -10,7 +10,7 @@
         margin: 0;
         height: 100%;
         overflow: hidden;
-        background: #000;
+        background: var(--snl-ink);
       }
       canvas {
         width: 100%;
@@ -23,9 +23,9 @@
         display: flex;
         align-items: center;
         justify-content: center;
-        background: #101820;
-        color: #fff;
-        font-family: system-ui, sans-serif;
+        background: var(--snl-ink);
+        color: var(--snl-paper);
+        font-family: var(--snl-font);
       }
       .lobby[hidden] {
         display: none;
@@ -69,13 +69,29 @@
         margin-right: 0.4em;
         vertical-align: middle;
       }
+      .lobby .chips {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.6vw;
+        margin: 1.5vw 0 0;
+        padding: 0;
+        font-size: 1.4vw;
+      }
+      .lobby .chips li {
+        padding: 0.3vw 1vw;
+        background: rgba(var(--snl-paper-rgb, 255, 255, 255), 0.12);
+        border-radius: 999px;
+      }
+      .lobby .chips span {
+        opacity: 0.6;
+      }
       .hud {
         position: fixed;
         inset: 0;
         pointer-events: none;
-        font-family: system-ui, sans-serif;
-        color: #fff;
-        text-shadow: 0 1px 4px #000;
+        font-family: var(--snl-font);
+        color: var(--snl-paper);
+        text-shadow: 0 1px 4px rgba(var(--snl-ink-rgb), 0.9);
       }
       .hud[hidden] {
         display: none;
@@ -87,13 +103,25 @@
         transform: translateX(-50%);
         padding: 0.5vw 2vw;
         font-size: 2.4vw;
-        background: rgba(0, 0, 0, 0.5);
+        background: rgba(var(--snl-ink-rgb), 0.75);
         border: 0.3vw solid;
-        border-radius: 1vw;
+        border-radius: var(--snl-radius);
+        font-weight: 700;
       }
       .hud .timer {
         margin-left: 1.5vw;
         font-weight: 800;
+      }
+      .hud .notice {
+        position: absolute;
+        top: 12vh;
+        left: 50%;
+        transform: translateX(-50%);
+        padding: 0.4vw 1.6vw;
+        font-size: 2vw;
+        font-weight: 700;
+        background: rgba(var(--snl-ink-rgb), 0.75);
+        border-bottom: 0.25vw solid var(--snl-paper);
       }
       .hud .bars {
         position: absolute;
@@ -105,15 +133,15 @@
       .hud .bar {
         position: relative;
         margin-top: 0.5vw;
-        background: rgba(0, 0, 0, 0.5);
+        background: rgba(var(--snl-ink-rgb), 0.6);
         height: 2.2vw;
         overflow: hidden;
-        border-radius: 0.5vw;
+        border-radius: var(--snl-outline);
         opacity: 0.8;
       }
       .hud .bar.active {
         opacity: 1;
-        outline: 0.2vw solid #fff;
+        outline: 0.2vw solid var(--snl-paper);
       }
       .hud .bar i {
         position: absolute;

@@ -1,4 +1,9 @@
-import type { MatchSettings, ServerMessage } from '@snails/protocol';
+import {
+  isTerrainEvent,
+  type MatchSettings,
+  type ServerMessage,
+  type WireEvent,
+} from '@snails/protocol';
 import type { IntentMessage } from '../net/connection.js';
 import type { ActiveMatch, Member, Room } from '../rooms/room.js';
 import { GameSession, type SessionClock, type SessionTeam } from './game-session.js';
@@ -22,18 +27,48 @@ export interface MatchRunnerOptions {
   endHoldMs?: number;
 }
 
-const FALLBACK_COLOURS = ['#e63946', '#2a9d8f', '#e9c46a', '#457b9d', '#9b5de5', '#f4a261'];
+/** Team shell colours (CSS hex), same order as the render palette `TEAM_COLORS`. */
+export const TEAM_COLOUR_PALETTE: readonly string[] = [
+  '#e5283f',
+  '#1a46c8',
+  '#ffd21f',
+  '#b07cff',
+  '#ff6fb8',
+  '#12d0e6',
+  '#ff7a14',
+  '#f6f4fa',
+];
 
-/** Builds session teams (team to player ids) from the controllers in a lobby. */
+/**
+ * Builds session teams (team to player ids) from the controllers in a lobby. Every team gets a
+ * distinct colour: a member's chosen colour goes to their first team only (hot-seat phones own
+ * several teams); other teams take the first palette colour nobody has claimed.
+ */
 export function buildTeams(members: readonly Member[]): SessionTeam[] {
+  const controllers = members.filter((m) => m.role === 'controller');
+  const claimed = new Set<string>();
+  const chosen = new Map<string, string>();
+  for (const m of controllers) {
+    const c = m.colour?.toLowerCase();
+    const first = m.teamIds[0];
+    if (c && first && !claimed.has(c) && !chosen.has(first)) {
+      claimed.add(c);
+      chosen.set(first, m.colour ?? c);
+    }
+  }
   const teams = new Map<string, SessionTeam>();
-  for (const m of members) {
-    if (m.role !== 'controller') continue;
+  for (const m of controllers) {
     for (const teamId of m.teamIds) {
       let t = teams.get(teamId);
       if (!t) {
-        const colour =
-          m.colour ?? FALLBACK_COLOURS[teams.size % FALLBACK_COLOURS.length] ?? '#888888';
+        let colour = chosen.get(teamId);
+        if (!colour) {
+          colour =
+            TEAM_COLOUR_PALETTE.find((c) => !claimed.has(c)) ??
+            TEAM_COLOUR_PALETTE[teams.size % TEAM_COLOUR_PALETTE.length] ??
+            '#888888';
+          claimed.add(colour.toLowerCase());
+        }
         t = { id: teamId, name: teamId, colour, playerIds: [] };
         teams.set(teamId, t);
       }
@@ -51,6 +86,12 @@ export function buildTeams(members: readonly Member[]): SessionTeam[] {
 export class MatchRunner implements ActiveMatch {
   private readonly session: GameSession;
   private latest: ServerMessage | null = null;
+  private lastInventory = '';
+  /**
+   * Ordered wire-form terrain events of the whole match, replayed to late clients. A match has at
+   * most a few hundred carves/collapses (a few hundred KB), so it is kept unbounded.
+   */
+  private readonly terrainLog: WireEvent[] = [];
   private readonly lastReject = new Map<string, number>();
   private pendingAim: { msg: ServerMessage; from: string } | null = null;
   private aimTimer: unknown = null;
@@ -78,8 +119,12 @@ export class MatchRunner implements ActiveMatch {
       onSnapshot: (s) => {
         this.latest = s;
         this.broadcast(s);
+        this.broadcastInventory();
       },
-      onEvents: (b) => this.broadcast(b),
+      onEvents: (b) => {
+        for (const e of b.events) if (isTerrainEvent(e)) this.terrainLog.push(e);
+        this.broadcast(b);
+      },
       onTurnStart: (i) => {
         this.broadcast({ type: 'turnStart', ...i });
         this.membersChanged();
@@ -90,13 +135,21 @@ export class MatchRunner implements ActiveMatch {
     this.latest = this.session.snapshot();
     this.broadcast(this.session.matchStartedMessage());
     this.broadcast(this.latest);
+    this.broadcastInventory();
     this.session.start();
   }
 
-  /** Sends `matchStarted`, a fresh snapshot and the current turn state to a (re)joining member. */
+  /** Sends `matchStarted`, the terrain history, a fresh snapshot and the current turn state to a (re)joining member. */
   catchUp(member: Member): void {
     member.send(this.session.matchStartedMessage());
+    if (this.terrainLog.length > 0)
+      member.send({
+        type: 'terrainHistory',
+        tick: this.session.tick,
+        events: [...this.terrainLog],
+      });
     member.send(this.session.snapshot());
+    member.send(this.session.inventoryMessage());
     const turn = this.session.currentTurn();
     if (!turn) return;
     member.send({ type: 'turnStart', ...turn.info });
@@ -182,6 +235,15 @@ export class MatchRunner implements ActiveMatch {
     this.pendingAim = null;
   }
 
+  /** Broadcasts the inventory when it differs from the last one sent. */
+  private broadcastInventory(): void {
+    const msg = this.session.inventoryMessage();
+    const key = JSON.stringify(msg);
+    if (key === this.lastInventory) return;
+    this.lastInventory = key;
+    this.broadcast(msg);
+  }
+
   private broadcast(msg: ServerMessage): void {
     for (const m of this.room.members.values()) m.send(msg);
   }
@@ -199,8 +261,19 @@ export class MatchRunner implements ActiveMatch {
     const weaponId = this.session.activeWeaponId;
     const launch = this.session.activeLaunch;
     if (!snailId || !weaponId || !launch) return;
+    const motion = this.session.activeMotion;
+    const melee = this.session.activeMelee;
     this.pendingAim = {
-      msg: { type: 'aimPreview', snailId, weaponId, launch, angle, power },
+      msg: {
+        type: 'aimPreview',
+        snailId,
+        weaponId,
+        launch,
+        ...(motion ? { motion } : {}),
+        ...(melee ? { melee } : {}),
+        angle,
+        power,
+      },
       from: member.id,
     };
     const wait = this.lastAimAt + (this.opts.aimIntervalMs ?? 66) - this.now();

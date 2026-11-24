@@ -20,6 +20,7 @@ function makeGrid(): SdfGrid {
 const copy = (g: SdfGrid): SdfGrid => {
   const c = new SdfGrid(g.nx, g.ny, g.nz, g.cellSize, 1, g.chunkSize);
   c.data.set(g.data);
+  c.materials.set(g.materials);
   return c;
 };
 
@@ -35,6 +36,17 @@ describe('TerrainReplica', () => {
     expect(Array.from(local.data)).toEqual(Array.from(core.data));
     for (const id of res.chunks) expect(dirty).toContain(id);
     expect(local.takeDirtyChunks().length).toBeGreaterThan(0);
+  });
+
+  it('applies per-material resistance and power like core', () => {
+    const core = makeGrid();
+    for (let i = 0; i < core.materials.length; i++) core.materials[i] = i % 5 < 2 ? 3 : 2;
+    const local = copy(core);
+    const centre = { x: 8, y: 9, z: 12 };
+    const res = carveSphere(core, centre, 4, 10);
+    const r = new TerrainReplica({ grid: local });
+    r.applyEvents([{ type: 'terrainCarved', centre, radius: 4, power: 10, chunks: res.chunks }]);
+    expect(Array.from(local.data)).toEqual(Array.from(core.data));
   });
 
   it('ignores irrelevant and duplicate events', () => {
@@ -120,5 +132,26 @@ describe('TerrainReplica', () => {
     ];
     new TerrainReplica({ grid: local }).applyEvents(events);
     expect(Array.from(local.data)).toEqual(Array.from(core.data));
+  });
+
+  it('applyHistory equals applying the live events, without debris callbacks', () => {
+    const core = makeGrid();
+    const live = copy(core);
+    const late = copy(core);
+    const events: SimEvent[] = [];
+    for (const x of [6, 9, 12, 15]) {
+      const centre = { x, y: 9, z: 12 };
+      const res = carveSphere(core, centre, 2.5);
+      events.push({ type: 'terrainCarved', centre, radius: 2.5, chunks: res.chunks });
+    }
+    const lateFallen: FallenCluster[][] = [];
+    const a = new TerrainReplica({ grid: live });
+    const b = new TerrainReplica({ grid: late, onFallen: (c) => lateFallen.push([...c]) });
+    a.applyEvents(events);
+    b.applyHistory(events);
+    expect(Array.from(late.data)).toEqual(Array.from(live.data));
+    expect(Array.from(late.data)).toEqual(Array.from(core.data));
+    expect(b.applied).toBe(4);
+    expect(lateFallen).toEqual([]);
   });
 });

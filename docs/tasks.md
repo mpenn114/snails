@@ -6,7 +6,7 @@ milestones in [roadmap.md](roadmap.md). Each task is sized for one PR (about 0.5
 ## How to use
 
 - Status legend: ✅ done, 🚧 in progress (or a stub exists that needs real work), ⬜ todo.
-- IDs are `M<milestone>-<nn>` and are stable. Never renumber; append new tasks at the end of a
+- IDs are `M<milestone>-<nn>` (or `MG-<nn>` for the graphics milestone) and are stable. Never renumber; append new tasks at the end of a
   section. "Depends on" lists task IDs that must be merged first.
 - Update the Status column in the same PR that does the work. Mention the task ID in the PR title.
 - Keep this file in sync with [roadmap.md](roadmap.md): a milestone's exit criteria are the gate,
@@ -127,32 +127,71 @@ loop or broadcast snapshots and events. The controller has stub net and turn-con
 | M3-32 | Real-device test on 2 to 4 Android phones (latency, 20 min thermal run, reconnect) | docs | M3-26, M3-30, M3-12 | ✅ |
 | M3-33 | Safari/iOS compatibility pass for the controller | controller | M3-21 | ✅ |
 
+## MG: Art direction and graphics
+
+Scheduled after M3 and before M4. The style is stylised low poly with soft toon lighting: a
+miniature garden at snail scale ([ADR-0009](adr/0009-stylised-low-poly-art-direction.md)). Six tasks
+moved here from M7 and keep their `M7-` IDs. Every task attaches before and after screenshots from
+the MG-03 harness to its PR. After the first round looked poor, MG-13 to MG-15 switched to free
+(CC0) art assets and better terrain shapes rather than building everything in code.
+
+| ID | Task | Area | Depends on | Status |
+|---|---|---|---|---|
+| MG-01 | Art direction note (`docs/art-direction.md`): 12 to 16 colour palette, lighting values, shape language, do and don't list, reference sketch; palette and light constants in `@snails/render` | docs | M2-11 | ✅ |
+| MG-02 | Colour pipeline and material factory: sRGB output, AgX or ACES tone mapping and exposure, one shared stylised (flat or toon) material factory used by every mesh | render | MG-01 | ✅ |
+| MG-03 | Visual reference harness: fixed-seed scenes and cameras, screenshots on display High and phone Mobile via Playwright (`pnpm shots`), uploaded as a CI artifact | ci | MG-01, M2-15 | ✅ |
+| MG-04 | Sky and lighting: gradient sky dome, warm low sun, hemisphere fill, soft shadows per tier, distance haze tinted to the sky | render | MG-02 | ✅ |
+| MG-05 | Stylised terrain shading: flat facets, grass cap with a soft edge, soil and rock strata exposed in cliffs and craters, scorched crater rim | render | MG-02 | ✅ |
+| M7-01 | Procedural low-poly spiral shell geometry from seed (moved from M7) | render | MG-02 | ✅ |
+| M7-02 | Shell patterns and team colour system, palette-driven and colour-blind safe (moved from M7) | render | M7-01, MG-01 | ✅ |
+| MG-06 | Snail body, head and eye stalks built in code, with the shell on the back; replaces the M2-08 placeholder (keeps health bar and name tag) | render | M7-01, MG-02 | ✅ |
+| M7-08 | Snail body animation set: squash-and-stretch crawl, idle, aim, jump, hurt, retreat (moved from M7) | render | MG-06 | ✅ |
+| M7-09 | Expression system (eyes and stalks reacting to events) (moved from M7) | render | M7-08, M1-17 | ✅ |
+| MG-07 | Garden props made in code (mushrooms, pebbles, clover, leaves): seeded, instanced, purely cosmetic, cleared when the ground under them is carved | render | MG-05 | ✅ |
+| MG-08 | Stylised water: toon shading, depth-based foam edge, gentle waves, splash ring | render | MG-04 | ✅ |
+| MG-09 | Explosion and impact VFX restyle: puffy smoke, flash, chunky debris coloured by strata, dust; pooled with tier caps | render | MG-05, M2-09 | ✅ |
+| MG-10 | Projectile and aim visuals: pebble model, trail ribbon, dotted aim arc and landing marker in palette colours | render | MG-02 | ✅ |
+| M7-13 | Post-processing on the display High tier: SSAO, bloom, colour grade, optional outline; phones keep tone mapping and FXAA only (moved from M7) | render | MG-02, MG-04 | ✅ |
+| MG-11 | Display HUD and lobby, and phone overlays, restyled to the palette and one type scale | display | MG-01, M3-20 | ✅ |
+| M7-15 | Quality tier budget verification on display and phone after the restyle (moved from M7) | render | M7-13, MG-05, MG-06, MG-07, MG-08, MG-09, M3-26 | ✅ |
+| MG-12 | Real-device visual check on Android and iOS phones and a TV (readability, frame rate); results in the device-testing doc | docs | M7-15, MG-11 | ⬜ |
+| MG-13 | Terrain shapes and framing: generator makes chunky islands, plateaus and cliffs instead of thin arches; cameras frame the snails; labels decluttered | core | MG-05 | ✅ |
+| MG-14 | Asset pipeline: `content-base` glTF assets with licence credits, cached loader, mobile variants; CC0 low-poly nature props and a snail model replace code-built ones where better (covers MG-07) | render | MG-02 | ✅ |
+| MG-15 | Textured terrain: CC0 stylised grass, dirt and rock textures blended by slope and depth (triplanar), replacing procedural stripes; cheap mobile path | render | MG-05 | ✅ |
+| MG-16 | Scene polish: prop density and colour variety (no team-colour clashes), bare crater floors, harness team colours from the palette | render | MG-14, MG-15 | ✅ |
+
 ## M4: Weapons and content packs
 
 `@snails/content-base` holds a definitions stub with a small validated set.
 
 | ID | Task | Area | Depends on | Status |
 |---|---|---|---|---|
-| M4-01 | Zod schemas for weapon, material, crate and wind definitions | content | M1-18 | 🚧 |
-| M4-02 | Content pack manifest (id, version, deps) and loader validation | core | M4-01 | ⬜ |
-| M4-03 | Effect vocabulary (damage, carve, status, spawn, move) kept small | core | M4-01, M1-13 | ⬜ |
-| M4-04 | Pebble Toss and Salt Shaker as pure data (cluster, salt status) | content | M4-03, M1-19 | 🚧 |
-| M4-05 | Slime Grenade (thrown, fuse, slow status) | content | M4-03 | ⬜ |
-| M4-06 | Pebble Roller (bouncing, fuse) | content | M4-03, M1-08 | ⬜ |
-| M4-07 | Radula Missile (guided steering input) | content | M4-03, M3-21 | ⬜ |
-| M4-08 | Spore Cloud (lingering area effect over turns) | content | M4-03 | ⬜ |
-| M4-09 | Shell Drill (digger tunnel) | content | M4-03, M1-05 | ⬜ |
-| M4-10 | Shell Bash (melee, knockback) | content | M4-03 | ⬜ |
-| M4-11 | Slime Rope (utility, swing or climb) | content | M4-03, M1-10 | ⬜ |
-| M4-12 | Dew Bomb (temporary puddle, drowning, extinguish salt) | content | M4-03 | ⬜ |
-| M4-13 | Beetle Barrage and Snail Mail (research-unlocked, telegraphed) | content | M4-03 | ⬜ |
-| M4-14 | Crates and pickups (drop rules, health, ammo, weapon crates) | core | M4-01, M1-20 | ⬜ |
-| M4-15 | Ammo and inventory model plus phone weapon picker integration | core | M4-04, M3-22 | ⬜ |
-| M4-16 | Terrain materials (dirt, rock, sand) with differing carve resistance | core | M4-01, M1-05 | ⬜ |
-| M4-17 | Match settings model and Classic mode complete | core | M4-14, M3-18 | ⬜ |
-| M4-18 | Sudden death (rising water or health drain) | core | M4-17 | ⬜ |
-| M4-19 | Per-weapon simulation tests and a playable demo map with every weapon | content | M4-05, M4-06, M4-07, M4-08, M4-09, M4-10, M4-11, M4-12 | ⬜ |
-| M4-20 | Extensibility walkthrough verification: add a weapon with only a data file | docs | M4-19 | ⬜ |
+| M4-01 | Zod schemas for weapon, material, crate and wind definitions | content | M1-18 | ✅ |
+| M4-02 | Content pack manifest (id, version, deps) and loader validation | core | M4-01 | ✅ |
+| M4-03 | Effect vocabulary (damage, carve, status, spawn, move) kept small | core | M4-01, M1-13 | ✅ |
+| M4-04 | Pebble Toss and Salt Shaker as pure data (cluster, salt status) | content | M4-03, M1-19 | ✅ |
+| M4-05 | Slime Grenade (thrown, fuse, slow status) | content | M4-03 | ✅ |
+| M4-06 | Pebble Roller (bouncing, fuse) | content | M4-03, M1-08 | ✅ |
+| M4-07 | Radula Missile (guided steering input) | content | M4-03, M3-21 | ✅ |
+| M4-08 | Spore Cloud (lingering area effect over turns) | content | M4-03 | ✅ |
+| M4-09 | Shell Drill (digger tunnel) | content | M4-03, M1-05 | ✅ |
+| M4-10 | Shell Bash (melee, knockback) | content | M4-03 | ✅ |
+| M4-11 | Slime Rope (utility, swing or climb) | content | M4-03, M1-10 | ✅ |
+| M4-12 | Dew Bomb (temporary puddle, drowning, extinguish salt) | content | M4-03 | ✅ |
+| M4-13 | Beetle Barrage and Snail Mail (research-unlocked, telegraphed) | content | M4-03 | ✅ |
+| M4-14 | Crates and pickups (drop rules, health, ammo, weapon crates) | core | M4-01, M1-20 | ✅ |
+| M4-15 | Ammo and inventory model plus phone weapon picker integration | core | M4-04, M3-22 | ✅ |
+| M4-16 | Terrain materials (dirt, rock, sand) with differing carve resistance | core | M4-01, M1-05 | ✅ |
+| M4-17 | Match settings model and Classic mode complete | core | M4-14, M3-18 | ✅ |
+| M4-18 | Sudden death (rising water or health drain) | core | M4-17 | ✅ |
+| M4-19 | Per-weapon simulation tests and a playable demo map with every weapon | content | M4-05, M4-06, M4-07, M4-08, M4-09, M4-10, M4-11, M4-12 | ✅ |
+| M4-20 | Extensibility walkthrough verification: add a weapon with only a data file | docs | M4-19 | ✅ |
+| M4-21 | Two-axis snail movement: turn/steer as well as crawl, deterministic and replayable (playtest #9) | core | M1-09, M3-21 | ✅ |
+| M4-22 | Aim view rework: snail's point-of-view camera when aiming, discoverable, with a reticle and initial-trajectory target (playtest #9) | controller | M3-20, M3-21 | ✅ |
+| M4-23 | Snail-to-snail collision and separation in core (crawl, jump, knockback tests) (playtest #9) | core | M1-08 | ✅ |
+| M4-24 | Hot-seat team colours: keep each team's colour readable when one phone controls several teams (playtest #9) | controller | M3-28 | ✅ |
+| M4-25 | Desktop viewing UX pass: an obvious way to open and watch the display view on the host PC (playtest #9) | display | M3-29 | ✅ |
+| M4-26 | Mid-match catch-up replays terrain edits so late or reconnecting displays and phones see current craters | server | M3-29, M4-25 | ✅ |
 
 ## M5: Research and tech tree
 
@@ -195,25 +234,22 @@ runner command yet.
 | M6-12 | Headless AI match runner command (`pnpm sim:ai`) with seeds, JSON output | ai | M1-22, M6-07 | ⬜ |
 | M6-13 | CI gate: Mastermind beats Rookie in at least 90% of matches | ci | M6-12 | ⬜ |
 
-## M7: Shell visual system and polish
+## M7: Shell upgrades, damage and polish
+
+Shell geometry, patterns, body animation, expressions, post-processing and the tier budget check
+moved to MG (IDs kept). M7 keeps what depends on weapons (M4) and research (M5).
 
 | ID | Task | Area | Depends on | Status |
 |---|---|---|---|---|
-| M7-01 | Procedural shell geometry generator (spiral params from seed) | render | M2-08 | ⬜ |
-| M7-02 | Shell patterns and team colour system | render | M7-01 | ⬜ |
 | M7-03 | Material tiers (basic, reinforced, crystal, armoured) driven by tech state | render | M7-01, M5-05 | ⬜ |
 | M7-04 | Attachments and decals (antennae, flags, scratches) | render | M7-02 | ⬜ |
 | M7-05 | Crack shader with 4 damage states | render | M7-01, M1-13 | ⬜ |
 | M7-06 | Fragment spawning on damage and critical state visuals | render | M7-05 | ⬜ |
 | M7-07 | Death shells and death sequence | render | M7-06, M1-20 | ⬜ |
-| M7-08 | Snail body animation set (crawl, jump, aim, hurt, retreat) | render | M2-08 | ⬜ |
-| M7-09 | Expression system (eyes and stalks reacting to events) | render | M7-08, M1-17 | ⬜ |
-| M7-10 | Weapon and explosion VFX pass | render | M2-09, M4-19 | ⬜ |
-| M7-11 | Audio system, SFX and music pass on display and phone | display | M3-25, M7-10 | ⬜ |
+| M7-10 | Per-weapon VFX pass (builds on the MG-09 explosion style) | render | MG-09, M4-19 | ⬜ |
+| M7-11 | Audio system, SFX and music pass on display and phone (include snail reactions and impact cues, playtest #9) | display | M3-25, M7-10 | ⬜ |
 | M7-12 | King of the Hill mode | core | M4-17 | ⬜ |
-| M7-13 | Post-processing (bloom, tone mapping, outline) on high tier | render | M2-11 | ⬜ |
 | M7-14 | Readability review at TV distance and on phone for tiers and cracks | docs | M7-05, M7-03 | ⬜ |
-| M7-15 | Quality tier budget verification on display and phone | render | M7-13, M3-26 | ⬜ |
 | M7-16 | Accessibility pass (colour-blind team markers, text size, reduced motion) | controller | M3-23 | ⬜ |
 
 ## M8: Packaging and first release
@@ -265,13 +301,15 @@ flowchart LR
   M1 --> M2
   M1 --> M3
   M2 --> M3
+  M2 --> MG
+  M3 --> MG
   M1 --> M4
   M3 --> M4
   M4 --> M5
   M1 --> M6
   M4 --> M6
   M5 --> M6
-  M2 --> M7
+  MG --> M7
   M4 --> M7
   M5 --> M7
   M3 --> M8
@@ -280,7 +318,7 @@ flowchart LR
   M8 --> Later
 ```
 
-M5 and M6 are loosely coupled (CPU research strategy and the balance runner); M6 core work can
+MG comes before M4 by choice, not because M4 needs it. M5 and M6 are loosely coupled (CPU research strategy and the balance runner); M6 core work can
 start once M4 is done.
 
 ## Critical path to a first playable LAN match

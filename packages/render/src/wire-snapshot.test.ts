@@ -47,6 +47,23 @@ function snap(
     projectiles: [
       { id: 'p1', weaponId: 'w', position: { x: 0, y: 1, z: 0 }, velocity: { x: 1, y: 0, z: 0 } },
     ],
+    statuses: [{ snailId: 's1', statusId: 'base:salt', turnsLeft: 2, magnitude: 1 }],
+    areas: [
+      { id: 'a1', kind: 'base:cloud', position: { x: 1, y: 2, z: 3 }, radius: 2, turnsLeft: 3 },
+    ],
+    scheduled: [
+      {
+        id: 's1',
+        groupId: 'g1',
+        position: { x: 4, y: 2, z: 3 },
+        radius: 2,
+        turnsLeft: 2,
+        style: 'strike',
+      },
+    ],
+    crates: [
+      { id: 'c1', defId: 'base:health-crate', position: { x: 4, y: 5, z: 6 }, grounded: true },
+    ],
   };
 }
 
@@ -62,8 +79,12 @@ describe('WireSnapshotMapper', () => {
     expect(s?.alive).toBe(true);
     expect(s?.grounded).toBe(true);
     expect(s?.shell.colour).toBe('#f00');
+    expect(m.scheduled[0]?.telegraph).toEqual({ radius: 2, style: 'strike' });
     expect(m.turn.fired).toBe(true);
     expect(m.projectiles[0]?.ownerSnailId).toBe('s1');
+    expect(s?.statuses?.[0]).toMatchObject({ id: 'base:salt', turnsLeft: 2 });
+    expect(m.areas[0]).toMatchObject({ id: 'a1', kind: 'base:cloud', radius: 2 });
+    expect(m.crates[0]).toMatchObject({ id: 'c1', defId: 'base:health-crate', grounded: true });
   });
 
   it('tracks max health and marks dead snails', () => {
@@ -72,5 +93,11 @@ describe('WireSnapshotMapper', () => {
     const s = mapper.map(snap(2, 0, 'dead')).teams[0]?.snails[0];
     expect(s?.maxHealth).toBe(150);
     expect(s?.alive).toBe(false);
+  });
+
+  it('takes the water level from the snapshot when the server sends one', () => {
+    const mapper = new WireSnapshotMapper(info);
+    expect(mapper.map(snap(1, 100)).terrain.waterLevel).toBe(1);
+    expect(mapper.map({ ...snap(2, 100), waterLevel: 3.5 }).terrain.waterLevel).toBe(3.5);
   });
 });

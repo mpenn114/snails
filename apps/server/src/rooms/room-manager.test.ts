@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { ServerMessage } from '@snails/protocol';
+import { MatchSettings, type ServerMessage } from '@snails/protocol';
 import { MAX_CONTROLLERS, RoomManager, type Timers } from './room-manager.js';
 
 function fakeTimers(): Timers & { fire(): void; pending: number } {
@@ -87,6 +87,27 @@ describe('RoomManager', () => {
     expect(inbox.get('b')?.at(-1)).toMatchObject({ type: 'error', code: 'not_ready' });
   });
 
+  it('only the host can change settings in the lobby, and everyone sees them', () => {
+    const { room, add, inbox } = setup();
+    add('tv', 'display');
+    const a = add('a');
+    const b = add('b');
+    const edited = MatchSettings.parse({
+      wind: 'storm',
+      startingHealth: 150,
+      suddenDeathRound: null,
+    });
+    room.handleLobbyAction(b, { type: 'setSettings', settings: edited });
+    expect(inbox.get('b')?.at(-1)).toMatchObject({ type: 'error', code: 'not_host' });
+    room.handleLobbyAction(a, { type: 'setSettings', settings: { wind: 'gale' } as never });
+    expect(inbox.get('a')?.at(-1)).toMatchObject({ code: 'invalid_settings' });
+    room.handleLobbyAction(a, { type: 'setSettings', settings: edited });
+    expect(inbox.get('tv')?.at(-1)).toMatchObject({
+      type: 'lobbyState',
+      settings: { wind: 'storm', startingHealth: 150, suddenDeathRound: null },
+    });
+  });
+
   it('startMatch requires host, readiness, two teams and valid settings', () => {
     const { room, add, inbox } = setup();
     const tv = add('tv', 'display');
@@ -125,7 +146,7 @@ describe('RoomManager', () => {
       settings: { turnTimeSeconds: 30, snailsPerTeam: 3, seed: 1, controlMode: 'perPlayer' },
     });
     room.handleLobbyAction(a, { type: 'startMatch', settings });
-    expect(started).toEqual(settings);
+    expect(started).toEqual(MatchSettings.parse(settings));
     expect(room.phase).toBe('playing');
     room.handleLobbyAction(a, { type: 'startMatch', settings });
     expect(last('a')).toMatchObject({ code: 'match_in_progress' });
@@ -174,5 +195,13 @@ describe('RoomManager', () => {
     expect(room.lobbyState()).toMatchObject({ phase: 'match' });
     room.endMatch();
     expect(room.lobbyState()).toMatchObject({ phase: 'lobby' });
+  });
+
+  it('keeps a default room for code-less displays', () => {
+    const m = new RoomManager();
+    const room = m.createRoom();
+    expect(m.getDefaultRoom()).toBeUndefined();
+    m.setDefaultRoom(room.code.toLowerCase());
+    expect(m.getDefaultRoom()).toBe(room);
   });
 });

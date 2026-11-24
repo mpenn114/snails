@@ -1,18 +1,24 @@
-import type { ContentPackManifest, ContentRegistries } from '@snails/core';
-import { shellUpgrades, technologies, weapons } from './definitions.js';
+import type { ContentPack } from '@snails/core';
+import { areas } from './areas.js';
+import { crates } from './crates.js';
+import { shellUpgrades, technologies } from './definitions.js';
+import { statuses } from './statuses/index.js';
+import { weapons } from './weapons/index.js';
+import { winds } from './winds.js';
 
-export { shellUpgrades, technologies, weapons };
+export { areas, crates, shellUpgrades, statuses, technologies, weapons, winds };
 
-/** Manifest of the base content pack. */
-export const baseManifest: ContentPackManifest = {
-  id: 'base',
-  name: 'Snails Base Content',
-  version: '0.1.0',
+/** The base content pack: load it with `loadContentPacks([basePack])`. */
+export const basePack: ContentPack = {
+  manifest: { id: 'base', name: 'Snails Base Content', version: '0.1.0' },
+  weapons,
+  technologies,
+  shellUpgrades,
+  crates,
+  winds,
+  statuses,
+  areas,
 };
 
-/** Registers all base-game content into the given registries. */
-export function registerBaseContent(registries: ContentRegistries): void {
-  weapons.forEach((w) => registries.weapons.register(w));
-  technologies.forEach((t) => registries.technologies.register(t));
-  shellUpgrades.forEach((s) => registries.shellUpgrades.register(s));
-}
+/** Manifest of the base content pack. */
+export const baseManifest = basePack.manifest;

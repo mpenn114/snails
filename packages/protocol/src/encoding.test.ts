@@ -41,6 +41,42 @@ function makeSnapshot(count: number): DecodedSnapshot {
         velocity: { x: 10, y: 5, z: -2 },
       },
     ],
+    statuses: [{ snailId: 'snail-0', statusId: 'base:salt', turnsLeft: 2, magnitude: 1.5 }],
+    areas: [
+      {
+        id: 'a1',
+        kind: 'base:spore-cloud',
+        position: { x: 4.0004, y: 5, z: 6 },
+        radius: 3.5,
+        turnsLeft: 3,
+      },
+    ],
+    scheduled: [
+      {
+        id: 's1',
+        groupId: 'g1',
+        position: { x: 7.5, y: 5, z: 6 },
+        radius: 2.5,
+        turnsLeft: 2,
+        style: 'strike',
+      },
+      {
+        id: 's2',
+        groupId: 'g2',
+        position: { x: 9, y: 5, z: 6 },
+        radius: 0.9,
+        turnsLeft: 1,
+        style: 'arrival',
+      },
+    ],
+    crates: [
+      {
+        id: 'c1',
+        defId: 'base:health-crate',
+        position: { x: 7.0004, y: 9, z: 2 },
+        grounded: false,
+      },
+    ],
   };
 }
 
@@ -59,6 +95,17 @@ describe('snapshot encoding', () => {
     expect(d.snails[0]?.facing).toBeCloseTo(1.2345678, 3);
     expect(d.projectiles[0]?.position.x).toBeCloseTo(1.0004, 3);
     expect(d.wind.strength).toBeCloseTo(1.5, 3);
+    expect(d.statuses).toEqual(s.statuses);
+    expect(d.scheduled).toEqual(s.scheduled);
+    expect(d.areas[0]?.position.x).toBeCloseTo(4.0004, 3);
+    expect(d.areas[0]).toMatchObject({
+      id: 'a1',
+      kind: 'base:spore-cloud',
+      turnsLeft: 3,
+      radius: 3.5,
+    });
+    expect(d.crates[0]).toMatchObject({ id: 'c1', defId: 'base:health-crate', grounded: false });
+    expect(d.crates[0]?.position.x).toBeCloseTo(7.0004, 3);
     expect(parseServerMessage(wire).type).toBe('snapshot');
   });
   it('is smaller than naive JSON for 16 snails', () => {

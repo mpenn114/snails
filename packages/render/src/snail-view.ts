@@ -1,3 +1,4 @@
+import { TEAM_COLORS } from './style/palette.js';
 import { Color } from 'three';
 import type { GameSnapshot } from '@snails/core';
 
@@ -5,6 +6,8 @@ import type { GameSnapshot } from '@snails/core';
 export interface SnailView {
   id: string;
   teamId: string;
+  /** Team slot (index in the snapshot's team list); selects the shell pattern. */
+  teamIndex: number;
   /** Team colour as a hex number (0xRRGGBB). */
   colour: number;
   position: { x: number; y: number; z: number };
@@ -15,12 +18,18 @@ export interface SnailView {
   alive: boolean;
   name: string;
   isActive: boolean;
+  /** Resting on the ground (absent = grounded). Drives the jump pose. */
+  grounded?: boolean;
+  /** Active snail in the aim part of its turn (animation lean). */
+  aiming?: boolean;
+  /** Aim elevation in radians above the facing direction (absent = 0). */
+  aimAngle?: number;
+  /** Active snail retreating after its shot (animation). */
+  retreating?: boolean;
 }
 
 /** Fallback team palette, indexed by team order. */
-export const TEAM_PALETTE: readonly number[] = [
-  0xe74c3c, 0x3498db, 0x2ecc71, 0xf1c40f, 0x9b59b6, 0xe67e22, 0x1abc9c, 0xec407a,
-];
+export const TEAM_PALETTE: readonly number[] = TEAM_COLORS;
 
 /** Deterministic palette colour for a team index (wraps). */
 export function paletteColour(teamIndex: number): number {
@@ -46,9 +55,12 @@ export function snailViewsFromSnapshot(snapshot: GameSnapshot): SnailView[] {
   snapshot.teams.forEach((team, index) => {
     const colour = resolveTeamColour(team.colour, index);
     for (const s of team.snails) {
+      const active = snapshot.turn.activeSnailId === s.id;
+      const phase = snapshot.turn.phase;
       views.push({
         id: s.id,
         teamId: team.id,
+        teamIndex: index,
         colour,
         position: { x: s.position.x, y: s.position.y, z: s.position.z },
         facing: s.facing,
@@ -56,7 +68,11 @@ export function snailViewsFromSnapshot(snapshot: GameSnapshot): SnailView[] {
         maxHealth: s.maxHealth,
         alive: s.alive,
         name: s.name,
-        isActive: snapshot.turn.activeSnailId === s.id,
+        isActive: active,
+        grounded: s.grounded !== false,
+        aiming: active && s.alive && phase === 'action' && !snapshot.turn.fired,
+        aimAngle: s.aim?.angle ?? 0,
+        retreating: active && s.alive && phase === 'retreat',
       });
     }
   });

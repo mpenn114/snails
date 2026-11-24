@@ -10,6 +10,9 @@ export type ShadowType = 'pcfsoft' | 'pcf' | 'basic';
 /** Water shader quality: animated ripples or a flat tinted plane. */
 export type WaterQuality = 'ripples' | 'flat';
 
+/** Post-processing level: AO + bloom + SMAA + grade (`full`), SMAA + tone mapping (`basic`), or none. */
+export type PostMode = 'full' | 'basic' | 'none';
+
 /** Static, device-independent settings of one tier (the central quality table row). */
 export interface TierProfile {
   /** Upper bound for the device pixel ratio. */
@@ -24,6 +27,8 @@ export interface TierProfile {
   /** Terrain detail-noise shading in the terrain material. */
   terrainDetail: boolean;
   waterQuality: WaterQuality;
+  /** Post-processing composer level (only used when the app opts in, i.e. the TV display). */
+  post: PostMode;
   /** Water surface opacity. */
   waterOpacity: number;
   /** Multiplier for particle counts (consumed by effects). */
@@ -34,6 +39,8 @@ export interface TierProfile {
   chunkBudgetMs: number;
   /** Terrain chunks farther than this (metres) from the camera target use the coarse LOD. */
   terrainLodDistance: number;
+  /** Cosmetic scenery props scattered on the terrain (0 disables). */
+  propCount: number;
   /** Multiplier on camera far plane / draw distance. */
   drawDistanceScale: number;
 }
@@ -52,12 +59,14 @@ export const QUALITY_TABLE: Readonly<Record<QualityTier, TierProfile>> = {
     shadowType: 'pcfsoft',
     terrainDetail: true,
     waterQuality: 'ripples',
+    post: 'full',
     waterOpacity: 0.7,
     particleScale: 1,
     maxDynamicLights: 8,
     chunkBudgetMs: 8,
     terrainLodDistance: 24,
     drawDistanceScale: 1,
+    propCount: 420,
   },
   medium: {
     pixelRatioCap: 1.5,
@@ -68,12 +77,14 @@ export const QUALITY_TABLE: Readonly<Record<QualityTier, TierProfile>> = {
     shadowType: 'pcf',
     terrainDetail: true,
     waterQuality: 'ripples',
+    post: 'basic',
     waterOpacity: 0.75,
     particleScale: 0.6,
     maxDynamicLights: 4,
     chunkBudgetMs: 6,
     terrainLodDistance: 20,
     drawDistanceScale: 0.8,
+    propCount: 300,
   },
   low: {
     pixelRatioCap: 1,
@@ -84,12 +95,14 @@ export const QUALITY_TABLE: Readonly<Record<QualityTier, TierProfile>> = {
     shadowType: 'basic',
     terrainDetail: false,
     waterQuality: 'flat',
+    post: 'none',
     waterOpacity: 0.85,
     particleScale: 0.3,
     maxDynamicLights: 2,
     chunkBudgetMs: 4,
     terrainLodDistance: 16,
     drawDistanceScale: 0.6,
+    propCount: 170,
   },
   mobile: {
     pixelRatioCap: 1.5,
@@ -100,12 +113,14 @@ export const QUALITY_TABLE: Readonly<Record<QualityTier, TierProfile>> = {
     shadowType: 'basic',
     terrainDetail: false,
     waterQuality: 'flat',
+    post: 'none',
     waterOpacity: 0.85,
     particleScale: 0.25,
     maxDynamicLights: 0,
     chunkBudgetMs: 3,
     terrainLodDistance: 12,
     drawDistanceScale: 0.5,
+    propCount: 60,
   },
 };
 

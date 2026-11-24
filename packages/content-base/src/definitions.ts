@@ -1,54 +1,4 @@
-import type { ShellUpgradeDefinition, TechnologyDefinition, WeaponDefinition } from '@snails/core';
-
-/** Base-game weapons. Values are in metres and m/s. */
-export const weapons: WeaponDefinition[] = [
-  {
-    id: 'base:pebble-toss',
-    name: 'Pebble Toss',
-    kind: 'thrown',
-    launch: {
-      minSpeed: 3,
-      maxSpeed: 20,
-      gravityScale: 1,
-      windScale: 1,
-      projectileRadius: 0.15,
-    },
-    fuseSeconds: 0,
-    explosion: { radius: 2, maxDamage: 35, knockback: 6, falloff: 'linear' },
-    ammo: 'infinite',
-  },
-  {
-    id: 'base:shell-shock-rocket',
-    name: 'Shell Shock Rocket',
-    kind: 'projectile',
-    launch: {
-      minSpeed: 5,
-      maxSpeed: 30,
-      gravityScale: 0.6,
-      windScale: 1,
-      projectileRadius: 0.3,
-    },
-    fuseSeconds: 0,
-    explosion: { radius: 3, maxDamage: 40, knockback: 10, falloff: 'linear' },
-    ammo: 3,
-  },
-  {
-    id: 'base:salt-bomb',
-    name: 'Salt Bomb',
-    kind: 'thrown',
-    launch: {
-      minSpeed: 4,
-      maxSpeed: 18,
-      gravityScale: 1,
-      windScale: 0.5,
-      projectileRadius: 0.25,
-    },
-    fuseSeconds: 3,
-    explosion: { radius: 3.5, maxDamage: 50, knockback: 12, falloff: 'quadratic' },
-    ammo: 2,
-    requiresTech: 'salt-refinery',
-  },
-];
+import type { ShellUpgradeDefinition, TechnologyDefinition } from '@snails/core';
 
 /** Base-game technologies. */
 export const technologies: TechnologyDefinition[] = [
@@ -59,7 +9,7 @@ export const technologies: TechnologyDefinition[] = [
     tier: 1,
     cost: 20,
     prerequisites: [],
-    description: 'Unlocks the Salt Bomb.',
+    description: 'Refines salt for the Salt Shaker.',
   },
   {
     id: 'shell-hardening',
@@ -78,6 +28,24 @@ export const technologies: TechnologyDefinition[] = [
     cost: 15,
     prerequisites: [],
     description: 'Climb steeper slopes.',
+  },
+  {
+    id: 'beetle-callers',
+    name: 'Beetle Callers',
+    branch: 'weaponry',
+    tier: 3,
+    cost: 60,
+    prerequisites: ['salt-refinery'],
+    description: 'Unlocks the Beetle Barrage.',
+  },
+  {
+    id: 'snail-mail-network',
+    name: 'Snail Mail Network',
+    branch: 'utility',
+    tier: 1,
+    cost: 30,
+    prerequisites: [],
+    description: 'Unlocks Snail Mail.',
   },
 ];
 

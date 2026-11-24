@@ -4,7 +4,7 @@ import type { ClientMessage } from '@snails/protocol';
 /** Intent messages a controller may send during a match (a validated protocol subset). */
 export type GameIntent = Extract<
   ClientMessage,
-  { type: 'move' | 'jump' | 'aim' | 'selectWeapon' | 'fire' | 'endTurn' }
+  { type: 'move' | 'jump' | 'aim' | 'steer' | 'selectWeapon' | 'fire' | 'endTurn' }
 >;
 
 /** Result of applying an intent. */
@@ -13,6 +13,8 @@ export type IntentResult = { ok: true } | { ok: false; reason: string };
 /** Per-team mutable controller state kept between intents. */
 export interface TeamControlState {
   direction: -1 | 0 | 1;
+  /** Standing turn input -1..1 from the last move intent. */
+  turn: number;
   weaponId: string;
 }
 
@@ -37,9 +39,16 @@ export function intentToCommand(
   switch (intent.type) {
     case 'move':
       control.direction = intent.direction === 'left' ? -1 : intent.direction === 'right' ? 1 : 0;
-      return { type: 'move', snailId: snail.id, direction: control.direction };
+      control.turn = clamp(intent.turn ?? 0, -1, 1);
+      return { type: 'move', snailId: snail.id, direction: control.direction, turn: control.turn };
     case 'jump':
-      return { type: 'move', snailId: snail.id, direction: control.direction, jump: true };
+      return {
+        type: 'move',
+        snailId: snail.id,
+        direction: control.direction,
+        turn: control.turn,
+        jump: true,
+      };
     case 'aim':
       return {
         type: 'aim',
@@ -47,6 +56,8 @@ export function intentToCommand(
         angle: clamp(intent.angle, -HALF_PI, HALF_PI),
         power: clamp(intent.power, 0, 1),
       };
+    case 'steer':
+      return { type: 'steer', snailId: snail.id, input: clamp(intent.input, -1, 1) };
     case 'fire':
       return { type: 'fire', snailId: snail.id, weaponId: control.weaponId };
     case 'endTurn':

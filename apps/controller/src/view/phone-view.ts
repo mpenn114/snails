@@ -6,9 +6,14 @@ import {
   qualitySettings,
 } from '@snails/render';
 import type { GameView, QualityTier, ViewEnvironment } from '@snails/render';
-import { decodeEventBatch, decodeSnapshot } from '@snails/protocol';
+import { decodeEventBatch, decodeSnapshot, decodeTerrainHistory } from '@snails/protocol';
 import type { ServerMessage } from '@snails/protocol';
 import type { SimEvent } from '@snails/core';
+import { weapons } from '@snails/content-base';
+import type { AimStore } from '../controls/aim-store';
+import { bindAimMode } from './aim-binding';
+import { AimView } from './aim-view';
+import { AIM_MIN_PITCH } from './camera-math';
 import type { MatchStarted } from './wire-types';
 import { BatterySaverState, watchBattery } from './battery-saver';
 import type { BatteryNavigator } from './battery-saver';
@@ -16,9 +21,23 @@ import { QualityGovernor } from './quality-governor';
 import type { QualityLevel } from './quality-governor';
 import { buildTerrainInit } from './terrain-init';
 import { MatchOverlay } from './match-overlay';
+import { createPerfProbe, perfProbeRequested } from './perf-probe';
+import type { PerfSample, RendererInfoLike } from './perf-probe';
 import { guardContextLoss } from './context-guard';
 import { capPixelRatio, isIos } from '../platform/ios';
 import type { PlatformNavigator } from '../platform/ios';
+import { TERRAIN_TEXTURES } from '../terrain-textures';
+
+/**
+ * Phone follow camera: three-quarter view (about 40 degrees to the side, a little higher) so the
+ * round shell shows its spiral face instead of reading as a capsule from directly behind.
+ */
+const PHONE_RIG_OPTIONS = {
+  followYawOffset: 0.7,
+  followPitch: 0.55,
+  // The aim camera looks up along the shot: the camera sits below its look-at point.
+  limits: { minPitch: AIM_MIN_PITCH },
+} as const;
 
 /** Subset of the WebGL renderer touched when scaling resolution. */
 interface PixelRatioTarget {
@@ -44,8 +63,13 @@ export class PhoneView {
   private readonly saver: BatterySaverState;
   private renderer: MatchRenderer | null = null;
   private mapper: WireSnapshotMapper | null = null;
+  /** Identity of the match the renderer was built for (seed, terrain, demo flag). */
+  private builtFor: string | null = null;
   private overlay: MatchOverlay | null = null;
   private aiming = false;
+  private aimStore: AimStore | null = null;
+  private aimView: AimView | null = null;
+  private stopAim: (() => void) | null = null;
   private canvas: HTMLCanvasElement | null = null;
   private container: HTMLElement | null = null;
   private glRenderer: PixelRatioTarget | null = null;
@@ -87,6 +111,9 @@ export class PhoneView {
     this.canvas = canvas;
     this.renderer = new MatchRenderer({
       now: () => this.deps.now(),
+      modelBaseUrl: `${import.meta.env.BASE_URL}models/`,
+      terrainTextures: TERRAIN_TEXTURES,
+      rigOptions: PHONE_RIG_OPTIONS,
       makeView: (env) => this.makeView(canvas, env),
     });
     this.renderer.setTier(this.governor.settings.tier);
@@ -121,17 +148,27 @@ export class PhoneView {
     const r = this.renderer;
     if (!r) return;
     if (msg.type === 'matchStarted') {
+      // A reconnect re-sends matchStarted for the same match: keep the built scene (rebuilding
+      // the terrain freezes the phone for seconds); the terrainHistory that follows brings it
+      // up to date (re-applying carves is idempotent and in-order replay converges).
+      const key = JSON.stringify([msg.seed, msg.terrain, msg.settings.demo]);
+      if (key === this.builtFor && this.mapper) return;
+      this.builtFor = key;
       this.mapper = new WireSnapshotMapper({
         seed: msg.seed,
         teams: msg.teams,
         terrain: msg.terrain,
+        initialMaxHealth: msg.settings.startingHealth,
       });
-      r.init(buildTerrainInit(msg.seed, msg.terrain));
+      r.init(buildTerrainInit(msg.seed, msg.terrain, msg.settings.demo));
       this.startOverlay(r, msg.teams);
     } else if (msg.type === 'snapshot' && this.mapper) {
       const snap = this.mapper.map(decodeSnapshot(msg));
       r.pushSnapshot(snap);
       this.overlay?.onSnapshot(snap);
+      this.aimView?.onSnapshot(snap);
+    } else if (msg.type === 'terrainHistory') {
+      r.applyTerrainHistory(decodeTerrainHistory(msg) as unknown as SimEvent[]);
     } else if (msg.type === 'eventBatch') {
       const events = decodeEventBatch(msg) as unknown as SimEvent[];
       r.handleEvents(events);
@@ -170,6 +207,32 @@ export class PhoneView {
     if (this.aiming) overlay.camera.setAiming(true);
     r.view.addUpdater(() => overlay.update());
     this.overlay = overlay;
+    this.startAimView(r, overlay);
+  }
+
+  /** Attaches the 3D aim view (arc, target, reticle) and links the aim store to the camera. */
+  private startAimView(r: MatchRenderer, overlay: MatchOverlay): void {
+    this.stopAim?.();
+    this.stopAim = null;
+    const store = this.aimStore;
+    if (!store) return;
+    const view = new AimView({
+      renderer: r,
+      store,
+      weapon: (id) => weapons.find((w) => w.id === id),
+    });
+    const unbind = bindAimMode(overlay.camera, store);
+    this.aimView = view;
+    this.stopAim = (): void => {
+      unbind();
+      view.dispose();
+      this.aimView = null;
+    };
+  }
+
+  /** The shared aim state (Aim button, drag, weapon) driving the aim camera and 3D aim view. */
+  setAimStore(store: AimStore): void {
+    this.aimStore = store;
   }
 
   /** Releases GPU resources, listeners and the canvas. Safe to call twice. */
@@ -185,6 +248,8 @@ export class PhoneView {
     this.notice?.remove();
     this.notice = null;
     this.stopBattery?.();
+    this.stopAim?.();
+    this.stopAim = null;
     this.overlay?.dispose();
     this.overlay = null;
     this.renderer?.dispose();
@@ -196,12 +261,18 @@ export class PhoneView {
 
   private makeView(canvas: HTMLCanvasElement, env: ViewEnvironment): GameView {
     const level = this.governor.settings;
+    let probe: ((dt: number) => void) | null = null;
     const view = createGameView(canvas, {
       tier: level.tier,
       powerPreference: 'high-performance',
       terrainBounds: env.bounds,
       waterLevel: env.waterLevel,
-      onRenderer: (r) => (this.glRenderer = r),
+      onRenderer: (r) => {
+        this.glRenderer = r;
+        if (perfProbeRequested(window.location.search)) {
+          probe = createPerfProbe(r as RendererInfoLike, window as { __perf?: PerfSample });
+        }
+      },
       scheduler: createCappedScheduler({
         base: {
           request: (cb) => window.requestAnimationFrame(cb),
@@ -212,6 +283,7 @@ export class PhoneView {
       }),
     });
     view.addUpdater((dt) => {
+      probe?.(dt);
       if (this.hidden || dt <= 0) return;
       this.applyChange(this.governor.pushFrame(dt * 1000, this.deps.now()));
     });
@@ -246,7 +318,7 @@ export class PhoneView {
     const n = document.createElement('div');
     n.style.cssText =
       'position:absolute;inset:0;z-index:20;display:flex;flex-direction:column;gap:12px;align-items:center;' +
-      'justify-content:center;background:rgba(16,24,32,.85);color:#fff;font:600 1rem system-ui';
+      'justify-content:center;background:rgba(var(--snl-ink-rgb),.92);color:var(--snl-paper);font:700 var(--snl-text-m) var(--snl-font)';
     const t = document.createElement('span');
     t.textContent = 'Graphics interrupted...';
     const b = document.createElement('button');

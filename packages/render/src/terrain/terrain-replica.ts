@@ -1,3 +1,4 @@
+import { carvedCellValue, maxCarveScale } from '@snails/core';
 import type { FallenCluster, SdfGrid, SimEvent } from '@snails/core';
 
 /** Minimal dirty-marking surface of a mesh manager (or anything remeshing chunks). */
@@ -29,16 +30,34 @@ export class TerrainReplica {
     this.grid = opts.grid;
   }
 
+  /** Number of carve and collapse events applied so far (live and history). */
+  applied = 0;
+
   /** Applies relevant events (carve, collapse); everything else and repeats are ignored. */
   applyEvents(events: readonly SimEvent[]): void {
+    this.apply(events, true);
+  }
+
+  /**
+   * Applies a catch-up history silently: same grid writes and dirty marking as live events but no
+   * `onFallen` debris callback. Chunks are only flagged dirty, so the mesh manager rebuilds them
+   * in its normal budgeted pass instead of once per event.
+   */
+  applyHistory(events: readonly SimEvent[]): void {
+    this.apply(events, false);
+  }
+
+  private apply(events: readonly SimEvent[], notify: boolean): void {
     for (const e of events) {
       if (this.seen.has(e)) continue;
       if (e.type === 'terrainCarved') {
         this.seen.add(e);
-        this.carve(e.centre, e.radius);
+        this.applied++;
+        this.carve(e.centre, e.radius, e.power);
         this.markChunks(e.chunks);
       } else if (e.type === 'terrainCollapsed') {
         this.seen.add(e);
+        this.applied++;
         const g = this.grid;
         const plane = g.nx * g.ny;
         e.cellIndices.forEach((i, k) => {
@@ -50,25 +69,24 @@ export class TerrainReplica {
           );
         });
         this.markChunks(e.chunks);
-        this.opts.onFallen?.(e.fallen);
+        if (notify) this.opts.onFallen?.(e.fallen);
       }
     }
   }
 
-  /** CSG difference of a sphere: `max(old, radius - distance)` per cell. */
-  private carve(c: { x: number; y: number; z: number }, radius: number): void {
+  /** CSG difference of a sphere with per-material resistance (core's pure per-cell rule). */
+  private carve(c: { x: number; y: number; z: number }, radius: number, power?: number): void {
     if (!(radius > 0)) return;
     const g = this.grid;
     const cs = g.cellSize;
-    const lo = (v: number): number => Math.max(0, Math.floor((v - radius) / cs));
-    const hi = (v: number, n: number): number => Math.min(n - 1, Math.ceil((v + radius) / cs));
+    const reach = radius * maxCarveScale(g.materialTable);
+    const lo = (v: number): number => Math.max(0, Math.floor((v - reach) / cs));
+    const hi = (v: number, n: number): number => Math.min(n - 1, Math.ceil((v + reach) / cs));
     for (let z = lo(c.z); z <= hi(c.z, g.nz); z++) {
       for (let y = lo(c.y); y <= hi(c.y, g.ny); y++) {
         for (let x = lo(c.x); x <= hi(c.x, g.nx); x++) {
-          const d = Math.hypot(x * cs - c.x, y * cs - c.y, z * cs - c.z);
-          const old = g.get(x, y, z);
-          const next = Math.fround(Math.max(old, radius - d));
-          if (next !== old) g.set(x, y, z, next);
+          const next = carvedCellValue(g, x, y, z, c, radius, power);
+          if (next !== g.get(x, y, z)) g.set(x, y, z, next);
         }
       }
     }

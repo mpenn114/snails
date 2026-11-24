@@ -1,5 +1,6 @@
 import type { Vec3 } from '../state/types.js';
 import { carveSphere, type CarveResult } from './carve.js';
+import { BASE_TERRAIN_MATERIALS, type TerrainMaterialDefinition } from './materials.js';
 
 /** Default chunk edge length in cells. */
 export const DEFAULT_CHUNK_SIZE = 16;
@@ -16,6 +17,14 @@ export interface ChunkBounds {
 /** 3D signed-distance-field grid. Negative = solid, positive = air. */
 export class SdfGrid {
   readonly data: Float32Array;
+  /**
+   * Per-cell material index (into `materialTable`), same layout as `data`. Written once by the
+   * generator and never changed by carving or collapse, so clients that regenerate the grid
+   * from the match seed hold an identical layer.
+   */
+  readonly materials: Uint8Array;
+  /** Materials addressed by the per-cell index (defaults to the base materials). */
+  materialTable: readonly TerrainMaterialDefinition[] = BASE_TERRAIN_MATERIALS;
   /** Chunk edge length in cells. */
   readonly chunkSize: number;
   /** Chunk count along X. */
@@ -36,6 +45,7 @@ export class SdfGrid {
     chunkSize = DEFAULT_CHUNK_SIZE,
   ) {
     this.data = new Float32Array(nx * ny * nz).fill(fill);
+    this.materials = new Uint8Array(nx * ny * nz);
     this.chunkSize = chunkSize;
     this.chunksX = Math.ceil(nx / chunkSize);
     this.chunksY = Math.ceil(ny / chunkSize);
@@ -45,6 +55,12 @@ export class SdfGrid {
   /** Linear index of a cell. */
   index(x: number, y: number, z: number): number {
     return x + this.nx * (y + this.ny * z);
+  }
+
+  /** Material definition of a cell (soil for out-of-range cells or unknown indices). */
+  materialAt(x: number, y: number, z: number): TerrainMaterialDefinition {
+    const i = this.inBounds(x, y, z) ? (this.materials[this.index(x, y, z)] ?? 0) : 0;
+    return (this.materialTable[i] ?? this.materialTable[0]) as TerrainMaterialDefinition;
   }
 
   /** World-space extent of the grid (cells span 0..(n-1)*cellSize). */
@@ -203,8 +219,8 @@ export class SdfGrid {
     return this.sampleLinear(p) < 0;
   }
 
-  /** Subtracts a sphere from the terrain (CSG difference) and reports changed chunks. */
-  carveSphere(center: Vec3, radius: number): CarveResult {
-    return carveSphere(this, center, radius);
+  /** Subtracts a sphere from the terrain (CSG difference, per-material resistance) and reports changed chunks. */
+  carveSphere(center: Vec3, radius: number, power?: number): CarveResult {
+    return carveSphere(this, center, radius, power);
   }
 }

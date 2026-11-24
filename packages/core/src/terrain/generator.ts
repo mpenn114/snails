@@ -2,6 +2,7 @@ import type { Rng } from '../rng.js';
 import type { TerrainDescriptor, Vec3 } from '../state/types.js';
 import { ValueNoise } from './noise.js';
 import { SdfGrid } from './sdf-grid.js';
+import { materialForCell } from './strata.js';
 
 /** Parameters for the procedural terrain generator (lengths in metres). */
 export interface TerrainGenConfig {
@@ -36,21 +37,85 @@ export const DEFAULT_TERRAIN_CONFIG: TerrainGenConfig = {
   hillAmplitude: 5,
   hillFrequency: 0.04,
   octaves: 4,
-  caveDensity: 0.25,
+  caveDensity: 0.18,
   caveFrequency: 0.08,
   waterLevel: 4,
   islandFalloff: true,
 };
 
-const FLOOR_CELLS = 3;
+/** Metres of solid rock kept above any cave ceiling. */
+const CAVE_ROOF = 3.5;
+/** Metres the sea floor lies below the water surface. */
+const SEA_DEPTH = 2.5;
 
-function islandHeight(c: TerrainGenConfig, h: number, x: number, z: number): number {
-  const cx = (c.nx - 1) / 2;
-  const cz = (c.nz - 1) / 2;
-  const d = Math.max(Math.abs(x - cx) / cx, Math.abs(z - cz) / cz);
-  const t = Math.min(1, Math.max(0, (d - 0.55) / 0.45));
-  const f = t * t * (3 - 2 * t);
-  return h * (1 - f) + (c.waterLevel - 2) * f;
+interface Lobe {
+  x: number;
+  z: number;
+  r: number;
+}
+
+/** One big central island plus a few overlapping lobes, in cell units. */
+function makeLobes(c: TerrainGenConfig, rng: Rng): Lobe[] {
+  const half = Math.min(c.nx, c.nz) / 2;
+  const lobes: Lobe[] = [{ x: (c.nx - 1) / 2, z: (c.nz - 1) / 2, r: half * 0.6 }];
+  const n = 2 + rng.int(0, 1);
+  const a0 = rng.range(0, Math.PI * 2);
+  for (let i = 0; i < n; i++) {
+    const a = a0 + (i * Math.PI * 2) / n + rng.range(-0.4, 0.4);
+    const dist = half * rng.range(0.42, 0.52);
+    lobes.push({
+      x: (c.nx - 1) / 2 + Math.cos(a) * dist,
+      z: (c.nz - 1) / 2 + Math.sin(a) * dist,
+      r: half * rng.range(0.28, 0.36),
+    });
+  }
+  return lobes;
+}
+
+const smooth = (a: number, b: number, v: number): number => {
+  const t = Math.min(1, Math.max(0, (v - a) / (b - a)));
+  return t * t * (3 - 2 * t);
+};
+
+/** Surface height (m) at cell (x, z); land profile with plateau tiers, cliffs and shore. */
+function surfaceHeight(
+  c: TerrainGenConfig,
+  noise: ValueNoise,
+  lobes: Lobe[],
+  x: number,
+  z: number,
+): number {
+  const hf = c.cellSize * c.hillFrequency;
+  const warp = 0.18 * noise.fbm2(x * hf * 0.9 + 40, z * hf * 0.9 - 7, 2);
+  let f = -1;
+  for (const l of lobes) f = Math.max(f, 1 - Math.hypot(x - l.x, z - l.z) / l.r + warp);
+  const sea = c.waterLevel - SEA_DEPTH;
+  if (!c.islandFalloff) f = 1;
+  const land = smooth(0.02, 0.2, f);
+  const tier = smooth(0.12, 0.22, noise.fbm2(x * hf * 0.7 + 9, z * hf * 0.7 + 3, 2));
+  const hills = noise.fbm2(x * hf * 1.3, z * hf * 1.3, c.octaves);
+  const top =
+    c.waterLevel +
+    3 +
+    Math.max(0, c.baseHeight - c.waterLevel - 3 + c.hillAmplitude * (0.45 * tier + 1.9 * hills));
+  return sea + land * (top - sea);
+}
+
+/** Cave carve value (positive = void): roofed, away from the shore, never near the sea floor. */
+function caveCarve(
+  c: TerrainGenConfig,
+  noise: ValueNoise,
+  x: number,
+  y: number,
+  z: number,
+  h: number,
+): number {
+  const cf = c.cellSize * c.caveFrequency;
+  const yy = y * c.cellSize;
+  const r = 1 - Math.abs(noise.fbm3(x * cf, yy * cf * 2, z * cf, 2));
+  const roof = h - CAVE_ROOF - yy;
+  const floor = (yy - (c.waterLevel - SEA_DEPTH + 1.5)) * 2;
+  return Math.min(-(r - (1 - c.caveDensity)) * 6, roof, floor);
 }
 
 /**
@@ -63,24 +128,22 @@ export function generateTerrain(
 ): { grid: SdfGrid; descriptor: TerrainDescriptor } {
   const { nx, ny, nz, cellSize: cs } = config;
   const noise = new ValueNoise(rng);
+  const lobes = makeLobes(config, rng);
   const grid = new SdfGrid(nx, ny, nz, cs);
   const band = 4 * cs;
-  const thr = 1 - config.caveDensity;
-  const hf = cs * config.hillFrequency;
-  const cf = cs * config.caveFrequency;
+  const strata = { cellSize: cs, waterLevel: config.waterLevel };
   for (let z = 0; z < nz; z++) {
     for (let x = 0; x < nx; x++) {
-      let h =
-        config.baseHeight + config.hillAmplitude * 1.6 * noise.fbm2(x * hf, z * hf, config.octaves);
-      if (config.islandFalloff) h = islandHeight(config, h, x, z);
+      const h = surfaceHeight(config, noise, lobes, x, z);
       for (let y = 0; y < ny; y++) {
         let v = y * cs - h;
-        if (config.caveDensity > 0 && y >= FLOOR_CELLS) {
-          const r = 1 - Math.abs(noise.fbm3(x * cf, y * cf, z * cf, 2));
-          const margin = Math.min(1, (y - FLOOR_CELLS + 1) / 3);
-          v = Math.max(v, -(r - thr) * 6 * margin);
+        if (config.caveDensity > 0 && h > config.waterLevel + CAVE_ROOF) {
+          v = Math.max(v, caveCarve(config, noise, x, y, z, h));
         }
-        grid.data[grid.index(x, y, z)] = Math.max(-band, Math.min(band, v));
+        const i = grid.index(x, y, z);
+        grid.data[i] = Math.max(-band, Math.min(band, v));
+        // Material is laid out from the pre-cave surface height so strata ignore caves.
+        grid.materials[i] = materialForCell(noise, strata, x, y, z, h);
       }
     }
   }

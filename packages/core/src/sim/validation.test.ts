@@ -24,6 +24,7 @@ const weapons = { has: (id: string) => id === 'bazooka' };
 const move: Command = { type: 'move', snailId: 'a1', direction: 1 };
 const aim: Command = { type: 'aim', snailId: 'a1', angle: 0.5, power: 0.5 };
 const fire: Command = { type: 'fire', snailId: 'a1', weaponId: 'bazooka' };
+const steer: Command = { type: 'steer', snailId: 'a1', input: 0.5 };
 const end: Command = { type: 'endTurn', teamId: 'a' };
 
 type Row = [string, Command, (s: GameState) => void, RejectionReason | null, string?];
@@ -53,6 +54,18 @@ const rows: Row[] = [
   ['infinite facing', { ...aim, facing: Infinity }, () => {}, 'INVALID_VALUE'],
   ['power > 1', { ...aim, power: 1.5 }, () => {}, 'INVALID_VALUE'],
   ['power < 0', { ...aim, power: -0.1 }, () => {}, 'INVALID_VALUE'],
+  ['steer in fire phase ok', steer, (s) => (s.turn.phase = 'fire'), null],
+  ['steer in resolve phase ok', steer, (s) => (s.turn.phase = 'resolve'), null],
+  ['steer in action', steer, () => {}, 'WRONG_PHASE'],
+  ['steer by other team', steer, (s) => (s.turn.phase = 'fire'), 'NOT_YOUR_TURN', 'b'],
+  [
+    'steer non-active snail',
+    { ...steer, snailId: 'b1' },
+    (s) => (s.turn.phase = 'fire'),
+    'SNAIL_NOT_ACTIVE',
+  ],
+  ['steer out of range', { ...steer, input: 1.5 }, (s) => (s.turn.phase = 'fire'), 'INVALID_VALUE'],
+  ['steer NaN', { ...steer, input: NaN }, (s) => (s.turn.phase = 'fire'), 'INVALID_VALUE'],
 ];
 
 describe('validateCommand', () => {

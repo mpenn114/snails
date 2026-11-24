@@ -1,4 +1,5 @@
 import type { Vec3 } from '../state/types.js';
+import { maxCarveScale } from './materials.js';
 import type { ChunkId, SdfGrid } from './sdf-grid.js';
 
 /** Outcome of a sphere carve. */
@@ -15,6 +16,8 @@ export interface CarveResult {
 export interface CarveEvent {
   centre: Vec3;
   radius: number;
+  /** Damage power the carve was made with; omitted = unlimited. */
+  power?: number;
   chunks: ChunkId[];
 }
 
@@ -52,7 +55,29 @@ function collectCellChunks(
   }
 }
 
-/** Writes one cell's carved value; returns true if it changed (and marks it dirty). */
+/**
+ * New SDF value of one cell after a carve (pure; the renderer's replica uses it too).
+ * Cells resist individually: the radius is scaled by `1 - carveResistance` of the cell's
+ * material, and cells whose material is indestructible below `power` are left unchanged.
+ */
+export function carvedCellValue(
+  grid: SdfGrid,
+  x: number,
+  y: number,
+  z: number,
+  centre: Vec3,
+  radius: number,
+  power = Infinity,
+): number {
+  const old = grid.get(x, y, z);
+  const mat = grid.materialAt(x, y, z);
+  if (power < (mat.indestructibleBelowDamage ?? 0)) return old;
+  const cs = grid.cellSize;
+  const d = Math.hypot(x * cs - centre.x, y * cs - centre.y, z * cs - centre.z);
+  return Math.fround(Math.max(old, radius * (1 - mat.carveResistance) - d));
+}
+
+/** Writes one cell's carved value; returns 0 if unchanged, 2 if solid became air, else 1. */
 function carveCell(
   grid: SdfGrid,
   x: number,
@@ -60,11 +85,10 @@ function carveCell(
   z: number,
   radius: number,
   c: Vec3,
+  power: number,
 ): number {
-  const cs = grid.cellSize;
-  const d = Math.hypot(x * cs - c.x, y * cs - c.y, z * cs - c.z);
   const old = grid.get(x, y, z);
-  const next = Math.fround(Math.max(old, radius - d));
+  const next = carvedCellValue(grid, x, y, z, c, radius, power);
   if (next === old) return 0;
   grid.set(x, y, z, next);
   return old < 0 && next >= 0 ? 2 : 1;
@@ -73,17 +97,24 @@ function carveCell(
 /**
  * Subtracts a sphere from the SDF grid (CSG difference), marking changed cells dirty.
  * Negative cell values are solid, non-negative are air. Returns an empty result for a
- * non-positive radius or a sphere that does not overlap the grid.
+ * non-positive radius or a sphere that does not overlap the grid. `power` (default unlimited)
+ * is compared with each material's `indestructibleBelowDamage`.
  */
-export function carveSphere(grid: SdfGrid, centre: Vec3, radius: number): CarveResult {
+export function carveSphere(
+  grid: SdfGrid,
+  centre: Vec3,
+  radius: number,
+  power = Infinity,
+): CarveResult {
   if (!(radius > 0)) return emptyResult();
   const cs = grid.cellSize;
-  const x0 = Math.max(0, Math.floor((centre.x - radius) / cs));
-  const x1 = Math.min(grid.nx - 1, Math.ceil((centre.x + radius) / cs));
-  const y0 = Math.max(0, Math.floor((centre.y - radius) / cs));
-  const y1 = Math.min(grid.ny - 1, Math.ceil((centre.y + radius) / cs));
-  const z0 = Math.max(0, Math.floor((centre.z - radius) / cs));
-  const z1 = Math.min(grid.nz - 1, Math.ceil((centre.z + radius) / cs));
+  const reach = radius * maxCarveScale(grid.materialTable);
+  const x0 = Math.max(0, Math.floor((centre.x - reach) / cs));
+  const x1 = Math.min(grid.nx - 1, Math.ceil((centre.x + reach) / cs));
+  const y0 = Math.max(0, Math.floor((centre.y - reach) / cs));
+  const y1 = Math.min(grid.ny - 1, Math.ceil((centre.y + reach) / cs));
+  const z0 = Math.max(0, Math.floor((centre.z - reach) / cs));
+  const z1 = Math.min(grid.nz - 1, Math.ceil((centre.z + reach) / cs));
   if (x0 > x1 || y0 > y1 || z0 > z1) return emptyResult();
 
   const touched = new Set<ChunkId>();
@@ -92,7 +123,7 @@ export function carveSphere(grid: SdfGrid, centre: Vec3, radius: number): CarveR
   for (let z = z0; z <= z1; z++) {
     for (let y = y0; y <= y1; y++) {
       for (let x = x0; x <= x1; x++) {
-        const status = carveCell(grid, x, y, z, radius, centre);
+        const status = carveCell(grid, x, y, z, radius, centre, power);
         if (status === 0) continue;
         cellsChanged++;
         if (status === 2) removed++;
@@ -109,6 +140,13 @@ export function carveSphere(grid: SdfGrid, centre: Vec3, radius: number): CarveR
 }
 
 /** Builds a plain-data carve event from a carve centre, radius and its result. */
-export function toCarveEvent(centre: Vec3, radius: number, result: CarveResult): CarveEvent {
-  return { centre: { ...centre }, radius, chunks: [...result.chunks] };
+export function toCarveEvent(
+  centre: Vec3,
+  radius: number,
+  result: CarveResult,
+  power = Infinity,
+): CarveEvent {
+  const ev: CarveEvent = { centre: { ...centre }, radius, chunks: [...result.chunks] };
+  if (Number.isFinite(power)) ev.power = power;
+  return ev;
 }

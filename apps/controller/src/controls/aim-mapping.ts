@@ -57,7 +57,7 @@ export function dragToAim(
  * Joystick move from a thumb offset (px): its component along the snail's on-screen facing
  * decides forward (`right` on the wire, core move is facing-relative), back (`left`) or stop.
  * Hysteresis: engaging needs `deadzone` px, releasing needs the projection below 60% of it.
- * Perpendicular deflection is ignored (core has no turn intent).
+ * Only the forward/back axis; the perpendicular axis is `stickToTurn`.
  */
 export function stickToWireMove(
   dx: number,
@@ -70,4 +70,44 @@ export function stickToWireMove(
   const threshold = previous === 'stop' ? deadzone : deadzone * 0.6;
   if (Math.abs(along) < threshold) return 'stop';
   return along > 0 ? 'right' : 'left';
+}
+
+/**
+ * Turn input (-1..1, quantised to 0.1) from the stick component perpendicular to the snail's
+ * on-screen facing: full deflection at `radius` px, none inside `deadzone`. Positive turns the
+ * snail counter-clockwise seen from above (core yaw increases): with the snail facing screen-right
+ * that is stick-up, and with the camera behind the snail it is stick-left.
+ */
+export function stickToTurn(
+  dx: number,
+  dy: number,
+  facing: ScreenFacing,
+  radius: number,
+  deadzone: number,
+): number {
+  const across = dx * facing.y - dy * facing.x;
+  if (radius <= deadzone || Math.abs(across) < deadzone) return 0;
+  const v = Math.min(1, (Math.abs(across) - deadzone) / (radius - deadzone));
+  return (Math.sign(across) * Math.round(v * 10)) / 10;
+}
+
+/** Two-axis joystick move as sent on the wire. */
+export interface StickMove {
+  direction: 'left' | 'right' | 'stop';
+  turn: number;
+}
+
+/** Combines `stickToWireMove` (crawl axis) and `stickToTurn` (steer axis) into one move. */
+export function stickToMove(
+  dx: number,
+  dy: number,
+  facing: ScreenFacing,
+  radius: number,
+  deadzone: number,
+  previous: StickMove['direction'] = 'stop',
+): StickMove {
+  return {
+    direction: stickToWireMove(dx, dy, facing, deadzone, previous),
+    turn: stickToTurn(dx, dy, facing, radius, deadzone),
+  };
 }

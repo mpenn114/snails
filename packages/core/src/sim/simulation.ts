@@ -11,8 +11,20 @@ import {
 } from './types.js';
 import type { SimEvent } from './events.js';
 import { FIXED_DT } from '../physics/ballistics.js';
+import type { TurnStartHook } from '../turn/turn-hooks.js';
 import { requestEndTurn } from '../turn/turn-phases.js';
-import { validateCommand, type ValidationResult } from './validation.js';
+import { validateCommand, type ValidationContext, type ValidationResult } from './validation.js';
+
+/** Adds damage one team dealt to another to the turn's tally (self and friendly damage excluded). */
+function tallyDamage(state: GameState, e: SimEvent): void {
+  if (e.type !== 'snailDamaged' || e.sourceSnailId === null) return;
+  const snails = state.teams.flatMap((t) => t.snails);
+  const source = snails.find((s) => s.id === e.sourceSnailId);
+  const target = snails.find((s) => s.id === e.snailId);
+  if (!source || !target || source.teamId === target.teamId) return;
+  const tally = (state.turn.damageDealt ??= {});
+  tally[source.teamId] = (tally[source.teamId] ?? 0) + e.amount;
+}
 
 interface QueuedCommand {
   cmd: Command;
@@ -26,7 +38,7 @@ export interface SimulationOptions {
   terrain: SdfGrid;
   rng: SimRng;
   /** Weapon registry used to validate `fire` commands (optional). */
-  weapons?: { has(id: string): boolean };
+  weapons?: ValidationContext['weapons'];
 }
 
 /** Error thrown on misuse of the driver (not on gameplay conditions). */
@@ -49,9 +61,12 @@ export class Simulation {
   readonly terrain: SdfGrid;
   readonly rng: SimRng;
   private readonly queue: QueuedCommand[] = [];
-  private readonly weapons?: { has(id: string): boolean };
+  private readonly weapons?: ValidationContext['weapons'];
   private readonly handlers = new Map<CommandType, CommandHandler<never>>();
   private readonly systems: { name: string; fn: SystemFn }[] = [];
+  private readonly turnStartHooks: { name: string; fn: TurnStartHook }[] = [];
+  /** Last turn number whose hooks ran (0 = none yet, so turn 1 fires hooks on the first step). */
+  private hookedTurn = 0;
 
   constructor(options: SimulationOptions) {
     this.state = options.state;
@@ -90,6 +105,20 @@ export class Simulation {
     this.systems.push({ name, fn });
   }
 
+  /**
+   * Registers a turn-start hook. Hooks run in registration order in the step where
+   * `state.turn.turnNumber` changes, after all systems (so after `turnStarted`). The first
+   * turn begins before the simulation exists, so its hooks run on the first step.
+   */
+  registerTurnStartHook(name: string, fn: TurnStartHook): void {
+    this.turnStartHooks.push({ name, fn });
+  }
+
+  /** Names of registered turn-start hooks in execution order. */
+  turnStartHookNames(): string[] {
+    return this.turnStartHooks.map((h) => h.name);
+  }
+
   /** Names of registered systems in execution order. */
   systemNames(): string[] {
     return this.systems.map((s) => s.name);
@@ -110,7 +139,10 @@ export class Simulation {
       terrain: this.terrain,
       rng: this.rng,
       dt,
-      emit: (e) => events.push(e),
+      emit: (e) => {
+        events.push(e);
+        tallyDamage(this.state, e);
+      },
     };
     for (const { cmd, validate } of this.queue.splice(0)) {
       if (validate) {
@@ -122,8 +154,18 @@ export class Simulation {
       }
       const handler = this.handlers.get(cmd.type) as CommandHandler | undefined;
       handler?.(ctx, cmd as never);
+      if (cmd.type !== 'endTurn') this.state.turn.inputStarted = true;
     }
     for (const sys of this.systems) sys.fn(ctx);
+    if (this.state.turn.turnNumber !== this.hookedTurn) {
+      this.hookedTurn = this.state.turn.turnNumber;
+      const info = {
+        teamId: this.state.turn.activeTeamId,
+        snailId: this.state.turn.activeSnailId,
+        turnNumber: this.state.turn.turnNumber,
+      };
+      for (const hook of this.turnStartHooks) hook.fn(ctx, info);
+    }
     this.state.tick += 1;
     events.push({ type: 'tick', tick: this.state.tick });
     return events;

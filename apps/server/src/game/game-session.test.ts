@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { MatchStarted } from '@snails/protocol';
+import { Inventory, MatchStarted, decodeSnapshot } from '@snails/protocol';
 import {
   GameSession,
   type GameSessionOptions,
@@ -31,6 +31,17 @@ function toAction(s: GameSession): string {
 describe('GameSession', () => {
   it('produces a valid matchStarted message', () => {
     expect(() => MatchStarted.parse(make().matchStartedMessage())).not.toThrow();
+  });
+
+  it('honours match settings: health, wind and the water level in snapshots', () => {
+    const s = make({
+      settings: { ...settings, startingHealth: 60, wind: 'off', suddenDeathRound: null },
+    });
+    const snap = decodeSnapshot(s.snapshot());
+    expect(snap.snails.every((n) => n.health === 60)).toBe(true);
+    expect(snap.wind.strength).toBe(0);
+    expect(snap.waterLevel).toBe(s.matchStartedMessage().terrain.waterLevel);
+    expect(s.matchStartedMessage().settings).toMatchObject({ startingHealth: 60, wind: 'off' });
   });
 
   it('is deterministic for equal seed and intents', () => {
@@ -69,6 +80,31 @@ describe('GameSession', () => {
     const snap = s.snapshot();
     const snail = snap.snails.find((n) => n[0] === snap.turn[1]);
     expect(snail?.[10]).toBeLessThanOrEqual(1571);
+  });
+
+  it('reports every team inventory: finite stock counted, gated weapons locked', () => {
+    const msg = make().inventoryMessage();
+    expect(() => Inventory.parse(msg)).not.toThrow();
+    expect(msg.teams.map((t) => t.teamId)).toEqual(['a', 'b']);
+    const a = msg.teams[0];
+    expect(a?.stock['base:slime-grenade']).toBe(3);
+    expect(a?.stock['base:pebble-toss']).toBeUndefined();
+    expect(a?.locked['base:beetle-barrage']).toBe('beetle-callers');
+    expect(a?.locked['base:pebble-toss']).toBeUndefined();
+  });
+
+  it('refuses to select a locked weapon and keeps the plain infinite default', () => {
+    const s = make();
+    const p = toAction(s);
+    expect(s.applyIntent(p, { type: 'selectWeapon', weaponId: 'base:beetle-barrage' })).toEqual({
+      ok: false,
+      reason: 'weapon_locked',
+    });
+    expect(s.activeWeaponId).toBe('base:pebble-toss');
+    expect(s.applyIntent(p, { type: 'selectWeapon', weaponId: 'base:slime-grenade' }).ok).toBe(
+      true,
+    );
+    expect(s.activeWeaponId).toBe('base:slime-grenade');
   });
 
   it('fire produces projectile events', () => {

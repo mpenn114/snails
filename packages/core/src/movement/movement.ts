@@ -1,34 +1,55 @@
-import { facingVector, findSnail, livingSnails } from '../entities/snail.js';
+import { facingVector, findSnail, livingSnails, setFacing } from '../entities/snail.js';
 import { add, dot, normalize, scale, sub } from '../math/vec3.js';
 import type { CommandHandler, SimContext, SystemFn } from '../sim/types.js';
 import type { Snail, Vec3 } from '../state/types.js';
 import { findGround, groundNormal, isSphereColliding, sphereSweep } from '../terrain/collision.js';
+import type { ContentRegistry } from '../content/registry.js';
+import type { StatusDefinition } from '../content/types.js';
+import { statusMoveSpeedMultiplier } from '../status/status-system.js';
+import { crawlBlockedBySnail } from './snail-collision.js';
 import { DEFAULT_MOVEMENT_CONFIG, type MovementConfig } from './movement-config.js';
 
 const UP: Vec3 = { x: 0, y: 1, z: 0 };
 
 /**
- * Stores the move/jump intent on the snail. Direction is relative to facing and never
- * turns the snail: +1 crawls forward, -1 crawls backward, 0 stops. A jump request is
+ * Stores the move/jump intent on the snail. Two axes: `direction` is relative to facing
+ * (+1 crawls forward, -1 backward, 0 stops) and `turn` (-1..1, default 0) steers the facing at
+ * `turnRate` while grounded, also standing still. A jump request is
  * sticky until the movement system consumes it. Unknown or dead snails are ignored.
  */
 export const moveCommandHandler: CommandHandler<'move'> = (ctx, cmd) => {
   const snail = findSnail(ctx.state, cmd.snailId);
   if (!snail || !snail.alive) return;
   const pending = snail.moveIntent?.jumpRequested ?? false;
-  snail.moveIntent = { direction: cmd.direction, jumpRequested: pending || cmd.jump === true };
+  const turn = Number.isFinite(cmd.turn) ? Math.min(1, Math.max(-1, cmd.turn as number)) : 0;
+  snail.moveIntent = {
+    direction: cmd.direction,
+    turn,
+    jumpRequested: pending || cmd.jump === true,
+  };
 };
 
 /**
  * Creates the movement system: crawling on terrain, slope limiting, jumping, falling.
  * Emits `{ type: 'snailLanded', snailId, impactSpeed, fallDistance }` on touchdown.
+ * With `statuses`, crawl speed is scaled by the snail's `moveSpeedMultiplier` statuses (jumps are not).
  * A jump goes along facing (scaled by direction; straight forward when direction is 0).
  */
-export function movementSystem(config: MovementConfig = DEFAULT_MOVEMENT_CONFIG): SystemFn {
+export function movementSystem(
+  config: MovementConfig = DEFAULT_MOVEMENT_CONFIG,
+  statuses?: ContentRegistry<StatusDefinition>,
+): SystemFn {
   return (ctx) => {
     for (const snail of livingSnails(ctx.state)) {
       if (snail.grounded === false) stepAirborne(ctx, snail, config);
-      else stepGrounded(ctx, snail, config);
+      else {
+        const slow = statuses ? statusMoveSpeedMultiplier(snail, statuses) : 1;
+        stepGrounded(
+          ctx,
+          snail,
+          slow === 1 ? config : { ...config, crawlSpeed: config.crawlSpeed * slow },
+        );
+      }
     }
   };
 }
@@ -41,6 +62,7 @@ function startAirborne(snail: Snail, velocity: Vec3): void {
 
 function stepGrounded(ctx: SimContext, snail: Snail, cfg: MovementConfig): void {
   const intent = snail.moveIntent;
+  if (intent?.turn) setFacing(snail, snail.facing + intent.turn * cfg.turnRate * ctx.dt);
   const dir = intent?.direction ?? 0;
   if (intent?.jumpRequested) {
     intent.jumpRequested = false;
@@ -60,9 +82,11 @@ function stepGrounded(ctx: SimContext, snail: Snail, cfg: MovementConfig): void 
     candidate = add(snail.position, scale(tangent, cfg.crawlSpeed * ctx.dt));
   }
   const snapped = snapToGround(ctx, candidate, cfg);
-  if (snapped?.ok) {
+  const blocked =
+    dir !== 0 && snapped?.ok && crawlBlockedBySnail(ctx.state, snail, snapped.position, cfg.radius);
+  if (snapped?.ok && !blocked) {
     snail.position = snapped.position;
-  } else if (!snapped) {
+  } else if (!snapped && !blocked) {
     startAirborne(snail, scale(heading, cfg.crawlSpeed));
   } else {
     // Too steep or blocked: stay put, but keep tracking the ground under us.
@@ -72,14 +96,15 @@ function stepGrounded(ctx: SimContext, snail: Snail, cfg: MovementConfig): void 
   }
 }
 
-interface Snap {
+/** Result of `snapToGround`. */
+export interface Snap {
   position: Vec3;
   /** True when the slope is climbable and the sphere is free of terrain. */
   ok: boolean;
 }
 
 /** Finds the resting position above `p`; null if no ground within step height. */
-function snapToGround(ctx: SimContext, p: Vec3, cfg: MovementConfig): Snap | null {
+export function snapToGround(ctx: SimContext, p: Vec3, cfg: MovementConfig): Snap | null {
   const start = add(p, scale(UP, cfg.stepHeight + cfg.radius));
   if (isSphereColliding(ctx.terrain, start, cfg.radius * 0.7)) {
     return { position: p, ok: false };

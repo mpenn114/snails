@@ -34,8 +34,11 @@ describe('controller lobby logic', () => {
   });
 
   it('finds taken colours excluding mine, case-insensitively', () => {
-    const t = takenColours([p('a', 'A', false, '#E53935'), p('b', 'B', false, PALETTE[1])], 'b');
-    expect([...t]).toEqual(['#e53935']);
+    const t = takenColours(
+      [p('a', 'A', false, PALETTE[0]?.toUpperCase() as string), p('b', 'B', false, PALETTE[1])],
+      'b',
+    );
+    expect([...t]).toEqual([PALETTE[0]]);
   });
 
   it('mirrors server start rules', () => {

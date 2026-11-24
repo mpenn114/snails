@@ -23,6 +23,8 @@ export const SetTeam = z.object({ type: z.literal('setTeam'), teamId: TeamId });
 export const ToggleTeam = z.object({ type: z.literal('toggleTeam'), teamId: TeamId });
 export const SetColour = z.object({ type: z.literal('setColour'), colour: Colour });
 export const SetReady = z.object({ type: z.literal('setReady'), ready: z.boolean() });
+/** Host-only: changes the lobby's match settings (shown live on the display). */
+export const SetSettings = z.object({ type: z.literal('setSettings'), settings: MatchSettings });
 export const StartMatch = z.object({ type: z.literal('startMatch'), settings: MatchSettings });
 
 /**
@@ -35,6 +37,8 @@ export const IntentSeq = z.number().int().nonnegative().optional();
 export const Move = z.object({
   type: z.literal('move'),
   direction: z.enum(['left', 'right', 'stop']),
+  /** Steering input -1..1 (positive = counter-clockwise from above); omitted = no turning. */
+  turn: z.number().min(-1).max(1).optional(),
   seq: IntentSeq,
 });
 export const Jump = z.object({ type: z.literal('jump'), seq: IntentSeq });
@@ -42,6 +46,12 @@ export const Aim = z.object({
   type: z.literal('aim'),
   angle: z.number().min(-Math.PI).max(Math.PI),
   power: z.number().min(0).max(1),
+  seq: IntentSeq,
+});
+/** Steering input for the active player's guided projectile, -1 (left) .. 1 (right). */
+export const Steer = z.object({
+  type: z.literal('steer'),
+  input: z.number().min(-1).max(1),
   seq: IntentSeq,
 });
 export const SelectWeapon = z.object({
@@ -68,10 +78,12 @@ export const ClientMessage = z.discriminatedUnion('type', [
   ToggleTeam,
   SetColour,
   SetReady,
+  SetSettings,
   StartMatch,
   Move,
   Jump,
   Aim,
+  Steer,
   SelectWeapon,
   Fire,
   EndTurn,

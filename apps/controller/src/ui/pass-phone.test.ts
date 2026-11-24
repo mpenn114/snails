@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { passPhoneText, shouldPassPhone } from './pass-phone';
+import {
+  PASS_PHONE_LABEL_STYLE,
+  PASS_PHONE_STYLE,
+  passPhoneText,
+  shouldPassPhone,
+} from './pass-phone';
 
 describe('pass-phone', () => {
   it('shows only for hot-seat phones holding several teams including the active one', () => {
@@ -11,5 +16,10 @@ describe('pass-phone', () => {
 
   it('words the prompt', () => {
     expect(passPhoneText('Reds')).toBe('Pass the phone to Reds');
+  });
+
+  it('accepts taps despite living in a click-through shell layer', () => {
+    expect(PASS_PHONE_STYLE).toContain('pointer-events:auto');
+    expect(PASS_PHONE_LABEL_STYLE).toContain('pointer-events:auto');
   });
 });

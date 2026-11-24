@@ -9,19 +9,28 @@ import {
   type Simulation,
   type WeaponDefinition,
 } from '@snails/core';
+import { TEAM_COLORS, hexToCss } from '@snails/render';
 
 /** Weapon used by the harness bots: infinite-ammo lob with a big crater. */
 export const HARNESS_WEAPON: WeaponDefinition = {
   id: 'harness:lobber',
   name: 'Lobber',
-  kind: 'projectile',
+  category: 'projectile',
   launch: { minSpeed: 5, maxSpeed: 24, gravityScale: 1, windScale: 1, projectileRadius: 0.15 },
   fuseSeconds: 0,
-  explosion: { radius: 4, maxDamage: 45, knockback: 6, falloff: 'linear' },
+  effects: [
+    { type: 'carve', radius: 4 },
+    { type: 'damage', radius: 4, maxDamage: 45, knockback: 6, falloff: 'linear' },
+  ],
   ammo: 'infinite',
 };
 
-const TEAM_COLOURS = ['#e6483d', '#3d7be6', '#3dc46a', '#e6c63d'];
+const TEAM_COLOURS = TEAM_COLORS.map(hexToCss);
+
+const SNAIL_NAMES = ['Gary', 'Turbo', 'Slimy', 'Dash', 'Mossy', 'Pebble', 'Nacho', 'Bramble'];
+
+const snailName = (i: number): string =>
+  `${SNAIL_NAMES[i % SNAIL_NAMES.length] as string}${i >= SNAIL_NAMES.length ? ' ' + (Math.floor(i / SNAIL_NAMES.length) + 1) : ''}`;
 
 /** Options for {@link harnessMatchOptions}. */
 export interface HarnessMatchOptions {
@@ -40,7 +49,7 @@ export function harnessMatchOptions(o: HarnessMatchOptions): MatchOptions {
       id: `t${t}`,
       name: `Team ${t + 1}`,
       colour: TEAM_COLOURS[t % TEAM_COLOURS.length] as string,
-      snailNames: Array.from({ length: per }, (_, i) => `T${t + 1}S${i + 1}`),
+      snailNames: Array.from({ length: per }, (_, i) => snailName(t * per + i)),
     })),
     terrain: { nx: 160, ny: 48, nz: 160, caveDensity: 0.1 },
     turn: { introDuration: 0.5, retreatDuration: 1, maxTurns: 200 },

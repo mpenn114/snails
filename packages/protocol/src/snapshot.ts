@@ -33,6 +33,19 @@ export const WireSnail = z.tuple([
 /** Wire projectile: `[id, weaponId, px,py,pz (mm), vx,vy,vz (mm/s)]`. */
 export const WireProjectile = z.tuple([z.string(), z.string(), int, int, int, int, int, int]);
 
+/** Wire status: `[snailId, statusId, turnsLeft, magnitude (milli)]`. */
+export const WireStatus = z.tuple([z.string(), z.string(), int, int]);
+/** Wire area: `[id, kind, px,py,pz (mm), radius (mm), turnsLeft]`. */
+export const WireArea = z.tuple([z.string(), z.string(), int, int, int, int, int]);
+
+/**
+ * Wire scheduled effect: `[id, groupId, px,py,pz (mm), radius (mm), turnsLeft, style]` with
+ * style 0 = strike, 1 = arrival.
+ */
+export const WireScheduled = z.tuple([z.string(), z.string(), int, int, int, int, int, int]);
+/** Wire crate: `[id, defId, px,py,pz (mm), grounded (0 or 1)]`. */
+export const WireCrate = z.tuple([z.string(), z.string(), int, int, int, int]);
+
 /** Compact authoritative snapshot (sent to display and controllers alike, ADR-0008). */
 export const Snapshot = z.object({
   type: z.literal('snapshot'),
@@ -43,6 +56,16 @@ export const Snapshot = z.object({
   turn: z.tuple([z.string().nullable(), z.string().nullable(), int.nonnegative(), int, int]),
   snails: z.array(WireSnail),
   projectiles: z.array(WireProjectile),
+  /** Active snail statuses (absent from older servers = none). */
+  statuses: z.array(WireStatus).optional(),
+  /** Lingering areas (absent from older servers = none). */
+  areas: z.array(WireArea).optional(),
+  /** Telegraphed delayed effects (absent from older servers = none). */
+  scheduled: z.array(WireScheduled).optional(),
+  /** Crates on the map (absent from older servers = none). */
+  crates: z.array(WireCrate).optional(),
+  /** Water surface height in mm; absent = the level announced in `matchStarted` (sudden death raises it). */
+  water: int.optional(),
 });
 /** Compact snapshot message. */
 export type Snapshot = z.infer<typeof Snapshot>;
@@ -73,6 +96,42 @@ export interface ProjectileState {
   velocity: Vec3;
 }
 
+/** Decoded snail status. */
+export interface StatusState {
+  snailId: string;
+  statusId: string;
+  turnsLeft: number;
+  magnitude: number;
+}
+
+/** Decoded lingering area. */
+export interface AreaState {
+  id: string;
+  kind: string;
+  position: Vec3;
+  radius: number;
+  turnsLeft: number;
+}
+
+/** Decoded scheduled effect (a telegraphed strike or arrival). */
+export interface ScheduledState {
+  id: string;
+  groupId: string;
+  position: Vec3;
+  radius: number;
+  turnsLeft: number;
+  style: 'strike' | 'arrival';
+}
+
+/** Decoded crate. */
+export interface CrateState {
+  id: string;
+  defId: string;
+  position: Vec3;
+  /** True once resting on terrain; false while parachuting. */
+  grounded: boolean;
+}
+
 /** Decoded snapshot (metres, seconds, radians). */
 export interface DecodedSnapshot {
   tick: number;
@@ -86,6 +145,12 @@ export interface DecodedSnapshot {
   };
   snails: SnailState[];
   projectiles: ProjectileState[];
+  statuses: StatusState[];
+  areas: AreaState[];
+  scheduled: ScheduledState[];
+  crates: CrateState[];
+  /** Water surface height in metres; absent = unchanged from the terrain parameters. */
+  waterLevel?: number;
 }
 
 const q = (v: number): number => Math.round(v * 1000);
@@ -129,7 +194,37 @@ export function encodeSnapshot(s: DecodedSnapshot): Snapshot {
       q(p.velocity.y),
       q(p.velocity.z),
     ]),
+    statuses: s.statuses.map((t) => [t.snailId, t.statusId, t.turnsLeft, q(t.magnitude)]),
+    areas: s.areas.map((a) => [
+      a.id,
+      a.kind,
+      q(a.position.x),
+      q(a.position.y),
+      q(a.position.z),
+      q(a.radius),
+      a.turnsLeft,
+    ]),
+    scheduled: s.scheduled.map(encodeScheduled),
+    crates: s.crates.map(encodeCrate),
+    ...(s.waterLevel === undefined ? {} : { water: q(s.waterLevel) }),
   };
+}
+
+function encodeScheduled(e: ScheduledState): z.infer<typeof WireScheduled> {
+  return [
+    e.id,
+    e.groupId,
+    q(e.position.x),
+    q(e.position.y),
+    q(e.position.z),
+    q(e.radius),
+    e.turnsLeft,
+    e.style === 'arrival' ? 1 : 0,
+  ];
+}
+
+function encodeCrate(c: CrateState): z.infer<typeof WireCrate> {
+  return [c.id, c.defId, q(c.position.x), q(c.position.y), q(c.position.z), c.grounded ? 1 : 0];
 }
 
 /** Expands a compact snapshot; unknown phase/state codes fall back to `intro`/`dead`. */
@@ -160,5 +255,33 @@ export function decodeSnapshot(m: Snapshot): DecodedSnapshot {
       position: dv(px, py, pz),
       velocity: dv(vx, vy, vz),
     })),
+    statuses: (m.statuses ?? []).map(([snailId, statusId, turnsLeft, magnitude]) => ({
+      snailId,
+      statusId,
+      turnsLeft,
+      magnitude: dq(magnitude),
+    })),
+    areas: (m.areas ?? []).map(([id, kind, px, py, pz, radius, turnsLeft]) => ({
+      id,
+      kind,
+      position: dv(px, py, pz),
+      radius: dq(radius),
+      turnsLeft,
+    })),
+    scheduled: (m.scheduled ?? []).map(([id, groupId, px, py, pz, radius, turnsLeft, style]) => ({
+      id,
+      groupId,
+      position: dv(px, py, pz),
+      radius: dq(radius),
+      turnsLeft,
+      style: style === 1 ? ('arrival' as const) : ('strike' as const),
+    })),
+    crates: (m.crates ?? []).map(([id, defId, px, py, pz, grounded]) => ({
+      id,
+      defId,
+      position: dv(px, py, pz),
+      grounded: grounded === 1,
+    })),
+    ...(m.water === undefined ? {} : { waterLevel: dq(m.water) }),
   };
 }

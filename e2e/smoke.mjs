@@ -135,6 +135,9 @@ try {
     step(`${name} joined team ${team} and readied`);
   }
 
+  // Lazy start: the turn timer waits for the first input, so slow software-GL pages cannot let a
+  // turn expire before the test acts.
+  await phones[0].page.check('.lobby .settings [data-key="lazyStart"]');
   await until('start enabled', () =>
     phones[0].page.locator('.lobby .start:not([disabled])').count(),
   );
@@ -211,7 +214,47 @@ try {
   step('turn passed to the other team');
   await idle.page.waitForSelector('.ctl.mine', { timeout: 10000 });
   step('other phone now has controls');
+
+  // A second display opened mid-match with no room code (as the printed TV link may be) joins the
+  // running room. Opened after the crater exists, it must receive the terrain history and end up with
+  // exactly the same terrain as the display that watched it happen.
+  const probe = (pg) =>
+    pg.evaluate(() => ({
+      applied: window.__snailsTerrain?.applied() ?? 0,
+      sum: window.__snailsTerrain?.checksum() ?? '',
+    }));
+  // The phones and the live display are done (the terrain no longer changes): record the live
+  // terrain, then close them all so software GL has the CPU for the late display's scene build.
   if (shots) await display.screenshot({ path: join(shots, 'display-after-turn.png') });
+  const live = await probe(display);
+  if (live.sum === '') fail('live display exposes no terrain checksum');
+  for (const p of phones) await p.page.close();
+  await display.close();
+  const late2 = await dctx.newPage();
+  const l2Frames = watch(late2, 'late display 2', errors);
+  await late2.goto(`${base}/display/`);
+  await until(
+    'late display welcomed into the running room',
+    () => l2Frames.some((m) => m.type === 'welcome' && m.roomCode === code),
+    60000,
+  );
+  await until(
+    'late display 2 gets matchStarted, history and snapshot',
+    () => ['matchStarted', 'terrainHistory', 'snapshot'].every((t) => has(l2Frames, t)),
+    120000,
+  );
+  const history = l2Frames.find((m) => m.type === 'terrainHistory');
+  if (!history.events.some((e) => e.type === 'terrainCarved')) fail('history has no carve');
+  await until(
+    'late display terrain equals the live display terrain',
+    async () => {
+      const b = await probe(late2);
+      return live.sum === b.sum && b.applied >= 1;
+    },
+    120000,
+  );
+  step('late display reached the cratered terrain');
+  await late2.close();
 
   if (errors.length) fail(`uncaught page errors:\n${errors.join('\n')}`);
   step('PASS');

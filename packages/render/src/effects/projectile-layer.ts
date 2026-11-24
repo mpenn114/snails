@@ -1,11 +1,26 @@
 import * as THREE from 'three';
 import type { Projectile } from '@snails/core';
 import type { FrameUpdater, RenderState } from '../render-loop.js';
+import { createToonMaterial } from '../style/materials.js';
+import { wispAlpha, wispScale } from './blast-params.js';
+import type { ChunkPhysics } from './chunk-pool.js';
+import { SoftPuffs } from './soft-puffs.js';
+import {
+  LOOK_SCALE,
+  LOOK_SPIN,
+  LOOK_TRAIL,
+  buildLookGeometry,
+  lookFor,
+  type ProjectileLook,
+} from './projectile-looks.js';
+import { createTrailState, emitTrail, type TrailSpec, type TrailState } from './trail-emitter.js';
 
 /** Options for {@link ProjectileLayer}. */
 export interface ProjectileLayerOptions {
-  /** Trail samples kept per projectile (min 2, default 24). */
+  /** Trail puffs kept alive per projectile at quality 1 (min 4, default 48). */
   trailLength?: number;
+  /** Tier particle multiplier (`particleScale`); thins the trail on weak devices. Default 1. */
+  quality?: number;
   /** Multiplier on the projectile's own radius for the pebble (default 1). */
   radiusScale?: number;
   /** Maps render state to projectiles (default: snapshot projectiles). */
@@ -14,107 +29,94 @@ export interface ProjectileLayerOptions {
   shadows?: boolean;
 }
 
+/** Seconds one trail puff lives. */
+const PUFF_LIFE = 0.9;
+/** Simultaneous projectiles the trail pool is sized for. */
+const POOL_PROJECTILES = 3;
+const PUFF_PHYSICS: ChunkPhysics = { gravity: -0.25, drag: 1.2, restitution: 0 };
+
 const FORWARD = new THREE.Vector3(0, 0, 1);
 const tmpDir = new THREE.Vector3();
+const tmpSpin = new THREE.Quaternion();
 
-/** One in-flight projectile: pebble mesh plus a fading trail line (oldest first). */
+const LOOKS: readonly ProjectileLook[] = ['pebble', 'roller', 'drill', 'missile'];
+
+/** One in-flight projectile: a spinning pebble, stone or drill bit plus its trail emission state. */
 export class ProjectileMesh {
-  /** Root group (pebble + trail). */
+  /** Root group. */
   readonly group = new THREE.Group();
   /** The pebble mesh. */
   readonly pebble: THREE.Mesh;
-  private readonly trailPositions: Float32Array;
-  private readonly trailColours: Float32Array;
-  private readonly trailGeometry = new THREE.BufferGeometry();
-  private readonly positionAttr: THREE.BufferAttribute;
-  private filled = 0;
+  /** Where the trail last emitted from. */
+  readonly trail: TrailState = createTrailState();
 
-  /** Creates a mesh sharing the given geometry and materials. */
+  /** Creates a mesh sharing the given geometry and material. */
   constructor(
-    private readonly length: number,
     pebbleGeo: THREE.BufferGeometry,
     pebbleMat: THREE.Material,
-    trailMat: THREE.Material,
+    readonly look: ProjectileLook = 'pebble',
   ) {
     this.pebble = new THREE.Mesh(pebbleGeo, pebbleMat);
-    this.trailPositions = new Float32Array(length * 3);
-    this.trailColours = new Float32Array(length * 3);
-    for (let i = 0; i < length; i++) {
-      const f = i / (length - 1);
-      this.trailColours.fill(f, i * 3, i * 3 + 3);
-    }
-    this.positionAttr = new THREE.BufferAttribute(this.trailPositions, 3);
-    this.trailGeometry.setAttribute('position', this.positionAttr);
-    this.trailGeometry.setAttribute('color', new THREE.BufferAttribute(this.trailColours, 3));
-    this.trailGeometry.setDrawRange(0, 0);
-    const trail = new THREE.Line(this.trailGeometry, trailMat);
-    trail.frustumCulled = false;
-    this.group.add(this.pebble, trail);
+    this.group.add(this.pebble);
   }
 
-  /** Number of trail samples currently held. */
-  get trailCount(): number {
-    return this.filled;
-  }
-
-  /** Moves the pebble, orients it along velocity and pushes a trail sample. */
+  /** Moves the pebble, aims it along its velocity and spins it about that axis by age. */
   apply(p: Projectile, radiusScale: number): void {
-    const r = Math.max(0.05, p.radius) * radiusScale;
+    const r = Math.max(0.05, p.radius) * radiusScale * LOOK_SCALE[this.look];
     this.pebble.position.set(p.position.x, p.position.y, p.position.z);
-    this.pebble.scale.set(r, r, r * 1.4);
+    this.pebble.scale.set(r, r, r);
     tmpDir.set(p.velocity.x, p.velocity.y, p.velocity.z);
     if (tmpDir.lengthSq() > 1e-8) {
       this.pebble.quaternion.setFromUnitVectors(FORWARD, tmpDir.normalize());
     }
-    const a = this.trailPositions;
-    if (this.filled === this.length) a.copyWithin(0, 3);
-    else this.filled++;
-    const k = (this.filled - 1) * 3;
-    a[k] = p.position.x;
-    a[k + 1] = p.position.y;
-    a[k + 2] = p.position.z;
-    // Colours ramp 0..1 over the full length; align the visible tail to the newest end.
-    this.trailGeometry.setDrawRange(0, this.filled);
-    this.positionAttr.needsUpdate = true;
+    tmpSpin.setFromAxisAngle(FORWARD, p.age * LOOK_SPIN[this.look]);
+    this.pebble.quaternion.multiply(tmpSpin);
   }
 
-  /** Frees the trail geometry and detaches from the parent. */
+  /** Detaches from the parent. */
   dispose(): void {
-    this.trailGeometry.dispose();
     this.group.removeFromParent();
   }
 }
 
-/** Owns pebble + trail meshes for in-flight projectiles, synced by id. */
+/** Owns pebble meshes and a shared instanced puff trail for in-flight projectiles. */
 export class ProjectileLayer {
   /** Attach this to `roots.effects`. */
   readonly group = new THREE.Group();
-  /** Loop-compatible updater: syncs from the render state each frame. */
+  /** Loop-compatible updater: syncs from the render state and ages the trail each frame. */
   readonly updater: FrameUpdater;
   private readonly meshes = new Map<string, ProjectileMesh>();
-  private readonly pebbleGeo = new THREE.SphereGeometry(1, 10, 8);
-  private readonly pebbleMat = new THREE.MeshStandardMaterial({ color: 0x8a7f72, roughness: 0.9 });
-  private readonly trailMat = new THREE.LineBasicMaterial({
+  private readonly geos = new Map<ProjectileLook, THREE.BufferGeometry>(
+    LOOKS.map((l) => [l, buildLookGeometry(l)]),
+  );
+  private readonly pebbleMat = createToonMaterial({
+    color: 0xffffff,
+    flat: true,
     vertexColors: true,
-    color: 0xffe6b0,
-    transparent: true,
-    blending: THREE.AdditiveBlending,
-    depthWrite: false,
   });
-  private readonly trailLength: number;
+  private readonly puffs: SoftPuffs;
   private readonly radiusScale: number;
   private readonly shadows: boolean;
+  private readonly spacing: number;
 
   /** Creates an empty layer. */
   constructor(opts: ProjectileLayerOptions = {}) {
-    this.trailLength = Math.max(2, Math.floor(opts.trailLength ?? 24));
+    const q = Math.min(1, Math.max(0.1, opts.quality ?? 1));
+    const perProjectile = Math.max(4, Math.floor((opts.trailLength ?? 64) * q));
+    this.spacing = 0.12 / Math.sqrt(q);
     this.radiusScale = opts.radiusScale ?? 1;
     this.shadows = opts.shadows ?? false;
     this.group.name = 'projectiles';
+    this.puffs = new SoftPuffs(perProjectile * POOL_PROJECTILES, PUFF_PHYSICS, {
+      scale: wispScale,
+      alpha: wispAlpha,
+    });
+    this.group.add(this.puffs.mesh);
     const select =
       opts.selectProjectiles ?? ((s: RenderState): readonly Projectile[] => s.snapshot.projectiles);
-    this.updater = (_dt, state) => {
-      if (state) this.sync(select(state));
+    this.updater = (dt, state) => {
+      if (state) this.sync(select(state), dt);
+      else this.puffs.advance(dt);
     };
   }
 
@@ -123,39 +125,57 @@ export class ProjectileLayer {
     return this.meshes.size;
   }
 
+  /** Number of live trail puffs. */
+  get livePuffs(): number {
+    return this.puffs.live;
+  }
+
   /** Mesh for a projectile id, if present. */
   get(id: string): ProjectileMesh | undefined {
     return this.meshes.get(id);
   }
 
-  /** Creates, updates and removes meshes so they match `projectiles` by id. */
-  sync(projectiles: readonly Projectile[]): void {
+  /** Creates, updates and removes meshes to match `projectiles` by id, and ages the trail by `dt`. */
+  sync(projectiles: readonly Projectile[], dt = 0): void {
     const seen = new Set<string>();
     for (const p of projectiles) {
       seen.add(p.id);
       let mesh = this.meshes.get(p.id);
       if (!mesh) {
-        mesh = new ProjectileMesh(this.trailLength, this.pebbleGeo, this.pebbleMat, this.trailMat);
+        const look = lookFor(p.weaponId);
+        mesh = new ProjectileMesh(
+          this.geos.get(look) as THREE.BufferGeometry,
+          this.pebbleMat,
+          look,
+        );
         mesh.pebble.castShadow = this.shadows;
         this.meshes.set(p.id, mesh);
         this.group.add(mesh.group);
       }
       mesh.apply(p, this.radiusScale);
+      const spec: TrailSpec = {
+        spacing: this.spacing,
+        size: Math.max(0.05, p.radius) * this.radiusScale * LOOK_SCALE[mesh.look] * 0.5,
+        life: PUFF_LIFE,
+        colour: LOOK_TRAIL[mesh.look],
+      };
+      emitTrail(this.puffs.pool, mesh.trail, p.position.x, p.position.y, p.position.z, spec);
     }
     for (const [id, mesh] of this.meshes) {
       if (seen.has(id)) continue;
       mesh.dispose();
       this.meshes.delete(id);
     }
+    this.puffs.advance(dt);
   }
 
   /** Removes all meshes and frees shared geometry/materials. */
   dispose(): void {
     for (const mesh of this.meshes.values()) mesh.dispose();
     this.meshes.clear();
-    this.pebbleGeo.dispose();
+    this.puffs.dispose();
+    for (const geo of this.geos.values()) geo.dispose();
     this.pebbleMat.dispose();
-    this.trailMat.dispose();
     this.group.removeFromParent();
   }
 }

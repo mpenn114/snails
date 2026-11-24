@@ -1,13 +1,14 @@
-import { applyDamage, livingSnails } from '../entities/snail.js';
+import { destroyCratesInRadius } from '../crate/crate-destroy.js';
+import { applyDamage, findSnail, livingSnails } from '../entities/snail.js';
 import { distance, normalize, sub } from '../math/vec3.js';
 import type { SimContext } from '../sim/types.js';
-import type { Vec3 } from '../state/types.js';
+import type { Snail, Vec3 } from '../state/types.js';
 import { type CarveResult, carveSphere, toCarveEvent } from '../terrain/carve.js';
 import { resolveCollapse } from '../terrain/collapse.js';
 import { SNAIL_RADIUS } from './projectile-system.js';
 
 /** Shape of the damage falloff curve. */
-export type FalloffKind = 'linear' | 'quadratic';
+export type FalloffKind = 'linear' | 'quadratic' | 'flat';
 
 /** Static description of an explosion. */
 export interface ExplosionSpec {
@@ -28,6 +29,8 @@ export interface ExplosionSpec {
 export interface ExplosionSource {
   weaponId: string;
   ownerSnailId: string;
+  /** True for melee strikes: the owner is never damaged, pushed or affected. */
+  excludeOwner?: boolean;
 }
 
 /** One damaged snail in an explosion summary. */
@@ -50,10 +53,11 @@ const KNOCKBACK_UP_BIAS = 0.3;
 
 /**
  * Returns the damage/knockback multiplier in [0, 1] at `distance` from the
- * centre: 1 at 0, 0 at or beyond `radius`.
+ * centre: 1 at 0, 0 at or beyond `radius` (`flat` is 1 everywhere inside `radius`).
  */
 export function computeFalloff(distance: number, radius: number, falloff: FalloffKind): number {
   if (!(radius > 0) || !(distance < radius)) return 0;
+  if (falloff === 'flat') return 1;
   const t = 1 - Math.max(0, distance) / radius;
   return falloff === 'quadratic' ? t * t : t;
 }
@@ -79,35 +83,59 @@ function collapseAfterCarve(ctx: SimContext, centre: Vec3, radius: number): void
   }
 }
 
-/**
- * Resolves an explosion deterministically: carve, then per living snail (in
- * team/snail order) damage and knockback, emitting plain-data events.
- */
-export function resolveExplosion(
+/** Carves a sphere, emits `terrainCarved` and (optionally) collapses floating terrain. */
+export function carveAt(
   ctx: SimContext,
   centre: Vec3,
-  spec: ExplosionSpec,
-  source: ExplosionSource,
-): ExplosionResult {
-  const carveRadius = spec.carveRadius ?? spec.radius;
-  const carve = carveSphere(ctx.terrain, centre, carveRadius);
-  ctx.emit({
-    type: 'explosion',
-    position: { ...centre },
-    radius: spec.radius,
-    weaponId: source.weaponId,
-  });
-  ctx.emit({ type: 'terrainCarved', ...toCarveEvent(centre, carveRadius, carve) });
-  if (spec.collapse === true && carve.cellsChanged > 0)
-    collapseAfterCarve(ctx, centre, carveRadius);
+  radius: number,
+  collapse: boolean | undefined,
+  power?: number,
+): CarveResult {
+  const carve = carveSphere(ctx.terrain, centre, radius, power);
+  ctx.emit({ type: 'terrainCarved', ...toCarveEvent(centre, radius, carve, power) });
+  if (collapse === true && carve.cellsChanged > 0) collapseAfterCarve(ctx, centre, radius);
+  return carve;
+}
 
+/** True when friendly fire is off and `snail` is a teammate (not the firer itself) of the source. */
+function friendlyFireOff(ctx: SimContext, snail: Snail, source: ExplosionSource): boolean {
+  if (ctx.state.rules?.friendlyFire !== false || snail.id === source.ownerSnailId) return false;
+  const owner = findSnail(ctx.state, source.ownerSnailId);
+  return owner !== undefined && owner.teamId === snail.teamId;
+}
+
+/** Damage part of an explosion. */
+export type DamageSpec = Pick<ExplosionSpec, 'radius' | 'maxDamage' | 'knockback' | 'falloff'>;
+
+/**
+ * Emits `explosion` (unless `announce` is false), then damages and knocks back every living snail in range (team/snail
+ * order), emitting `snailDamaged` / `snailDied`.
+ */
+export function damageAround(
+  ctx: SimContext,
+  centre: Vec3,
+  spec: DamageSpec,
+  source: ExplosionSource,
+  announce = true,
+): { damaged: ExplosionHit[]; killed: string[] } {
+  if (announce) {
+    ctx.emit({
+      type: 'explosion',
+      position: { ...centre },
+      radius: spec.radius,
+      weaponId: source.weaponId,
+    });
+  }
+  destroyCratesInRadius(ctx, centre, spec.radius);
   const damaged: ExplosionHit[] = [];
   const killed: string[] = [];
   for (const snail of livingSnails(ctx.state)) {
+    if (source.excludeOwner && snail.id === source.ownerSnailId) continue;
     const dist = Math.max(0, distance(centre, snail.position) - SNAIL_RADIUS);
     const f = computeFalloff(dist, spec.radius, spec.falloff);
     if (f <= 0) continue;
-    const result = applyDamage(snail, Math.round(spec.maxDamage * f));
+    const friendly = friendlyFireOff(ctx, snail, source);
+    const result = applyDamage(snail, friendly ? 0 : Math.round(spec.maxDamage * f));
     const dir = knockbackDir(centre, snail.position);
     const speed = spec.knockback * f;
     snail.velocity = {
@@ -141,5 +169,32 @@ export function resolveExplosion(
       ctx.emit({ type: 'snailDied', snailId: snail.id, teamId: snail.teamId, cause: 'explosion' });
     }
   }
+  return { damaged, killed };
+}
+
+/**
+ * Resolves a classic explosion (carve, then damage) deterministically, emitting plain-data
+ * events. Weapons use the `carve` and `damage` effects instead; this stays for direct callers.
+ */
+export function resolveExplosion(
+  ctx: SimContext,
+  centre: Vec3,
+  spec: ExplosionSpec,
+  source: ExplosionSource,
+): ExplosionResult {
+  ctx.emit({
+    type: 'explosion',
+    position: { ...centre },
+    radius: spec.radius,
+    weaponId: source.weaponId,
+  });
+  const carve = carveAt(
+    ctx,
+    centre,
+    spec.carveRadius ?? spec.radius,
+    spec.collapse,
+    spec.maxDamage,
+  );
+  const { damaged, killed } = damageAround(ctx, centre, spec, source, false);
   return { damaged, killed, carve };
 }

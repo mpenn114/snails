@@ -1,5 +1,5 @@
-import type { GameSnapshot, Snail, Team } from '@snails/core';
-import type { DecodedSnapshot } from '@snails/protocol';
+import type { Crate, GameSnapshot, ScheduledEffect, Snail, Team } from '@snails/core';
+import type { CrateState, DecodedSnapshot, ScheduledState } from '@snails/protocol';
 
 /** Roster entry of one team, as announced by the server's `matchStarted` message. */
 export interface WireTeamInfo {
@@ -42,14 +42,14 @@ export class WireSnapshotMapper {
       nextSnailIndex: 0,
       snails: t.snails.flatMap((r) => {
         const n = byId.get(r.id);
-        return n ? [this.snail(t, r.name, n)] : [];
+        return n ? [this.snail(t, r.name, n, s.statuses)] : [];
       }),
     }));
     return {
       tick: s.tick,
       seed: this.info.seed,
       wind: { ...s.wind },
-      terrain: { ...this.info.terrain },
+      terrain: { ...this.info.terrain, waterLevel: s.waterLevel ?? this.info.terrain.waterLevel },
       teams,
       turn: {
         ...s.turn,
@@ -69,11 +69,30 @@ export class WireSnapshotMapper {
         windScale: 1,
       })),
       nextProjectileId: 0,
+      areas: s.areas.map((a) => ({
+        id: a.id,
+        kind: a.kind,
+        position: a.position,
+        radius: a.radius,
+        turnsLeft: a.turnsLeft,
+        sourceSnailId: '',
+      })),
+      nextAreaId: 0,
+      scheduled: s.scheduled.map(scheduledFromWire),
+      nextScheduledId: 0,
+      crates: s.crates.map(crateFromWire),
+      nextCrateId: 0,
       match: { status: 'playing', winnerTeamId: null },
     };
   }
 
-  private snail(team: WireTeamInfo, name: string, n: DecodedSnapshot['snails'][number]): Snail {
+  private snail(
+    team: WireTeamInfo,
+    name: string,
+    n: DecodedSnapshot['snails'][number],
+    allStatuses: DecodedSnapshot['statuses'],
+  ): Snail {
+    const own = allStatuses.filter((t) => t.snailId === n.id);
     const prev = this.maxHealth.get(n.id) ?? this.info.initialMaxHealth ?? DEFAULT_MAX_HEALTH;
     const maxHealth = Math.max(prev, n.health);
     this.maxHealth.set(n.id, maxHealth);
@@ -90,6 +109,39 @@ export class WireSnapshotMapper {
       shell: { upgradeId: null, colour: team.colour },
       aim: { ...n.aim },
       grounded: n.state === 'grounded',
+      ...(own.length > 0
+        ? {
+            statuses: own.map((t) => ({
+              id: t.statusId,
+              turnsLeft: t.turnsLeft,
+              magnitude: t.magnitude,
+              sourceSnailId: '',
+            })),
+          }
+        : {}),
     };
   }
+}
+
+function scheduledFromWire(e: ScheduledState): ScheduledEffect {
+  return {
+    id: e.id,
+    groupId: e.groupId,
+    weaponId: '',
+    ownerSnailId: '',
+    position: e.position,
+    turnsLeft: e.turnsLeft,
+    effects: [],
+    telegraph: { radius: e.radius, style: e.style },
+  };
+}
+
+function crateFromWire(c: CrateState): Crate {
+  return {
+    id: c.id,
+    defId: c.defId,
+    position: c.position,
+    velocity: { x: 0, y: 0, z: 0 },
+    grounded: c.grounded,
+  };
 }

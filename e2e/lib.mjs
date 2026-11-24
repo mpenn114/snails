@@ -28,7 +28,19 @@ export const teamOf = (m) => m.teamId ?? m.team;
 /** Collects parsed websocket frames and page errors for one page. */
 export function watch(page, label, errors) {
   const frames = [];
+  /** Intents this page sent (everything except keep-alives), for failure diagnostics. */
+  const sent = [];
+  Object.defineProperty(frames, 'sent', { value: sent });
   page.on('websocket', (ws) => {
+    ws.on('framesent', (f) => {
+      try {
+        const m = JSON.parse(String(f.payload));
+        if (m && typeof m.type === 'string' && m.type !== 'ping')
+          sent.push({ ...m, _at: Date.now() });
+      } catch {
+        /* binary or non-JSON */
+      }
+    });
     ws.on('framereceived', (f) => {
       try {
         const m = JSON.parse(String(f.payload));

@@ -50,10 +50,19 @@ const snap: DecodedSnapshot = {
     aim: { angle: 0, power: 0 },
   })),
   projectiles: [],
+  statuses: [],
+  areas: [],
+  scheduled: [],
+  crates: [],
 };
 
 function setup() {
-  const renderer = { init: vi.fn(), pushSnapshot: vi.fn(), handleEvents: vi.fn() };
+  const renderer = {
+    init: vi.fn(),
+    pushSnapshot: vi.fn(),
+    handleEvents: vi.fn(),
+    applyTerrainHistory: vi.fn(),
+  };
   const aim = { set: vi.fn() };
   const huds: HudModel[] = [];
   const visible: boolean[] = [];
@@ -89,6 +98,21 @@ describe('MatchAdapter', () => {
     expect(hud.bars[1]!.fraction).toBe(0.5);
   });
 
+  it('applies terrain history silently (not as live events)', () => {
+    const t = setup();
+    t.a.handle(started);
+    const carve = {
+      type: 'terrainCarved',
+      centre: { x: 1, y: 2, z: 3 },
+      radius: 2,
+      chunks: [1, 4],
+    };
+    const batch = encodeEventBatch(8, [carve] as never);
+    t.a.handle({ type: 'terrainHistory', tick: 8, events: batch.events });
+    expect(t.renderer.applyTerrainHistory).toHaveBeenCalledWith([carve]);
+    expect(t.renderer.handleEvents).not.toHaveBeenCalled();
+  });
+
   it('timer, aim and events', () => {
     const t = setup();
     t.a.handle(started);
@@ -107,6 +131,21 @@ describe('MatchAdapter', () => {
     const ev = { type: 'windChanged', strength: 1, direction: 2 } as const;
     t.a.handle(encodeEventBatch(8, [ev]));
     expect(t.renderer.handleEvents).toHaveBeenCalledWith([ev]);
+  });
+
+  it('announces sudden death on the HUD until the match ends', () => {
+    const t = setup();
+    t.a.handle(started);
+    t.a.handle(encodeSnapshot(snap));
+    expect(t.huds.at(-1)!.notice).toBeNull();
+    t.a.handle(encodeEventBatch(5, [{ type: 'suddenDeathStarted', round: 20, kind: 'both' }]));
+    expect(t.huds.at(-1)!.notice).toMatch(/Sudden death.*water.*health/);
+    t.a.handle(encodeSnapshot(snap));
+    expect(t.huds.at(-1)!.notice).toMatch(/Sudden death/);
+    t.a.handle({ type: 'lobbyState', phase: 'lobby' } as ServerMessage);
+    t.a.handle(started);
+    t.a.handle(encodeSnapshot(snap));
+    expect(t.huds.at(-1)!.notice).toBeNull();
   });
 
   it('shows the winner then returns to lobby', () => {

@@ -1,3 +1,4 @@
+import { PALETTE } from '../style/palette.js';
 /** Owns one Three.js mesh per terrain chunk, fed by a worker mesher. */
 import * as THREE from 'three';
 import type { SdfGrid } from '@snails/core';
@@ -38,6 +39,29 @@ export interface TerrainMeshManagerOptions {
   readonly shadows?: boolean;
 }
 
+/** Per-vertex material tint (rgb + weight, 0 for soil): nearest solid cell just inside the surface. */
+export function materialColours(
+  grid: SdfGrid,
+  positions: Float32Array,
+  normals: Float32Array,
+): Float32Array {
+  const out = new Float32Array((positions.length / 3) * 4);
+  const cs = grid.cellSize;
+  for (let v = 0, o = 0; v < positions.length; v += 3, o += 4) {
+    const k = cs * 0.6;
+    const x = Math.round(((positions[v] ?? 0) - (normals[v] ?? 0) * k) / cs);
+    const y = Math.round(((positions[v + 1] ?? 0) - (normals[v + 1] ?? 0) * k) / cs);
+    const z = Math.round(((positions[v + 2] ?? 0) - (normals[v + 2] ?? 0) * k) / cs);
+    const m = grid.materialAt(x, y, z);
+    if (m === grid.materialTable[0]) continue;
+    out[o] = ((m.colour >> 16) & 255) / 255;
+    out[o + 1] = ((m.colour >> 8) & 255) / 255;
+    out[o + 2] = (m.colour & 255) / 255;
+    out[o + 3] = 1;
+  }
+  return out;
+}
+
 /** Manages chunk meshes: dirty tracking, dispatch, geometry lifecycle. */
 export class TerrainMeshManager {
   /** Attach to `roots.terrain`. */
@@ -65,7 +89,7 @@ export class TerrainMeshManager {
     this.group.name = 'terrain-chunks';
     this.shadows = opts.shadows ?? false;
     this.ownsMaterial = !opts.material;
-    this.material = opts.material ?? new THREE.MeshStandardMaterial({ color: 0x8a7a5a });
+    this.material = opts.material ?? new THREE.MeshStandardMaterial({ color: PALETTE.soil });
     this.maxInFlight = opts.maxInFlight ?? 4;
     this.lodDistance = opts.lodDistance ?? 0;
     this.scheduler = new RebuildScheduler(opts.budgetMs, opts.now);
@@ -230,6 +254,10 @@ export class TerrainMeshManager {
     const geo = new THREE.BufferGeometry();
     geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
     geo.setAttribute('normal', new THREE.BufferAttribute(normals, 3));
+    geo.setAttribute(
+      'aMatColour',
+      new THREE.BufferAttribute(materialColours(this.opts.grid, positions, normals), 4),
+    );
     geo.setIndex(new THREE.BufferAttribute(indices, 1));
     geo.computeBoundingSphere();
     if (existing) {

@@ -2,6 +2,10 @@
 
 The rendering code lives in `packages/render` (`@snails/render`), shared by the big-screen display (`apps/display`) and the phone controller (`apps/controller`) ([ADR-0008](adr/0008-phone-renders-game-view.md)). It is a pure view of simulation state ([ADR-0002](adr/0002-threejs-rendering.md)). Target: 60 fps at 1920x1080 on a mid-range GPU (GTX 1660 / RX 580 / Apple M1 class) in the "High" tier.
 
+Art style: stylised low poly with soft toon lighting, built in code from a fixed palette
+([ADR-0009](adr/0009-stylised-low-poly-art-direction.md)). Where this doc mentions texture sets or
+HDRIs, they are optional extras; the palette-driven procedural look comes first.
+
 ## Pipeline overview
 
 ```mermaid
@@ -77,6 +81,12 @@ sequenceDiagram
 
 A single large plane at the map's water level: Fresnel-blended reflection from the environment probe (planar reflection only on High), animated normal maps for ripples, depth-based colour/foam using the depth buffer, and splash particle + sound on events. Snails or projectiles that cross the plane emit `snailDrowned`/splash events from core; the view only reacts.
 
+## Scenery props and glTF assets
+
+Cosmetic scenery (rocks, mushrooms, grass, flowers, plants, a log and a stump) are CC0 Quaternius models kept in `packages/content-base/assets/models/` (credits in `assets/CREDITS.md`). Vite copies them to `models/` in the display and controller builds (`scripts/vite-content-assets.mjs`), so the server serves them with the bundles. `scripts/prepare-models.mjs` documents how the committed files were recoloured to the palette and rescaled from the original packs.
+
+In `@snails/render`, `CachedModelLoader` (`props/model-loader.ts`) loads each URL once with `GLTFLoader` and converts it to world-baked geometry plus shared flat toon materials. `PropLayer` scatters a seeded plan (`props/prop-plan.ts`: surface above water, normal.y at least 0.72, clear of snails) as one `InstancedMesh` per model part, with `propCount` instances per quality tier. It loads asynchronously (the first frame never waits), builds on the first snapshot, drops props whose ground is carved away (re-checked every few frames) and never feeds the simulation. `MatchRenderer` enables it when given `modelBaseUrl`.
+
 ## Particles and VFX
 
 - GPU instancing (`InstancedMesh`/`Points` with custom shader) pooled by effect type; no per-frame allocations.
@@ -130,6 +140,29 @@ Used by `apps/controller` by default; selected from a device probe (GPU string, 
 Thermal and battery: render on demand when nothing animates (idle between turns, 10 fps camera drift or paused); drop to 30 fps cap after 60 s of sustained frame-time overrun or when the Battery API / `visibilitychange` indicates saver/background; pause rendering entirely when the tab is hidden or the screen locks. Keep the screen awake with the Wake Lock API only during an active match. A "controls only" setting disables the renderer for weak devices or battery saving.
 
 Frame budget at 60 fps = 16.6 ms: scene+shadows 6 ms, post 3 ms, terrain/mesh upload 1 ms, JS update + VFX 2 ms, headroom 4 ms. Targets on High: draw calls < 800, triangles < 1.5 M visible, GPU memory < 1.5 GB, shader compile hitches avoided by warm-up pass during loading. An auto-quality governor lowers tier if the 1 s average frame time exceeds 20 ms for 5 s (with hysteresis; user override available). A debug overlay (stats.js-style plus draw calls, worker queue length) is toggled with F3.
+
+## Tier budget verification (M7-15)
+
+Measured after the low poly restyle with `pnpm build && NODE_PATH=$(npm root -g) pnpm perf` (`e2e/perf.mjs`): `renderer.info` read from the display harness (1920x1080; Mobile at 390x844, DPR 2) once the terrain mesh backlog has drained, and from the real phone view (`?perf=1`, Pixel 7 emulation, own turn, follow camera). Draw calls and triangles are the whole frame (all post passes, shadow pass included). Headless Chromium uses SwiftShader (software WebGL), so fps is not meaningful and is not recorded; the counts are the check. Values are 8 s averages; counts vary a few percent with the camera and seed.
+
+| View | Draw calls (budget) | Triangles (budget) | Textures | Programs | Geometries |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| Harness High | 540 (800) | 778k (1.5 M) | 52 | 58 | 214 |
+| Harness Medium | 481 (700) | 666k (1.0 M) | 25 | 46 | 211 |
+| Harness Low | 467 (600) | 526k (800k) | 12 | 28 | 207 |
+| Harness Mobile (390x844) | 91 (250) | 83k (250k) | 14 | 14 | 179 |
+| Phone view (Mobile tier, live match) | 77 (250) | 66k (250k) | 11 | 13 | 68 |
+
+Notes:
+
+- Budgets are ceilings, and tiers must be monotonic (a lower tier never costs more than the one above). High uses the targets above (< 800 calls, < 1.5 M triangles); the others are derived.
+- Terrain chunks dominate triangles (roughly 400k to 700k on the three desktop tiers). The new props, water, puffs and snail animation add little: Mobile is about 90 calls and 83k triangles in the harness and about 77 calls and 65k triangles in the phone view, far below the budget.
+- Textures and programs on High include the post-processing chain's render targets and shaders; programs compile once at load.
+- Per-object triangle budgets are in `TRIANGLE_BUDGETS` (`style/palette.ts`) and are covered by unit tests.
+- Prop count was trialled as a lever (low 170 to 110, medium 300 to 260): it changed draw calls by under 2%, so it was not trimmed. No tier exceeded its budget, so no trims were made to `quality.ts`.
+- Real-device fps, heat and readability: see the MG-12 checklist in [device-testing.md](development/device-testing.md#6-mg-12-visual-and-performance-checklist-android-ios-tv). It has not been run.
+
+Phone follow camera: a three-quarter view (about 40 degrees to the side, pitch 0.55) so the shell's spiral face shows; the aim view is the snail's point of view directly behind and above it (eye height 2.4 m, 4.6 m back, looking along its facing) so aiming is unaffected.
 
 ## WebGPU migration path
 
