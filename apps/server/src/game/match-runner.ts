@@ -5,10 +5,15 @@ import {
   type WireEvent,
 } from '@snails/protocol';
 import type { IntentMessage } from '../net/connection.js';
+import { createCpuPlayer, type CpuPlayer } from '@snails/ai';
+import type { CpuTeam } from '../rooms/cpu-teams.js';
 import type { ActiveMatch, Member, Room } from '../rooms/room.js';
 import { GameSession, type SessionClock, type SessionTeam } from './game-session.js';
 import { clamp, HALF_PI } from './intent.js';
+import { TEAM_COLOUR_PALETTE } from './palette.js';
 import { filterMessage } from './privacy.js';
+
+export { TEAM_COLOUR_PALETTE } from './palette.js';
 
 /** Options for {@link MatchRunner} (all optional; tests inject fakes). */
 export interface MatchRunnerOptions {
@@ -24,30 +29,23 @@ export interface MatchRunnerOptions {
   rejectIntervalMs?: number;
   /** Grace before auto-ending the turn of a team with nobody connected. Default 10000. */
   absentTurnGraceMs?: number;
+  /** Think time before a CPU's first command each turn in ms. Default 1000; tests use 0. */
+  cpuThinkMs?: number;
   /** How long the final state stays up (winner screen) before the room returns to the lobby. Default 8000. */
   endHoldMs?: number;
 }
-
-/** Team shell colours (CSS hex), same order as the render palette `TEAM_COLORS`. */
-export const TEAM_COLOUR_PALETTE: readonly string[] = [
-  '#e5283f',
-  '#1a46c8',
-  '#ffd21f',
-  '#b07cff',
-  '#ff6fb8',
-  '#12d0e6',
-  '#ff7a14',
-  '#f6f4fa',
-];
 
 /**
  * Builds session teams (team to player ids) from the controllers in a lobby. Every team gets a
  * distinct colour: a member's chosen colour goes to their first team only (hot-seat phones own
  * several teams); other teams take the first palette colour nobody has claimed.
  */
-export function buildTeams(members: readonly Member[]): SessionTeam[] {
+export function buildTeams(
+  members: readonly Member[],
+  cpus: readonly CpuTeam[] = [],
+): SessionTeam[] {
   const controllers = members.filter((m) => m.role === 'controller');
-  const claimed = new Set<string>();
+  const claimed = new Set<string>(cpus.map((c) => c.colour.toLowerCase()));
   const chosen = new Map<string, string>();
   for (const m of controllers) {
     const c = m.colour?.toLowerCase();
@@ -76,7 +74,24 @@ export function buildTeams(members: readonly Member[]): SessionTeam[] {
       t.playerIds.push(m.id);
     }
   }
+  for (const c of cpus)
+    teams.set(c.id, { id: c.id, name: c.name, colour: c.colour, playerIds: [] });
   return [...teams.values()];
+}
+
+/** One {@link CpuPlayer} per CPU team, seeded with the match seed plus the team's index. */
+function buildCpuPlayers(
+  teams: readonly SessionTeam[],
+  cpus: readonly CpuTeam[],
+  seed: number,
+): Map<string, CpuPlayer> {
+  const out = new Map<string, CpuPlayer>();
+  for (const c of cpus) {
+    const index = teams.findIndex((t) => t.id === c.id);
+    const { difficulty, personality } = c;
+    out.set(c.id, createCpuPlayer({ difficulty, personality, seed: seed + index }));
+  }
+  return out;
 }
 
 /** Teams whose private research a member may see: controllers see their own, displays none. */
@@ -115,12 +130,15 @@ export class MatchRunner implements ActiveMatch {
     private readonly opts: MatchRunnerOptions = {},
   ) {
     this.now = opts.now ?? Date.now;
-    const teams = buildTeams(members);
+    const cpus = room.cpuTeams;
+    const teams = buildTeams(members, cpus);
     for (const t of teams) this.teamPlayers.set(t.id, t.playerIds);
     this.session = new GameSession({
       settings,
       teams,
       ...(opts.clock ? { clock: opts.clock } : {}),
+      cpuPlayers: buildCpuPlayers(teams, cpus, settings.seed),
+      ...(opts.cpuThinkMs !== undefined ? { cpuThinkMs: opts.cpuThinkMs } : {}),
       isConnected: (id) => this.isTeamPresent([id]),
       onSnapshot: (s) => {
         this.latest = s;

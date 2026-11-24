@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { Colour, MatchSettings, Role, TeamId } from './common.js';
+import { Colour, CpuDifficulty, CpuPersonality, MatchSettings, Role, TeamId } from './common.js';
 
 /**
  * First message after connecting. `protocolVersion` accepts any number so a mismatch is
@@ -25,6 +25,14 @@ export const SetColour = z.object({ type: z.literal('setColour'), colour: Colour
 export const SetReady = z.object({ type: z.literal('setReady'), ready: z.boolean() });
 /** Host-only: changes the lobby's match settings (shown live on the display). */
 export const SetSettings = z.object({ type: z.literal('setSettings'), settings: MatchSettings });
+/** Host-only: adds a CPU team to the lobby. */
+export const AddCpu = z.object({
+  type: z.literal('addCpu'),
+  difficulty: CpuDifficulty,
+  personality: CpuPersonality,
+});
+/** Host-only: removes a CPU team from the lobby. */
+export const RemoveCpu = z.object({ type: z.literal('removeCpu'), teamId: TeamId });
 export const StartMatch = z.object({ type: z.literal('startMatch'), settings: MatchSettings });
 
 /**
@@ -86,6 +94,8 @@ export const ClientMessage = z.discriminatedUnion('type', [
   SetColour,
   SetReady,
   SetSettings,
+  AddCpu,
+  RemoveCpu,
   StartMatch,
   Move,
   Jump,

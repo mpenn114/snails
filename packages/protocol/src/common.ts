@@ -70,3 +70,16 @@ export type TerrainParams = z.infer<typeof TerrainParams>;
 export const TeamId = z.string().min(1).max(32);
 /** Colour as a CSS-style string (e.g. `#ff8800`). */
 export const Colour = z.string().min(1).max(16);
+
+/** CPU skill levels a host may add (mirrors `DIFFICULTIES` in `@snails/ai`). */
+export const CpuDifficulty = z.enum(['rookie', 'regular', 'veteran', 'mastermind']);
+/** CPU skill level type. */
+export type CpuDifficulty = z.infer<typeof CpuDifficulty>;
+/** CPU play styles a host may add (mirrors `PERSONALITIES` in `@snails/ai`). */
+export const CpuPersonality = z.enum(['aggressive', 'cautious', 'opportunist']);
+/** CPU play style type. */
+export type CpuPersonality = z.infer<typeof CpuPersonality>;
+/** How a CPU team plays, as shown in the lobby. */
+export const CpuInfo = z.object({ difficulty: CpuDifficulty, personality: CpuPersonality });
+/** CPU description type. */
+export type CpuInfo = z.infer<typeof CpuInfo>;

@@ -45,7 +45,10 @@ describe('terrain history catch-up', () => {
     const tv = member('tv', null, 'display', tvOut);
     const ann = member('ann', 'red', 'controller', []);
     const bob = member('bob', 'blue', 'controller', []);
-    const room = { members: new Map([tv, ann, bob].map((m) => [m.token, m])) } as unknown as Room;
+    const room = {
+      members: new Map([tv, ann, bob].map((m) => [m.token, m])),
+      cpuTeams: [],
+    } as unknown as Room;
     const runner = new MatchRunner(room, settings, [ann, bob], {
       clock,
       setTimeout: () => 0,
@@ -85,7 +88,7 @@ describe('terrain history catch-up', () => {
     const out: ServerMessage[] = [];
     const ann = member('ann', 'red', 'controller', []);
     const bob = member('bob', 'blue', 'controller', []);
-    const room = { members: new Map() } as unknown as Room;
+    const room = { members: new Map(), cpuTeams: [] } as unknown as Room;
     const clock: SessionClock = {
       now: () => 0,
       setInterval: () => 1,
