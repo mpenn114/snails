@@ -258,7 +258,8 @@ export class GameSession {
     const mode = this.opts.settings.controlMode;
     if (!teamId || !mayCommandTurn(mode, roster, this.activePlayer, playerId))
       return { ok: false, reason: 'not_your_turn' };
-    if (state.turn.phase !== 'action') return { ok: false, reason: 'wrong_phase' };
+    const guiding = intent.type === 'steer' && ['fire', 'resolve'].includes(state.turn.phase);
+    if (state.turn.phase !== 'action' && !guiding) return { ok: false, reason: 'wrong_phase' };
     const control = this.control.get(teamId) as TeamControlState;
     if (intent.type === 'selectWeapon') return this.selectWeapon(control, intent.weaponId);
     const snail = this.activeSnail();

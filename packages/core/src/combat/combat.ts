@@ -4,6 +4,7 @@ import type { WeaponDefinition, WeaponLaunchSpec } from '../content/types.js';
 import type { ContentRegistry } from '../content/registry.js';
 import { findSnail, setFacing } from '../entities/snail.js';
 import { FIXED_DT, stepProjectile, type ProjectileState } from '../physics/ballistics.js';
+import { isGuidable } from '../physics/motion.js';
 import { patternOffsets } from './pattern.js';
 import {
   createProjectileSystem,
@@ -11,7 +12,7 @@ import {
   type Detonation,
 } from '../physics/projectile-system.js';
 import type { Simulation } from '../sim/simulation.js';
-import type { AimCommand, FireCommand, SimContext } from '../sim/types.js';
+import type { AimCommand, FireCommand, SimContext, SteerCommand } from '../sim/types.js';
 import type { Aim, Snail, Vec3, Wind } from '../state/types.js';
 import { notifyFired } from '../turn/turn-phases.js';
 
@@ -40,6 +41,18 @@ export function aimCommandHandler(ctx: SimContext, cmd: AimCommand): void {
     angle: clamp(cmd.angle, -Math.PI / 2, Math.PI / 2),
     power: clamp(cmd.power, 0, 1),
   };
+}
+
+/**
+ * Handles `steer` commands: stores the input on each of the snail's projectiles that is still
+ * inside its guidance window (so only the owner steers, and only while guided).
+ */
+export function steerCommandHandler(ctx: SimContext, cmd: SteerCommand): void {
+  if (!Number.isFinite(cmd.input)) return;
+  const input = clamp(cmd.input, -1, 1);
+  for (const p of ctx.state.projectiles) {
+    if (p.ownerSnailId === cmd.snailId && isGuidable(p)) p.steer = input;
+  }
 }
 
 /** Spawn position and initial velocity of a shot. */
@@ -183,5 +196,6 @@ export function registerCombat(
   };
   sim.registerCommandHandler('aim', aimCommandHandler);
   sim.registerCommandHandler('fire', fireCommandHandler(content.weapons));
+  sim.registerCommandHandler('steer', steerCommandHandler);
   sim.addSystem('projectiles', createProjectileSystem(createDetonationHandler(content)));
 }

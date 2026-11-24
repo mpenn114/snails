@@ -51,7 +51,9 @@ To add an effect type: add its schema to `EffectSchema`, add one entry to `effec
 
 ### Motion strategies
 
-`physics/motion.ts` holds `MotionSchema` (discriminated on `kind`) and the `motionStrategies` table. The projectile system calls `stepMotion(p, wind, dt)`, which looks up `p.motion?.kind ?? 'ballistic'`. Only `ballistic` exists. To add `bounce`, `guided` or `drill`: add its schema to the `MotionSchema` union and one `motionStrategies` entry (`step(p, motion, wind, dt)` returns the new position and velocity). Shared projectile code does not change.
+`physics/motion.ts` holds `MotionSchema` (discriminated on `kind`) and the `motionStrategies` table. The projectile system calls `stepMotion(p, wind, dt)`, which looks up `p.motion?.kind ?? 'ballistic'`. Existing kinds: `ballistic` and `guided` (`steerRate` rad/s, `guidanceSeconds`; see below). To add `bounce`, `guided` or `drill`: add its schema to the `MotionSchema` union and one `motionStrategies` entry (`step(p, motion, wind, dt)` returns the new position and velocity). Shared projectile code does not change.
+
+**Guided motion and steering.** While `age < guidanceSeconds`, a guided projectile turns its velocity in the screen (XY) plane at `steerRate * steer` rad/s, where `steer` (-1..1, positive = clockwise side-on, i.e. "turn right") is stored on the projectile by the `steer` command (`{ type: 'steer', snailId, input }`). The command is validated like the others (active snail and team, finite input within -1..1) and allowed in the `fire` and `resolve` phases; it affects only the snail's own projectiles still inside their guidance window, so it is deterministic and replayable. After the window the projectile flies ballistically. On the wire the controller sends `{ type: 'steer', input }` (throttled to about 20 Hz, a final `0` on release); the server accepts it in the fire/resolve phases. The controller switches its joystick from move to steer while a guided projectile is in the snapshot. `base:radula-missile` is the reference weapon (`weapons/radula-missile.ts`); the renderer draws weapons listed in `MISSILE_WEAPON_IDS` as a missile oriented along its velocity.
 
 ### Statuses
 

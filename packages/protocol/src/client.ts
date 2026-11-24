@@ -44,6 +44,12 @@ export const Aim = z.object({
   power: z.number().min(0).max(1),
   seq: IntentSeq,
 });
+/** Steering input for the active player's guided projectile, -1 (left) .. 1 (right). */
+export const Steer = z.object({
+  type: z.literal('steer'),
+  input: z.number().min(-1).max(1),
+  seq: IntentSeq,
+});
 export const SelectWeapon = z.object({
   type: z.literal('selectWeapon'),
   weaponId: z.string(),
@@ -72,6 +78,7 @@ export const ClientMessage = z.discriminatedUnion('type', [
   Move,
   Jump,
   Aim,
+  Steer,
   SelectWeapon,
   Fire,
   EndTurn,

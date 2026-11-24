@@ -55,11 +55,16 @@ function checkValues(cmd: Command): ValidationResult {
     if (!Number.isFinite(cmd.power) || cmd.power < 0 || cmd.power > 1) {
       return reject('INVALID_VALUE', 'power must be within 0..1');
     }
+  } else if (cmd.type === 'steer') {
+    if (!Number.isFinite(cmd.input) || cmd.input < -1 || cmd.input > 1) {
+      return reject('INVALID_VALUE', 'input must be within -1..1');
+    }
   }
   return OK;
 }
 
 function allowedPhase(cmd: Command, phase: string): boolean {
+  if (cmd.type === 'steer') return phase === 'fire' || phase === 'resolve';
   if (cmd.type === 'aim' || cmd.type === 'fire') return phase === 'action';
   return phase === 'action' || phase === 'retreat';
 }

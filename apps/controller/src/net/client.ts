@@ -49,6 +49,7 @@ const INTENT_TYPES = new Set([
   'move',
   'jump',
   'aim',
+  'steer',
   'selectWeapon',
   'fire',
   'endTurn',

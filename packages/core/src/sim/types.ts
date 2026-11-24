@@ -42,8 +42,18 @@ export interface EndTurnCommand {
   teamId: string;
 }
 
+/**
+ * Steering input (-1..1) for the active snail's guided projectile(s); only effective during
+ * their guidance window. Allowed in the `fire` and `resolve` phases.
+ */
+export interface SteerCommand {
+  type: 'steer';
+  snailId: string;
+  input: number;
+}
+
 /** Any player intent fed into the simulation. Validation happens upstream (M1-21). */
-export type Command = MoveCommand | AimCommand | FireCommand | EndTurnCommand;
+export type Command = MoveCommand | AimCommand | FireCommand | EndTurnCommand | SteerCommand;
 
 /** Command discriminator values. */
 export type CommandType = Command['type'];

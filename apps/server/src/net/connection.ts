@@ -27,7 +27,9 @@ export interface ClientContext {
 /** Controller intent messages (gameplay input). */
 export type IntentMessage = Extract<
   ClientMessage,
-  { type: 'move' | 'jump' | 'aim' | 'selectWeapon' | 'fire' | 'endTurn' | 'queueResearch' }
+  {
+    type: 'move' | 'jump' | 'aim' | 'steer' | 'selectWeapon' | 'fire' | 'endTurn' | 'queueResearch';
+  }
 >;
 /** Heartbeat message. */
 export type PingMessage = Extract<ClientMessage, { type: 'ping' }>;
@@ -62,6 +64,7 @@ const INTENT_TYPES = new Set([
   'move',
   'jump',
   'aim',
+  'steer',
   'selectWeapon',
   'fire',
   'endTurn',

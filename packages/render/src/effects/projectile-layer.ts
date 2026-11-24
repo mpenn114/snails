@@ -5,6 +5,7 @@ import { createToonMaterial } from '../style/materials.js';
 import { wispAlpha, wispScale } from './blast-params.js';
 import type { ChunkPhysics } from './chunk-pool.js';
 import { SoftPuffs } from './soft-puffs.js';
+import { MISSILE_WEAPON_IDS, buildMissileGeometry } from './missile-geometry.js';
 import { TRAIL_COLOUR, buildPebbleGeometry } from './pebble-geometry.js';
 import { createTrailState, emitTrail, type TrailSpec, type TrailState } from './trail-emitter.js';
 
@@ -18,6 +19,8 @@ export interface ProjectileLayerOptions {
   radiusScale?: number;
   /** Maps render state to projectiles (default: snapshot projectiles). */
   selectProjectiles?: (state: RenderState) => readonly Projectile[];
+  /** Weapon ids drawn as a missile (default `MISSILE_WEAPON_IDS`). */
+  missileWeaponIds?: ReadonlySet<string>;
   /** Pebbles cast shadows (default false). */
   shadows?: boolean;
 }
@@ -46,7 +49,11 @@ export class ProjectileMesh {
   readonly trail: TrailState = createTrailState();
 
   /** Creates a mesh sharing the given geometry and material. */
-  constructor(pebbleGeo: THREE.BufferGeometry, pebbleMat: THREE.Material) {
+  constructor(
+    pebbleGeo: THREE.BufferGeometry,
+    pebbleMat: THREE.Material,
+    private readonly spins = true,
+  ) {
     this.pebble = new THREE.Mesh(pebbleGeo, pebbleMat);
     this.group.add(this.pebble);
   }
@@ -60,6 +67,7 @@ export class ProjectileMesh {
     if (tmpDir.lengthSq() > 1e-8) {
       this.pebble.quaternion.setFromUnitVectors(FORWARD, tmpDir.normalize());
     }
+    if (!this.spins) return;
     tmpSpin.setFromAxisAngle(FORWARD, p.age * SPIN_RATE);
     this.pebble.quaternion.multiply(tmpSpin);
   }
@@ -83,6 +91,8 @@ export class ProjectileLayer {
     flat: true,
     vertexColors: true,
   });
+  private readonly missileGeo = buildMissileGeometry();
+  private readonly missileIds: ReadonlySet<string>;
   private readonly puffs: SoftPuffs;
   private readonly radiusScale: number;
   private readonly shadows: boolean;
@@ -95,6 +105,7 @@ export class ProjectileLayer {
     this.spacing = 0.12 / Math.sqrt(q);
     this.radiusScale = opts.radiusScale ?? 1;
     this.shadows = opts.shadows ?? false;
+    this.missileIds = opts.missileWeaponIds ?? MISSILE_WEAPON_IDS;
     this.group.name = 'projectiles';
     this.puffs = new SoftPuffs(perProjectile * POOL_PROJECTILES, PUFF_PHYSICS, {
       scale: wispScale,
@@ -131,7 +142,12 @@ export class ProjectileLayer {
       seen.add(p.id);
       let mesh = this.meshes.get(p.id);
       if (!mesh) {
-        mesh = new ProjectileMesh(this.pebbleGeo, this.pebbleMat);
+        const missile = this.missileIds.has(p.weaponId);
+        mesh = new ProjectileMesh(
+          missile ? this.missileGeo : this.pebbleGeo,
+          this.pebbleMat,
+          !missile,
+        );
         mesh.pebble.castShadow = this.shadows;
         this.meshes.set(p.id, mesh);
         this.group.add(mesh.group);
@@ -159,6 +175,7 @@ export class ProjectileLayer {
     this.meshes.clear();
     this.puffs.dispose();
     this.pebbleGeo.dispose();
+    this.missileGeo.dispose();
     this.pebbleMat.dispose();
     this.group.removeFromParent();
   }

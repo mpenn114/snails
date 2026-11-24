@@ -3,6 +3,8 @@ export interface WeaponLike {
   id: string;
   name: string;
   ammo: number | 'infinite';
+  /** Motion kind lets the controls know a weapon is guided (joystick steers it in flight). */
+  motion?: { kind: string } | undefined;
 }
 
 /** One picker tile. */

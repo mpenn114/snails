@@ -160,6 +160,8 @@ export interface Projectile {
   windScale: number;
   /** Motion strategy parameters; absent means ballistic. */
   motion?: MotionSpec;
+  /** Steering input -1..1 for guided projectiles (set by `steer`); absent = 0. */
+  steer?: number;
 }
 
 /** Match outcome. */

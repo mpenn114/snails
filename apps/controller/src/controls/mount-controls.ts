@@ -4,6 +4,7 @@ import { DEFAULT_SCREEN_FACING } from './aim-mapping';
 import type { ScreenFacing } from './aim-mapping';
 import { bindAim, bindJoystick } from './gestures';
 import type { Gestures } from './gestures';
+import { trackSteering } from './steering';
 import { trackTurns } from './turn-tracker';
 import type { TurnTracker } from './turn-tracker';
 import { formatTimer, isWarning, remainingAt } from './turn-timer';
@@ -93,6 +94,31 @@ function wireButtons(
   };
 }
 
+/** Binds the joystick (move, or steer while a guided missile flies) and the aim zone. */
+function bindGestures(
+  root: HTMLElement,
+  client: ControllerClient,
+  opts: ControlsOptions,
+  facing: () => ScreenFacing,
+  isSteering: () => boolean,
+): Gestures[] {
+  const stick = bindJoystick(
+    q(root, '.ctl-stick'),
+    q(root, '.ctl-knob'),
+    client,
+    facing,
+    isSteering,
+  );
+  const aim = bindAim(
+    q(root, '.ctl-aim'),
+    q(root, '.ctl-aimvis'),
+    client,
+    facing,
+    opts.onAimingChange,
+  );
+  return [stick, aim];
+}
+
 /**
  * Mounts the in-match controls (HUD timer for everyone; joystick, aim, jump, fire and weapon
  * picker on my turn only). Returns a disposer.
@@ -125,15 +151,8 @@ export function mountControls(
     });
 
   const facing = opts.screenFacing ?? (() => DEFAULT_SCREEN_FACING);
-  const stick = bindJoystick(q(root, '.ctl-stick'), q(root, '.ctl-knob'), client, facing);
-  const aim = bindAim(
-    q(root, '.ctl-aim'),
-    q(root, '.ctl-aimvis'),
-    client,
-    facing,
-    opts.onAimingChange,
-  );
-  const gestures = [stick, aim];
+  const steering = trackSteering(client, opts.weapons);
+  const gestures = bindGestures(root, client, opts, facing, steering.active);
   const release = (): void => gestures.forEach((g) => g.release());
   const wired = wireButtons(root, client, sheet, gestures);
 
@@ -151,6 +170,7 @@ export function mountControls(
 
   return () => {
     clearInterval(tick);
+    steering.dispose();
     off();
     tracker.dispose();
     wired();

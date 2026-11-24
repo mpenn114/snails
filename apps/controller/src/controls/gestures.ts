@@ -4,6 +4,7 @@ import type { ScreenFacing } from './aim-mapping';
 import { clampKnob, onChange } from './joystick';
 import type { MoveDirection } from './joystick';
 import { createThrottle } from './throttle';
+import { stickToSteer } from './steering';
 import { tryCapture } from '../platform/pointer';
 
 /** Joystick travel radius (px) and deadzone along the snail's screen facing. */
@@ -74,24 +75,50 @@ function trackPointer(
   };
 }
 
-/** Wires the joystick element to `move` intents (sent only on change). */
+/**
+ * Wires the joystick element to `move` intents (sent only on change). While `steering()` is true
+ * (a guided missile of mine is in flight) its horizontal deflection becomes throttled `steer`
+ * intents instead (and no `move`).
+ */
 export function bindJoystick(
   stick: HTMLElement,
   knob: HTMLElement,
   client: ControllerClient,
   facing: () => ScreenFacing = () => DEFAULT_SCREEN_FACING,
+  steering: () => boolean = () => false,
 ): Gestures {
   let dir: MoveDirection = 'stop';
+  let steered = false;
+  const steer = createThrottle<number>(
+    (input) => client.send({ type: 'steer', input }),
+    AIM_INTERVAL_MS,
+    {
+      now: () => performance.now(),
+      setTimeout: (fn, ms) => setTimeout(fn, ms),
+      clearTimeout: (h) => clearTimeout(h as ReturnType<typeof setTimeout>),
+    },
+  );
+  const stopSteer = (): void => {
+    steer.cancel();
+    if (steered) client.send({ type: 'steer', input: 0 });
+    steered = false;
+  };
   const send = onChange<MoveDirection>((d) => client.send({ type: 'move', direction: d }), 'stop');
   const off = trackPointer(stick, {
     move(dx, dy) {
       const k = clampKnob(dx, dy, STICK_RADIUS);
       knob.style.transform = `translate(${k.x}px,${k.y}px)`;
+      if (steering()) {
+        steered = true;
+        steer.push(stickToSteer(dx, STICK_RADIUS));
+        return;
+      }
       dir = stickToWireMove(dx, dy, facing(), STICK_DEADZONE, dir);
       send(dir);
     },
     up() {
       knob.style.transform = '';
+      stopSteer();
       dir = 'stop';
       send(dir);
     },
@@ -99,10 +126,14 @@ export function bindJoystick(
   return {
     release() {
       knob.style.transform = '';
+      stopSteer();
       dir = 'stop';
       send(dir);
     },
-    dispose: off,
+    dispose() {
+      off();
+      steer.cancel();
+    },
   };
 }
 

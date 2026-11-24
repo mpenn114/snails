@@ -33,6 +33,7 @@ describe('client messages', () => {
       { type: 'move', direction: 'stop' },
       { type: 'jump' },
       { type: 'aim', angle: 0.5, power: 0.5 },
+      { type: 'steer', input: -0.5 },
       { type: 'selectWeapon', weaponId: 'bazooka' },
       { type: 'fire' },
       { type: 'endTurn' },
@@ -45,6 +46,8 @@ describe('client messages', () => {
     expect(() => parseClientMessage({ type: 'nope' })).toThrow();
     expect(() => parseClientMessage({ type: 'aim', angle: 4, power: 0.5 })).toThrow();
     expect(() => parseClientMessage({ type: 'aim', angle: 1, power: 2 })).toThrow();
+    expect(() => parseClientMessage({ type: 'steer', input: 1.5 })).toThrow();
+    expect(() => parseClientMessage({ type: 'steer' })).toThrow();
     expect(() =>
       parseClientMessage({ type: 'startMatch', settings: { ...settings, snailsPerTeam: 0 } }),
     ).toThrow();

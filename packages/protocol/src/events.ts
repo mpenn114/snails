@@ -88,7 +88,7 @@ const plain = [
   }),
   z.object({
     type: z.literal('commandRejected'),
-    command: z.enum(['move', 'aim', 'fire', 'endTurn']),
+    command: z.enum(['move', 'aim', 'steer', 'fire', 'endTurn']),
     reason: z.string(),
   }),
   z.object({
