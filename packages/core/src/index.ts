@@ -50,6 +50,7 @@ export {
   type EndTurnCommand,
 } from './sim/types.js';
 export * from './sim/events.js';
+export * from './research/research-types.js';
 export * from './sim/simulation.js';
 export * from './sim/validation.js';
 export * from './state/game-state.js';
