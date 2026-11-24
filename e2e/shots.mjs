@@ -5,6 +5,12 @@ import { existsSync, mkdirSync, readdirSync, writeFileSync } from 'node:fs';
 import { join, relative, resolve } from 'node:path';
 import { chromium, devices, fail, startServer, step, until, watch } from './lib.mjs';
 
+/**
+ * Screenshot timeout: one High-tier frame (post-processing, shadows) can take well over
+ * Playwright's 30 s default on GPU-less CI runners with software GL.
+ */
+const SHOT_TIMEOUT = 180000;
+
 const out = resolve(process.env.SHOTS_DIR ?? join(process.cwd(), 'shots-out'));
 const cmpIdx = process.argv.indexOf('--compare');
 const compareDir = cmpIdx > 0 ? resolve(process.argv[cmpIdx + 1] ?? '') : null;
@@ -38,7 +44,7 @@ async function displayShots(browser, base, errors) {
     watch(page, name, errors);
     await page.goto(`${base}/display/harness.html?shot=1&cam=${cam}&seed=7&quality=high`);
     await page.waitForFunction(() => window.__shotReady === true, null, { timeout: 900000 });
-    await page.screenshot({ path: join(out, `${name}.png`) });
+    await page.screenshot({ path: join(out, `${name}.png`), timeout: SHOT_TIMEOUT });
     captions.push({ file: `${name}.png`, caption });
     step(`saved ${name}.png`);
     await page.close();
@@ -50,7 +56,7 @@ async function displayShots(browser, base, errors) {
 async function settled(page) {
   let prev = null;
   for (let i = 0; i < 20; i++) {
-    const buf = await page.screenshot();
+    const buf = await page.screenshot({ timeout: SHOT_TIMEOUT });
     if (prev && Buffer.compare(prev, buf) === 0) return;
     prev = buf;
     await page.waitForTimeout(500);
@@ -107,7 +113,7 @@ async function phoneShot(browser, base, errors) {
     60000,
   );
   await settled(active);
-  await active.screenshot({ path: join(out, 'phone-my-turn.png') });
+  await active.screenshot({ path: join(out, 'phone-my-turn.png'), timeout: SHOT_TIMEOUT });
   captions.push({
     file: 'phone-my-turn.png',
     caption: 'Phone 390x844, Mobile tier: in-match view on own turn (live match, random seed)',
