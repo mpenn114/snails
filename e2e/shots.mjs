@@ -59,10 +59,14 @@ async function displayShots(browser, base, errors) {
   await ctx.close();
 }
 
-/** Waits until two screenshots 500 ms apart are identical-sized and the canvas has settled. */
+/**
+ * Waits until two screenshots 500 ms apart are identical, or 30 s pass. A live match keeps
+ * animating (timer, water), so on slow software GL the time budget is what usually ends it.
+ */
 async function settled(page) {
   let prev = null;
-  for (let i = 0; i < 20; i++) {
+  const deadline = Date.now() + 30000;
+  while (Date.now() < deadline) {
     const buf = await page.screenshot({ timeout: SHOT_TIMEOUT });
     if (prev && Buffer.compare(prev, buf) === 0) return;
     prev = buf;
@@ -79,7 +83,8 @@ async function phoneShot(browser, base, errors) {
       deviceScaleFactor: 1,
       reducedMotion: 'reduce',
     });
-  const dctx = await browser.newContext({ viewport: { width: 1280, height: 720 } });
+  // The TV here only hosts the match; keep it small so it costs little GPU time on CI.
+  const dctx = await browser.newContext({ viewport: { width: 640, height: 360 } });
   const display = await dctx.newPage();
   watch(display, 'display', errors);
   await display.goto(`${base}/display/`);
