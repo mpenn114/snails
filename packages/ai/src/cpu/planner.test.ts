@@ -152,4 +152,16 @@ describe('CPU turn planner', () => {
     console.log(`planTurn timings: ${times.join(' ')}`);
     expect(times.length).toBe(4);
   });
+
+  it('spends a deterministic work budget and honours the emergency deadline', () => {
+    const m = match();
+    const a = createCpuPlayer(cfg('mastermind')).planTurn(m, 'a');
+    const b = createCpuPlayer(cfg('mastermind')).planTurn(forkMatch(m), 'a');
+    expect(b).toEqual(a);
+    expect(a.work).toBeGreaterThan(0);
+    expect(a.work).toBeLessThanOrEqual(DIFFICULTY_PROFILES.mastermind.thinkBudget + 50);
+    const rushed = createCpuPlayer(cfg('mastermind'), { deadlineMs: 0 }).planTurn(m, 'a');
+    expect(rushed.work ?? 0).toBeLessThan(a.work ?? 0);
+    expect(rushed.commands.length).toBeGreaterThan(0);
+  });
 });

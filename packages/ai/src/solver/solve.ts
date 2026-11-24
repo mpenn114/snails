@@ -14,11 +14,15 @@ import { predictImpact, type SolverAim } from './predict.js';
 export interface SolveOptions {
   /** Maximum number of `predictImpact` calls. */
   samples: number;
+  /** Emergency stop polled before each prediction; once it returns true no more are made. */
+  shouldStop?: () => boolean;
 }
 
 /** Chosen aim and its predicted 3D miss distance (metres) from the target. */
 export interface SolveResult extends SolverAim {
   miss: number;
+  /** `predictImpact` calls actually spent (deterministic work counter). */
+  used: number;
 }
 
 interface Cand {
@@ -157,7 +161,7 @@ export function solveAim(
     const key = `${a.toFixed(4)}/${p.toFixed(4)}/${yaw.toFixed(4)}`;
     const old = seen.get(key);
     if (old) return old;
-    if (calls >= budget) return null;
+    if (calls >= budget || opts.shouldStop?.()) return null;
     calls += 1;
     const hit = predictImpact(state, terrain, shooter, weapon, {
       angle: a,
@@ -192,5 +196,6 @@ export function solveAim(
     power: winner.power,
     facing: facing + winner.yaw,
     miss: winner.miss,
+    used: calls,
   };
 }

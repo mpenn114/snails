@@ -1,6 +1,7 @@
 import { loadContentPacks } from '@snails/core';
 import { basePack } from '@snails/content-base';
 import { describe, expect, it } from 'vitest';
+import { DIFFICULTY_PROFILES } from '../cpu/difficulty.js';
 import { runAiMatch } from './run-match.js';
 import { runAiMatches, summarize, withoutTimings } from './summary.js';
 import { thinkTimeStats } from './think-time.js';
@@ -26,16 +27,25 @@ describe('thinkTimeStats', () => {
 });
 
 describe('AI match runner', () => {
-  it('keeps Mastermind planTurn p99 under budget', () => {
+  it('keeps Mastermind planTurn within its think budget', () => {
     const records = runAiMatches({ ...opts, matches: 3, startSeed: 1 });
-    const times = records.flatMap((r) => r.teams.flatMap((t) => t.planTimesMs));
-    const stats = thinkTimeStats(times);
+    const mastermind = records.flatMap((r) => r.teams.filter((t) => t.difficulty === 'mastermind'));
+    const work = mastermind.flatMap((t) => t.planWork);
+    const stats = thinkTimeStats(mastermind.flatMap((t) => t.planTimesMs));
     expect(stats.count).toBeGreaterThan(0);
-    // Wall-clock timing is noisy on shared CI runners, so CI gets a 500 ms ceiling instead of 250.
-    const budget = process.env.CI ? 500 : 250;
-    expect(stats.p99).toBeLessThan(budget);
+    // The deterministic work counter is the real gate: it does not depend on machine load, so it
+    // cannot flake when the whole suite runs in parallel. A turn may overshoot its budget only by
+    // one in-flight solve, hence the small slack.
+    const budget = DIFFICULTY_PROFILES.mastermind.thinkBudget;
+    expect(Math.max(...work)).toBeLessThanOrEqual(budget + 50);
+    // Wall-clock p99 is logged (about 120 ms standalone) and only guarded by a generous cap that
+    // still catches runaway planning (e.g. a lost budget) under parallel test load.
+    console.info(
+      `Mastermind planTurn p50 ${stats.p50.toFixed(0)} ms, p99 ${stats.p99.toFixed(0)} ms`,
+    );
+    expect(stats.p99).toBeLessThan(1000);
     expect(summarize(records).matches).toBe(3);
-  }, 20_000);
+  }, 30_000);
 
   it('is deterministic per seed, ignoring timings', () => {
     const a = runAiMatch({ ...opts, seed: 4 });

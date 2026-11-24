@@ -9,10 +9,11 @@ import {
 } from '@snails/core';
 import { planMovement } from '../movement/index.js';
 import type { ScoreWeights } from '../targeting/index.js';
+import { ThinkMeter } from './budget.js';
 import { DIFFICULTY_PROFILES, type DifficultyProfile } from './difficulty.js';
 import { rerankByReply } from './lookahead.js';
 import { PERSONALITY_PROFILES, type PersonalityProfile } from './personalities.js';
-import type { CpuConfig, PlannedCommand, TurnPlan } from './types.js';
+import type { CpuConfig, CpuOptions, PlannedCommand, TurnPlan } from './types.js';
 import { ATTACK_THRESHOLD, planWeaponShots, type ShotCandidate } from './weapon-plan.js';
 
 /** Ticks between the aim command and the fire command (the aim "settles"). */
@@ -22,7 +23,7 @@ const MOVE_TICKS = 90;
 /** Ticks simulated after a movement script so the snail finishes sliding or falling. */
 const SETTLE_TICKS = 45;
 /** Number of top shots the two-turn lookahead judges. */
-const LOOKAHEAD_COUNT = 3;
+const LOOKAHEAD_COUNT = 2;
 /** Preferred distance (m) to the nearest enemy when repositioning. */
 const IDEAL_RANGE = 14;
 
@@ -84,6 +85,12 @@ interface Options {
   samples: number;
   weights: ScoreWeights;
   profile: PersonalityProfile;
+  meter: ThinkMeter;
+}
+
+/** Solver samples for the next shot search: the difficulty's cap within what is left. */
+function sampleCap(diff: DifficultyProfile, opts: Options): number {
+  return Math.min(diff.samples, opts.meter.remaining());
 }
 
 function shotsFrom(
@@ -115,10 +122,11 @@ function choosePosition(
     match,
     moves: [],
     ticks: 0,
-    shots: shotsFrom(match, teamId, opts, noWind),
+    shots: shotsFrom(match, teamId, { ...opts, samples: sampleCap(diff, opts) }, noWind),
   };
   const roll = rng.next();
   const bestHere = here.shots[0]?.score ?? -Infinity;
+  if (opts.meter.remaining() < diff.samples / 4 || opts.meter.expired()) return here;
   if (diff.movementCandidates <= 0 || bestHere >= ATTACK_THRESHOLD || roll >= diff.movementChance) {
     return here;
   }
@@ -129,7 +137,7 @@ function choosePosition(
   });
   if (plan.commands.length === 0) return here;
   const { fork, ticks } = afterMoves(match, plan.commands);
-  const shots = shotsFrom(fork, teamId, opts, noWind);
+  const shots = shotsFrom(fork, teamId, { ...opts, samples: sampleCap(diff, opts) }, noWind);
   return (shots[0]?.score ?? -Infinity) > bestHere
     ? { match: fork, moves: plan.commands, ticks, shots }
     : here;
@@ -169,22 +177,32 @@ function shotCommands(
  * @param match - Running match in the active team's action phase.
  * @param config - Difficulty, personality and seed.
  * @param teamId - Planning team.
+ * @param options - Optional emergency wall-clock deadline (`deadlineMs`); see {@link CpuOptions}.
  */
-export function planTurnFor(match: MatchSetup, config: CpuConfig, teamId: string): TurnPlan {
+export function planTurnFor(
+  match: MatchSetup,
+  config: CpuConfig,
+  teamId: string,
+  options: CpuOptions = {},
+): TurnPlan {
   const { state } = match.sim;
   const snail = livingSnails(state).find((s) => s.id === state.turn.activeSnailId);
   if (!snail || snail.teamId !== teamId) return endTurnPlan(teamId, [], 0);
   const diff = DIFFICULTY_PROFILES[config.difficulty];
   const profile = PERSONALITY_PROFILES[config.personality];
-  const opts: Options = { samples: diff.samples, weights: planWeights(profile), profile };
+  const meter = new ThinkMeter(diff.thinkBudget, options.deadlineMs);
+  const opts: Options = { samples: diff.samples, weights: planWeights(profile), profile, meter };
   const rng = turnRng(match, config.seed);
   const noWind = rng.next() < diff.ignoresWindChance;
   const pos = choosePosition(match, teamId, diff, opts, rng, noWind);
   let ranked = pos.shots;
   if (diff.lookahead && ranked.length > 1) {
-    ranked = rerankByReply(pos.match, snail.id, ranked, LOOKAHEAD_COUNT, profile.caution);
+    ranked = rerankByReply(pos.match, snail.id, ranked, LOOKAHEAD_COUNT, profile.caution, meter);
   }
   const pick = ranked.length > 1 && rng.next() < diff.epsilon ? ranked[1] : ranked[0];
-  if (!pick || pick.value < 0) return endTurnPlan(teamId, pos.moves, pos.ticks);
-  return { commands: [...pos.moves, ...shotCommands(snail.id, pick, pos.ticks, diff, rng)] };
+  if (!pick || pick.value < 0) {
+    return { ...endTurnPlan(teamId, pos.moves, pos.ticks), work: meter.used };
+  }
+  const commands = [...pos.moves, ...shotCommands(snail.id, pick, pos.ticks, diff, rng)];
+  return { commands, work: meter.used };
 }

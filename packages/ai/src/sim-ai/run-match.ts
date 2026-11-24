@@ -74,6 +74,7 @@ function startTurn(r: Run): void {
   try {
     const plan = (r.cpus[active] as CpuPlayer).planTurn(r.m, state.teams[active]!.id);
     r.pending = [...plan.commands];
+    r.record.teams[active]?.planWork.push(plan.work ?? 0);
   } catch (e) {
     fail(r, active, 'planTurn', message(e));
     endTurn(r, active);
@@ -152,6 +153,7 @@ function build(o: AiMatchOptions, turnCap: number): Run {
         kills: 0,
         techsResearched: [],
         planTimesMs: [],
+        planWork: [],
       })),
     },
   };

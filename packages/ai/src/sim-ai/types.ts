@@ -37,6 +37,8 @@ export interface AiTeamRecord extends AiTeamSpec {
   techsResearched: string[];
   /** Wall-clock `planTurn` durations in milliseconds (not deterministic). */
   planTimesMs: number[];
+  /** Deterministic work (predictImpact calls) spent by each `planTurn`. */
+  planWork: number[];
 }
 
 /** How a match ended. */

@@ -17,6 +17,7 @@ import {
   scoreImpact,
   type ScoreWeights,
 } from '../targeting/index.js';
+import type { ThinkMeter } from './budget.js';
 import type { PersonalityProfile } from './personalities.js';
 
 /** A concrete shot the CPU could take now, with its evaluation. */
@@ -40,6 +41,8 @@ export interface WeaponPlanOptions {
   samples: number;
   weights: ScoreWeights;
   profile: PersonalityProfile;
+  /** Meter charged with the work spent; its deadline stops the search early. */
+  meter?: ThinkMeter;
 }
 
 /** Shots scoring below this are "no good attack": the CPU prefers to move first. */
@@ -207,11 +210,20 @@ export function planWeaponShots(
     for (const t of targets) {
       const target = livingSnails(state).find((s) => s.id === t.snailId);
       if (!target) continue;
-      const solved = solveAim(state, terrain, shooter, w, target.position, { samples: per });
+      if (opts.meter?.expired()) return sortShots(out);
+      const solved = solveAim(state, terrain, shooter, w, target.position, {
+        samples: per,
+        shouldStop: opts.meter ? () => opts.meter!.expired() : undefined,
+      });
+      opts.meter?.spend(solved.used + 1);
       const aim = { angle: solved.angle, power: solved.power, facing: solved.facing };
       const c = evaluateAim(match, shooter, w, t.snailId, aim, opts);
       if (c) out.push(c);
     }
   }
+  return sortShots(out);
+}
+
+function sortShots(out: ShotCandidate[]): ShotCandidate[] {
   return out.sort((a, b) => b.value - a.value || (a.weaponId < b.weaponId ? -1 : 1));
 }

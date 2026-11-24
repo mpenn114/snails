@@ -31,6 +31,18 @@ export interface PlannedCommand {
  */
 export interface TurnPlan {
   commands: PlannedCommand[];
+  /** Deterministic work spent planning (`predictImpact` calls); absent for non-planner CPUs. */
+  work?: number;
+}
+
+/** Runtime options of a CPU player (they do not change what a plan is, only emergency limits). */
+export interface CpuOptions {
+  /**
+   * Wall-clock emergency cutoff per turn in milliseconds (default: none). The deterministic work
+   * budget is the primary limiter; when this deadline fires the plan can depend on machine speed,
+   * so leave it unset in tests and the AI runner.
+   */
+  deadlineMs?: number;
 }
 
 /** A CPU player. It reads the match but never mutates it; lookahead works on forks. */

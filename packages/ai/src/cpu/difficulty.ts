@@ -6,6 +6,8 @@ export interface DifficultyProfile {
   aimNoise: { angle: number; power: number };
   /** Total `predictImpact` calls the aiming solver may spend per turn (split across weapons). */
   samples: number;
+  /** Total deterministic work per turn (`predictImpact` calls over shots, moves-then-shots and replies). */
+  thinkBudget: number;
   /** Chance (0..1) that the CPU plans its shot as if there were no wind. */
   ignoresWindChance: number;
   /** Candidate movement scripts simulated per turn (0 disables movement). */
@@ -25,6 +27,7 @@ export const DIFFICULTY_PROFILES: Readonly<Record<Difficulty, DifficultyProfile>
   rookie: {
     aimNoise: { angle: 8 * DEG, power: 0.15 },
     samples: 40,
+    thinkBudget: 60,
     ignoresWindChance: 0.5,
     movementCandidates: 6,
     movementChance: 0.15,
@@ -34,6 +37,7 @@ export const DIFFICULTY_PROFILES: Readonly<Record<Difficulty, DifficultyProfile>
   regular: {
     aimNoise: { angle: 4 * DEG, power: 0.08 },
     samples: 150,
+    thinkBudget: 250,
     ignoresWindChance: 0,
     movementCandidates: 12,
     movementChance: 0.6,
@@ -42,18 +46,20 @@ export const DIFFICULTY_PROFILES: Readonly<Record<Difficulty, DifficultyProfile>
   },
   veteran: {
     aimNoise: { angle: 1.5 * DEG, power: 0.03 },
-    samples: 500,
+    samples: 400,
+    thinkBudget: 600,
     ignoresWindChance: 0,
-    movementCandidates: 20,
+    movementCandidates: 12,
     movementChance: 1,
     epsilon: 0.05,
     lookahead: false,
   },
   mastermind: {
     aimNoise: { angle: 0.3 * DEG, power: 0.01 },
-    samples: 1500,
+    samples: 380,
+    thinkBudget: 600,
     ignoresWindChance: 0,
-    movementCandidates: 24,
+    movementCandidates: 14,
     movementChance: 1,
     epsilon: 0.02,
     lookahead: true,
