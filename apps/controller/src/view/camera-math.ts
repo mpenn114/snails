@@ -9,26 +9,43 @@ export function angleDiff(from: number, to: number): number {
   return d;
 }
 
-/** Tunables of the over-the-shoulder aim camera. */
+/** Tunables of the snail's point-of-view aim camera. */
 export interface AimCameraOptions {
-  distance: number;
-  basePitch: number;
-  /** Extra camera pitch per radian of weapon elevation (tilts the view with the aim). */
-  pitchPerElevation: number;
-  lookHeight: number;
+  /** Eye height above the snail's position (metres). */
+  eyeHeight: number;
+  /** How far behind the snail's position the eye sits along its facing (metres). */
+  eyeBack: number;
+  /** Distance from the eye to the look-at point (the orbit radius of the rig). */
+  lookDistance: number;
+  /** View tilt at zero aim elevation (negative looks down, keeping the snail and ground in frame). */
+  baseLook: number;
+  /** Share of the aim elevation the view tilts by, so the reticle moves on screen as you aim. */
+  lookGain: number;
+  /** Look elevation limits (radians): the camera never tilts past these. */
+  minLook: number;
+  maxLook: number;
 }
 
 /** Default aim camera tuning. */
 export const DEFAULT_AIM_CAMERA: AimCameraOptions = {
-  distance: 7,
-  basePitch: 0.3,
-  pitchPerElevation: 0.35,
-  lookHeight: 0.8,
+  eyeHeight: 2.4,
+  eyeBack: 4.6,
+  lookDistance: 10,
+  baseLook: -0.25,
+  lookGain: 0.4,
+  minLook: -0.4,
+  maxLook: 0.45,
 };
 
+/** Lowest camera pitch the aim pose uses; the phone rig's `minPitch` limit must allow it. */
+export const AIM_MIN_PITCH = -DEFAULT_AIM_CAMERA.maxLook;
+
 /**
- * Over-the-shoulder pose behind a snail: sits behind its facing and tilts with the weapon
- * elevation (`aimAngle`, radians above the facing direction).
+ * Snail's point-of-view pose: the eye sits behind and above the snail and looks along its
+ * facing, tilted down a little (`baseLook`) and by part (`lookGain`) of the weapon elevation (`aimAngle`, radians),
+ * so the view stays on the terrain ahead while the reticle (at the full aim direction) moves
+ * across it. The rig orbits a look-at point `lookDistance` ahead, so looking up means the
+ * camera is below that point (negative pitch).
  */
 export function aimPose(
   snail: Point3,
@@ -36,11 +53,24 @@ export function aimPose(
   aimAngle: number,
   o: AimCameraOptions = DEFAULT_AIM_CAMERA,
 ): CameraPose {
+  const look = Math.min(o.maxLook, Math.max(o.minLook, o.baseLook + aimAngle * o.lookGain));
+  const fx = Math.cos(facing);
+  const fz = -Math.sin(facing);
+  const eye = {
+    x: snail.x - fx * o.eyeBack,
+    y: snail.y + o.eyeHeight,
+    z: snail.z - fz * o.eyeBack,
+  };
+  const horizontal = Math.cos(look) * o.lookDistance;
   return {
-    target: { x: snail.x, y: snail.y + o.lookHeight, z: snail.z },
+    target: {
+      x: eye.x + fx * horizontal,
+      y: eye.y + Math.sin(look) * o.lookDistance,
+      z: eye.z + fz * horizontal,
+    },
     yaw: Math.PI - facing,
-    pitch: o.basePitch + o.pitchPerElevation * aimAngle,
-    distance: o.distance,
+    pitch: -look,
+    distance: o.lookDistance,
   };
 }
 

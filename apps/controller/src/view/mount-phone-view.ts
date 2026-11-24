@@ -1,3 +1,4 @@
+import type { AimStore } from '../controls/aim-store';
 import type { ControllerClient } from '../net/client';
 import { attachPhoneView } from './phone-view-loader';
 import type { PhoneViewHandle } from './phone-view-loader';
@@ -10,6 +11,7 @@ import { BTN_CLASS, SLOT_RIGHT } from '../shell/layers';
 export function mountPhoneView(
   client: ControllerClient,
   doc: Document = document,
+  aimStore?: AimStore,
 ): (() => void) & { handle: PhoneViewHandle } {
   const container = doc.createElement('div');
   container.id = 'phone-view';
@@ -21,7 +23,7 @@ export function mountPhoneView(
   toggle.textContent = 'Saver: off';
   toggle.className = BTN_CLASS;
   let on = false;
-  const handle: PhoneViewHandle = attachPhoneView(client, container);
+  const handle: PhoneViewHandle = attachPhoneView(client, container, undefined, aimStore);
   toggle.addEventListener('click', () => {
     on = !on;
     toggle.textContent = `Saver: ${on ? 'on' : 'off'}`;

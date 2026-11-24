@@ -11,12 +11,13 @@ export interface RigLike {
   setTarget(target: null): void;
   pose(): CameraPose;
   applyInput(input: FreeCameraInput): void;
+  setFreePose(pose: CameraPose): void;
 }
 
 /**
  * Glue between {@link CameraModeMachine} and the render `CameraRig`. Follow mode is the rig's own
  * (it tracks the active snail, then the projectile and a lingering explosion). Aim and free use
- * the rig's free mode: aim steers it each frame toward an over-the-shoulder pose, free applies
+ * the rig's free mode: aim sets its free pose each frame to the snail's point-of-view pose, free applies
  * gesture input. A local mirror of the free pose lets targets be expressed as pose deltas.
  */
 export class CameraController {
@@ -50,6 +51,11 @@ export class CameraController {
   /** Called by the controls while the local player is aiming. */
   setAiming(aiming: boolean): void {
     this.emitAfter(() => this.machine.setAiming(aiming));
+  }
+
+  /** Latches the aim camera on or off (the Aim button; an aim drag also latches it). */
+  setAimLatched(latched: boolean): void {
+    this.emitAfter(() => this.machine.setAimLatched(latched));
   }
 
   /** Local aim elevation (radians) overriding relayed previews; null to use the snapshot/preview. */
@@ -93,7 +99,9 @@ export class CameraController {
     this.sync();
     if (this.machine.mode !== 'aim' || !this.mirror) return;
     const target = this.aimTarget();
-    if (target) this.drive(inputToward(this.mirror, target));
+    if (!target) return;
+    this.rig.setFreePose(target);
+    this.mirror = target;
   }
 
   private aimTarget(): CameraPose | null {

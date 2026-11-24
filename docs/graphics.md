@@ -162,7 +162,7 @@ Notes:
 - Prop count was trialled as a lever (low 170 to 110, medium 300 to 260): it changed draw calls by under 2%, so it was not trimmed. No tier exceeded its budget, so no trims were made to `quality.ts`.
 - Real-device fps, heat and readability: see the MG-12 checklist in [device-testing.md](development/device-testing.md#6-mg-12-visual-and-performance-checklist-android-ios-tv). It has not been run.
 
-Phone follow camera: a three-quarter view (about 40 degrees to the side, pitch 0.55) so the shell's spiral face shows; aim mode stays directly behind the snail so aiming is unaffected.
+Phone follow camera: a three-quarter view (about 40 degrees to the side, pitch 0.55) so the shell's spiral face shows; the aim view is the snail's point of view directly behind and above it (eye height 2.4 m, 4.6 m back, looking along its facing) so aiming is unaffected.
 
 ## WebGPU migration path
 

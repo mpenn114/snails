@@ -18,6 +18,12 @@ export const CONTROLS_CSS = `
 .ctl-btn{position:absolute;min-width:76px;min-height:76px;border-radius:50%;font-size:var(--snl-text-m);font-weight:800;color:var(--snl-paper);background:var(--snl-water);box-shadow:var(--snl-shadow)}
 .ctl-jump{left:calc(190px + env(safe-area-inset-left));bottom:calc(28px + env(safe-area-inset-bottom))}
 .ctl-fire{right:calc(16px + env(safe-area-inset-right));bottom:calc(16px + env(safe-area-inset-bottom));min-width:96px;min-height:96px;background:var(--snl-accent);color:var(--snl-ink)}
+.ctl-aimbtn{right:calc(124px + env(safe-area-inset-right));bottom:calc(20px + env(safe-area-inset-bottom));width:84px;height:84px;padding:0;line-height:1.1;background:rgba(var(--snl-ink-rgb),.85);border:var(--snl-outline) solid var(--snl-accent)}
+@media (max-width:560px){.ctl-aimbtn{right:calc(20px + env(safe-area-inset-right));bottom:calc(206px + env(safe-area-inset-bottom))}}
+.ctl-aimbtn.on{background:var(--snl-accent);color:var(--snl-ink)}
+.ctl-aimbtn.hint{animation:ctl-pulse 1.6s ease-out infinite}
+@keyframes ctl-pulse{0%{box-shadow:0 0 0 0 rgba(var(--snl-paper-rgb),.7)}100%{box-shadow:0 0 0 18px rgba(var(--snl-paper-rgb),0)}}
+@media (prefers-reduced-motion:reduce){.ctl-aimbtn.hint{animation:none}}
 .ctl-wbtn{right:calc(16px + env(safe-area-inset-right));bottom:calc(128px + env(safe-area-inset-bottom));min-width:64px;min-height:64px;background:rgba(var(--snl-paper-rgb),.16)}
 .ctl-sheet{position:absolute;left:0;right:0;bottom:0;display:none;pointer-events:auto;background:rgba(var(--snl-ink-rgb),.96);
   padding:12px 12px calc(12px + env(safe-area-inset-bottom));border-radius:var(--snl-radius) var(--snl-radius) 0 0}
