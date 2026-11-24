@@ -16,6 +16,10 @@ interface Run {
   teamOf: Map<string, number>;
   lastHitBy: Map<string, number>;
   pending: PlannedCommand[];
+  /** Retreat commands of the current turn's plan, delivered when the retreat phase starts. */
+  retreat: PlannedCommand[];
+  /** Turn number whose retreat commands were already queued. */
+  retreatTurn: number;
   planStart: number;
   lastActivity: number;
   fired: boolean;
@@ -59,6 +63,7 @@ function startTurn(r: Run): void {
   const state = r.m.sim.state;
   r.fired = false;
   r.pending = [];
+  r.retreat = [];
   r.planStart = state.tick;
   r.lastActivity = state.tick;
   state.teams.forEach((team, i) => {
@@ -75,11 +80,22 @@ function startTurn(r: Run): void {
     const plan = (r.cpus[active] as CpuPlayer).planTurn(r.m, state.teams[active]!.id);
     r.pending = [...plan.commands];
     r.record.teams[active]?.planWork.push(plan.work ?? 0);
+    r.retreat = [...(plan.retreat ?? [])];
   } catch (e) {
     fail(r, active, 'planTurn', message(e));
     endTurn(r, active);
   }
   r.record.teams[active]?.planTimesMs.push(performance.now() - t0);
+}
+
+/** On entering the retreat phase, queues the plan's retreat commands relative to that moment. */
+function enterRetreat(r: Run): void {
+  const { state } = r.m.sim;
+  if (state.turn.phase !== 'retreat' || r.retreatTurn === state.turn.turnNumber) return;
+  r.retreatTurn = state.turn.turnNumber;
+  r.pending = r.retreat;
+  r.retreat = [];
+  r.planStart = state.tick;
 }
 
 function deliver(r: Run): void {
@@ -92,7 +108,12 @@ function deliver(r: Run): void {
     r.lastActivity = state.tick;
   }
   const active = state.teams.findIndex((t) => t.id === state.turn.activeTeamId);
-  if (r.pending.length === 0 && !r.fired && state.tick - r.lastActivity > STALL_TICKS) {
+  if (
+    state.turn.phase === 'action' &&
+    r.pending.length === 0 &&
+    !r.fired &&
+    state.tick - r.lastActivity > STALL_TICKS
+  ) {
     fail(r, active, 'stall', 'no fire or endTurn within the turn');
     endTurn(r, active);
     r.lastActivity = state.tick;
@@ -133,6 +154,8 @@ function build(o: AiMatchOptions, turnCap: number): Run {
     teamOf,
     lastHitBy: new Map(),
     pending: [],
+    retreat: [],
+    retreatTurn: -1,
     planStart: 0,
     lastActivity: 0,
     fired: false,
@@ -177,8 +200,10 @@ export function runAiMatch(o: AiMatchOptions): AiMatchRecord {
       handled = t.turnNumber;
       startTurn(r);
     }
-    if (t.phase === 'action') deliver(r);
+    enterRetreat(r);
+    if (t.phase === 'action' || t.phase === 'retreat') deliver(r);
     for (const e of r.m.sim.step()) observe(r, e);
+    o.onStep?.(r.m);
   }
   const rec = r.record;
   rec.turns = state.turn.turnNumber;

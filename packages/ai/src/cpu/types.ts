@@ -33,6 +33,12 @@ export interface TurnPlan {
   commands: PlannedCommand[];
   /** Deterministic work spent planning (`predictImpact` calls); absent for non-planner CPUs. */
   work?: number;
+
+  /**
+   * Optional retreat moves, delivered once the turn reaches the `retreat` phase (after the shot
+   * resolves). Ticks are relative to the start of that phase; ends with `move direction 0`.
+   */
+  retreat?: PlannedCommand[];
 }
 
 /** Runtime options of a CPU player (they do not change what a plan is, only emergency limits). */

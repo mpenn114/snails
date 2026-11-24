@@ -141,5 +141,5 @@ export function planMovement(
 export function planRetreat(match: MatchSetup, teamId: string, ticks: number): MovementPlan {
   const minDist = (_s: Snail, p: Vec3, enemies: readonly Snail[]): number =>
     enemies.length ? Math.min(...enemies.map((e) => distance(p, e.position))) : 0;
-  return search(match, teamId, { candidates: 16, maxTicks: ticks }, minDist);
+  return search(match, teamId, { candidates: 9, maxTicks: ticks }, minDist);
 }

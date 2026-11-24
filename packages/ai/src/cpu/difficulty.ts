@@ -25,19 +25,19 @@ const DEG = Math.PI / 180;
 /** Per-difficulty tuning (Regular is the docs' "Gardener" level). */
 export const DIFFICULTY_PROFILES: Readonly<Record<Difficulty, DifficultyProfile>> = {
   rookie: {
-    aimNoise: { angle: 8 * DEG, power: 0.15 },
-    samples: 40,
-    thinkBudget: 60,
-    ignoresWindChance: 0.5,
+    aimNoise: { angle: 2.5 * DEG, power: 0.04 },
+    samples: 250,
+    thinkBudget: 350,
+    ignoresWindChance: 0.4,
     movementCandidates: 6,
     movementChance: 0.15,
     epsilon: 0.2,
     lookahead: false,
   },
   regular: {
-    aimNoise: { angle: 4 * DEG, power: 0.08 },
-    samples: 150,
-    thinkBudget: 250,
+    aimNoise: { angle: 2 * DEG, power: 0.04 },
+    samples: 400,
+    thinkBudget: 550,
     ignoresWindChance: 0,
     movementCandidates: 12,
     movementChance: 0.6,
@@ -45,8 +45,8 @@ export const DIFFICULTY_PROFILES: Readonly<Record<Difficulty, DifficultyProfile>
     lookahead: false,
   },
   veteran: {
-    aimNoise: { angle: 1.5 * DEG, power: 0.03 },
-    samples: 400,
+    aimNoise: { angle: 1.2 * DEG, power: 0.04 },
+    samples: 450,
     thinkBudget: 600,
     ignoresWindChance: 0,
     movementCandidates: 12,
@@ -56,8 +56,8 @@ export const DIFFICULTY_PROFILES: Readonly<Record<Difficulty, DifficultyProfile>
   },
   mastermind: {
     aimNoise: { angle: 0.3 * DEG, power: 0.01 },
-    samples: 380,
-    thinkBudget: 600,
+    samples: 520,
+    thinkBudget: 480,
     ignoresWindChance: 0,
     movementCandidates: 14,
     movementChance: 1,

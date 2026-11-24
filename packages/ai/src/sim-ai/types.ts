@@ -1,4 +1,4 @@
-import type { ContentRegistries, MatchSettingsInput } from '@snails/core';
+import type { ContentRegistries, MatchSettingsInput, MatchSetup } from '@snails/core';
 import type { Difficulty, Personality } from '../cpu/types.js';
 
 /** One CPU team's skill and style in an AI match. */
@@ -17,6 +17,8 @@ export interface AiMatchOptions {
   /** Hard cap on turns (default 60). */
   turnCap?: number;
   settings?: MatchSettingsInput;
+  /** Called after every simulation step (read-only observation, e.g. for tests). */
+  onStep?: (match: MatchSetup) => void;
 }
 
 /** An error thrown by a CPU during a match (the match carries on by ending the turn). */

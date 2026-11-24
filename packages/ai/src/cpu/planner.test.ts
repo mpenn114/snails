@@ -87,13 +87,40 @@ describe('difficulty profiles', () => {
 });
 
 describe('CPU turn planner', () => {
-  it('Veteran hits a stationary target far more often than Rookie', () => {
-    const veteran = hitRate('veteran', 20);
-    const rookie = hitRate('rookie', 20);
-    const others = `regular=${hitRate('regular', 20)} mastermind=${hitRate('mastermind', 20)}`;
-    console.log(`hit rate (<=2 m, 20 seeds) rookie=${rookie} veteran=${veteran} ${others}`);
-    expect(veteran).toBeGreaterThan(rookie + 0.25);
-    expect(veteran).toBeGreaterThanOrEqual(0.6);
+  it('has a distinct hit-rate ladder on an 18 m shot', () => {
+    const rate = Object.fromEntries(DIFFICULTIES.map((d) => [d, hitRate(d, 20)])) as Record<
+      Difficulty,
+      number
+    >;
+    console.log(`hit rate (<=2 m, 20 seeds) ${JSON.stringify(rate)}`);
+    expect(rate.rookie).toBeGreaterThanOrEqual(0.05);
+    expect(rate.rookie).toBeLessThanOrEqual(0.35);
+    expect(rate.regular).toBeGreaterThanOrEqual(0.3);
+    expect(rate.regular).toBeLessThanOrEqual(0.65);
+    expect(rate.veteran).toBeGreaterThanOrEqual(0.65);
+    expect(rate.veteran).toBeLessThanOrEqual(0.95);
+    expect(rate.mastermind).toBeGreaterThanOrEqual(0.9);
+    expect(rate.rookie).toBeLessThan(rate.regular);
+    expect(rate.regular).toBeLessThan(rate.veteran);
+    expect(rate.veteran).toBeLessThanOrEqual(rate.mastermind);
+  });
+
+  it('plans retreat moves relative to the retreat phase for a cautious CPU', () => {
+    const m = match();
+    const teamId = m.sim.state.turn.activeTeamId as string;
+    placeEnemy(m, 18);
+    const plans = [1, 2, 3, 4, 5, 6].map((seed) =>
+      createCpuPlayer({ difficulty: 'veteran', personality: 'cautious', seed }).planTurn(m, teamId),
+    );
+    const withRetreat = plans.filter((p) => p.retreat && p.retreat.length > 0);
+    expect(withRetreat.length).toBeGreaterThan(0);
+    for (const p of withRetreat) {
+      const r = p.retreat!;
+      const last = r[r.length - 1]!.command;
+      expect(last.type === 'move' && last.direction === 0).toBe(true);
+      const ticks = r.map((c) => c.atTick);
+      expect(ticks).toEqual([...ticks].sort((x, y) => x - y));
+    }
   });
 
   it('is deterministic and keeps ticks non-decreasing', () => {
@@ -159,7 +186,7 @@ describe('CPU turn planner', () => {
     const b = createCpuPlayer(cfg('mastermind')).planTurn(forkMatch(m), 'a');
     expect(b).toEqual(a);
     expect(a.work).toBeGreaterThan(0);
-    expect(a.work).toBeLessThanOrEqual(DIFFICULTY_PROFILES.mastermind.thinkBudget + 50);
+    expect(a.work).toBeLessThanOrEqual(DIFFICULTY_PROFILES.mastermind.thinkBudget + 60);
     const rushed = createCpuPlayer(cfg('mastermind'), { deadlineMs: 0 }).planTurn(m, 'a');
     expect(rushed.work ?? 0).toBeLessThan(a.work ?? 0);
     expect(rushed.commands.length).toBeGreaterThan(0);
