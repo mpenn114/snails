@@ -2,7 +2,7 @@ import type { GameSnapshot, SimEvent, WeaponLaunchSpec } from '@snails/core';
 import type { MatchInit } from '@snails/render';
 import { WireSnapshotMapper } from '@snails/render';
 import { decodeEventBatch, decodeSnapshot, decodeTerrainHistory } from '@snails/protocol';
-import type { ServerMessage } from '@snails/protocol';
+import type { DecodedSnapshot, ServerMessage } from '@snails/protocol';
 import { EMPTY_HUD, hudFromSnapshot, suddenDeathNotice } from './hud-model';
 import type { HudModel } from './hud-model';
 
@@ -16,6 +16,8 @@ export interface RendererPort {
   handleEvents(events: readonly SimEvent[]): void;
   /** Applies catch-up terrain edits silently (no effects). */
   applyTerrainHistory(events: readonly SimEvent[]): void;
+  /** Public per-team research entries of the latest snapshot (shimmer, persistent shell looks). */
+  setResearchTeams?(teams: DecodedSnapshot['teams']): void;
 }
 
 /** Aim hint surface. */
@@ -42,6 +44,8 @@ export interface MatchAdapterDeps {
   onHud: (hud: HudModel) => void;
   /** Called with `true` when the match view should appear, `false` when the lobby returns. */
   onMatchVisible: (visible: boolean) => void;
+  /** A team completed a tech (live event only; never fired for catch-up snapshots). */
+  onResearchRevealed?: (reveal: { teamName: string; colour: string; techId: string }) => void;
 }
 
 /**
@@ -114,7 +118,9 @@ export class MatchAdapter {
 
   private snapshot(m: Extract<ServerMessage, { type: 'snapshot' }>): void {
     if (!this.mapper) return;
-    this.last = this.mapper.map(decodeSnapshot(m));
+    const decoded = decodeSnapshot(m);
+    this.last = this.mapper.map(decoded);
+    this.deps.renderer.setResearchTeams?.(decoded.teams);
     this.timerMs = null;
     this.deps.renderer.pushSnapshot(this.last);
     this.refresh();
@@ -132,9 +138,16 @@ export class MatchAdapter {
             ? { name: team.name, colour: team.colour, ...(e.reason ? { reason: e.reason } : {}) }
             : { name: null, colour: null };
         this.deps.aim.set(null);
-      } else if (e.type === 'suddenDeathStarted') this.notice = suddenDeathNotice(e.kind);
+      } else if (e.type === 'researchCompleted') this.revealed(e.teamId, e.techId);
+      else if (e.type === 'suddenDeathStarted') this.notice = suddenDeathNotice(e.kind);
     }
     this.refresh();
+  }
+
+  private revealed(teamId: string, techId: string): void {
+    const team = this.last?.teams.find((t) => t.id === teamId);
+    if (!team) return;
+    this.deps.onResearchRevealed?.({ teamName: team.name, colour: team.colour, techId });
   }
 
   private backToLobby(): void {

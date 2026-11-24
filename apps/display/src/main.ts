@@ -15,6 +15,8 @@ import { mountLobbyScreen } from './lobby/lobby-view';
 import type { LobbyModel } from './lobby/lobby-view';
 import { MatchAdapter } from './match/match-adapter';
 import { mountHud } from './match/hud-view';
+import { bannerText, mountBanner } from './match/research-banner';
+import { technologies } from '@snails/content-base';
 import { buildTerrainInit } from './match/terrain-init';
 import { mountDebugOverlay } from './debug/debug-overlay';
 import { createTerrainProbe } from './debug/terrain-probe';
@@ -52,8 +54,16 @@ const aimHint = createAimHint({
 renderer.addLayer(aimHint.layer);
 const hud = mountHud(document.getElementById('lobby-root') as HTMLElement);
 const lobby = mountLobbyScreen(document.getElementById('lobby-root') as HTMLElement);
+const banner = mountBanner(document.getElementById('lobby-root') as HTMLElement);
+const techs = new Map(technologies.map((t) => [t.id, t]));
+renderer.setTechVisuals((id) => techs.get(id)?.visual);
 const adapter = new MatchAdapter({
   renderer,
+  onResearchRevealed: (r) =>
+    banner.show({
+      text: bannerText(r.teamName, techs.get(r.techId)?.name ?? r.techId),
+      colour: r.colour,
+    }),
   aim: aimHint,
   buildInit: buildTerrainInit,
   onHud: hud.update,

@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import type { QualityTier } from '../quality.js';
 import { createToonMaterial } from '../style/materials.js';
+import type { ShellMaterialKind } from '../research/shell-look.js';
 import { LIP_START, lipColour, patternTint, shellPatternForTeam } from './shell-pattern.js';
 
 const VERTEX_DECL = /* glsl */ `
@@ -63,6 +64,17 @@ const FRAGMENT_COLOR = /* glsl */ `
 /** Quantised damage step (0..DAMAGE_STEPS) used to share darkened materials between snails. */
 export const DAMAGE_STEPS = 4;
 
+/** Tint, blend amount and emissive of each research shell material (palette-derived). */
+export const MATERIAL_LOOKS: Record<
+  ShellMaterialKind,
+  { tint: number; mix: number; emissive: number; emissiveIntensity: number }
+> = {
+  chalky: { tint: 0xf1ead8, mix: 0.45, emissive: 0x000000, emissiveIntensity: 0 },
+  calcified: { tint: 0xe3d3a8, mix: 0.6, emissive: 0x000000, emissiveIntensity: 0 },
+  iron: { tint: 0x6a6f78, mix: 0.6, emissive: 0x000000, emissiveIntensity: 0 },
+  crystal: { tint: 0x9fe6ee, mix: 0.55, emissive: 0x3fb8c8, emissiveIntensity: 0.35 },
+};
+
 /** Options of {@link createShellMaterial}. */
 export interface ShellMaterialOptions {
   /** Team colour (24-bit hex). */
@@ -71,13 +83,21 @@ export interface ShellMaterialOptions {
   pattern: number;
   /** Damage step 0..{@link DAMAGE_STEPS}; darkens the shell. */
   damageStep?: number;
+  /** Research material variant (absent = plain team shell). */
+  kind?: ShellMaterialKind | null;
   /** Quality tier (default high). */
   tier?: QualityTier;
 }
 
 /** Cache key identifying a shell material, so snails of equal look share one instance. */
 export function shellMaterialKey(o: ShellMaterialOptions): string {
-  return [o.colour, shellPatternForTeam(o.pattern), o.damageStep ?? 0, o.tier ?? 'high'].join('|');
+  return [
+    o.colour,
+    shellPatternForTeam(o.pattern),
+    o.damageStep ?? 0,
+    o.kind ?? '-',
+    o.tier ?? 'high',
+  ].join('|');
 }
 
 /**
@@ -95,8 +115,14 @@ export function createShellMaterial(o: ShellMaterialOptions): THREE.MeshToonMate
     rim: 0.3,
     ...(o.tier ? { tier: o.tier } : {}),
   });
+  const look = o.kind ? MATERIAL_LOOKS[o.kind] : null;
+  if (look) {
+    material.color.lerp(new THREE.Color(look.tint), look.mix);
+    material.emissive.set(look.emissive);
+    material.emissiveIntensity = look.emissiveIntensity;
+  }
   material.color.multiplyScalar(dim);
-  const patternColor = patternTint(base).multiplyScalar(dim);
+  const patternColor = patternTint(look ? material.color : base).multiplyScalar(look ? 1 : dim);
   const lipColor = lipColour(base).multiplyScalar(0.5 + 0.5 * dim);
   const rimPatch = material.onBeforeCompile;
   material.onBeforeCompile = (shader, renderer) => {

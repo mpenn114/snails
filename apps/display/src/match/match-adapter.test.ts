@@ -62,7 +62,9 @@ function setup() {
     pushSnapshot: vi.fn(),
     handleEvents: vi.fn(),
     applyTerrainHistory: vi.fn(),
+    setResearchTeams: vi.fn(),
   };
+  const reveals: unknown[] = [];
   const aim = { set: vi.fn() };
   const huds: HudModel[] = [];
   const visible: boolean[] = [];
@@ -72,8 +74,9 @@ function setup() {
     buildInit: () => ({ grid: {} as never, waterLevel: 0.5 }),
     onHud: (h) => huds.push(h),
     onMatchVisible: (v) => visible.push(v),
+    onResearchRevealed: (r) => reveals.push(r),
   });
-  return { a, renderer, aim, huds, visible };
+  return { a, renderer, aim, huds, visible, reveals };
 }
 
 describe('MatchAdapter', () => {
@@ -96,6 +99,20 @@ describe('MatchAdapter', () => {
     expect(hud.turnSnail).toBe('Sid');
     expect(hud.timerSeconds).toBe(13);
     expect(hud.bars[1]!.fraction).toBe(0.5);
+  });
+
+  it('feeds research state from snapshots (late join) and reveals only on live events', () => {
+    const t = setup();
+    t.a.handle(started);
+    const teams = [{ id: 'a', researching: true, researched: ['iron-plating'] }];
+    t.a.handle(encodeSnapshot({ ...snap, teams }));
+    expect(t.renderer.setResearchTeams).toHaveBeenLastCalledWith(teams);
+    expect(t.reveals).toEqual([]);
+    const batch = encodeEventBatch(9, [
+      { type: 'researchCompleted', teamId: 'a', techId: 'iron-plating' },
+    ] as never);
+    t.a.handle(batch);
+    expect(t.reveals).toHaveLength(1);
   });
 
   it('applies terrain history silently (not as live events)', () => {

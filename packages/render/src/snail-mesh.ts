@@ -16,6 +16,8 @@ import {
 import { hashShellSeed } from './snail/shell-geometry.js';
 import { DAMAGE_STEPS } from './snail/shell-material.js';
 import { shellPatternForTeam } from './snail/shell-pattern.js';
+import { ShellExtras } from './research/shell-extras.js';
+import { lookKey, type ShellMaterialKind } from './research/shell-look.js';
 import type { SnailView } from './snail-view.js';
 
 /** Where the health bar and name tag start above the sole (just over the shell top). */
@@ -74,6 +76,9 @@ export class SnailMesh {
   private shellRoughness = 0.5;
   private damageStep = 0;
   private pattern: number;
+  private materialKind: ShellMaterialKind | null = null;
+  private extras: ShellExtras | null = null;
+  private appliedLook = '';
   private baseColour = 0xc98b4a;
   private labelText: string | null = null;
   private labelTexture: THREE.Texture | null = null;
@@ -176,7 +181,12 @@ export class SnailMesh {
   }
 
   private shellMaterialNow(): THREE.MeshToonMaterial {
-    return this.assets.shellMaterial(this.baseColour, this.pattern, this.damageStep);
+    return this.assets.shellMaterial(
+      this.baseColour,
+      this.pattern,
+      this.damageStep,
+      this.materialKind,
+    );
   }
 
   private refreshShellMaterial(): void {
@@ -269,6 +279,7 @@ export class SnailMesh {
    * poses the rig. Motion facts come from position deltas, so interpolated views work too.
    */
   animate(dt: number, v: SnailView): void {
+    this.extras?.update(dt);
     const here = this.group.position;
     if (dt > 0 && this.lastPos) {
       const ease = 1 - Math.exp(-14 * dt);
@@ -335,6 +346,32 @@ export class SnailMesh {
     this.barFill.scale.x = Math.max(frac, 1e-4);
     this.barFill.visible = frac > 0;
     this.setName(v.name);
+    this.applyResearch(v);
+  }
+
+  /** Applies the team's research look (material, attachments, glow) and the shimmer flag. */
+  private applyResearch(v: SnailView): void {
+    const r = v.research;
+    const kind = r?.look.material ?? null;
+    if (kind !== this.materialKind) {
+      this.materialKind = kind;
+      this.refreshShellMaterial();
+    }
+    const key = r ? lookKey(r.look) : '';
+    if (key !== this.appliedLook) {
+      this.appliedLook = key;
+      if (r && !this.extras) {
+        this.extras = new ShellExtras(this.rig.shell.geometry);
+        this.rig.shell.add(this.extras.group);
+      }
+      if (r) this.extras?.setLook(r.look);
+    }
+    this.extras?.setShimmer(v.alive && r?.researching === true);
+  }
+
+  /** Research decoration of the shell (null until a team look is applied). */
+  get shellExtras(): ShellExtras | null {
+    return this.extras;
   }
 
   private setName(name: string): void {
@@ -354,6 +391,7 @@ export class SnailMesh {
   /** Frees per-snail resources; shared assets are freed by their owner. */
   dispose(): void {
     this.nameMaterial.dispose();
+    this.extras?.dispose();
     this.labelTexture?.dispose();
     this.labelTexture = null;
     this.group.removeFromParent();

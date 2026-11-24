@@ -110,6 +110,14 @@ Each tech may carry a `visual` payload (all data, see [snail-visuals.md](snail-v
 - **Glow/aura:** crystal veins, a faint eye-glow when scouting.
 - **Sounds:** each tier has a distinct chime so you can hear an upgrade.
 
+Renderer behaviour (M5-13): the shell look is derived from the team's public `researched` list in
+every snapshot (latest `shellMaterial` wins, `attachments` accumulate, latest `glow` wins), so a
+late-joining display or phone is correct without replaying events. Drawn attachments today are
+`spikes` and `plates` (other names are ignored). A team whose public `researching` flag is true
+gets a soft pulsing shimmer on its shells. `researchCompleted` shows a TV banner
+("<Team> researched <Tech>", queued one at a time) and a sparkle burst on the team's living
+snails; the camera never moves for it. The display and phone read `visual` from the base pack.
+
 Opponents can therefore read a team's strategy from silhouettes: spiky bruiser, glassy tank,
 antenna scout.
 

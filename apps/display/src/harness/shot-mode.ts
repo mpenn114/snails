@@ -240,6 +240,28 @@ function installShotCamera(renderer: MatchRenderer, pose: ShotPose): void {
   });
 }
 
+/** Fake tech visuals so the research look can be eyeballed (`?research=1`; `=shimmer` pulses). */
+function applyFakeResearch(
+  renderer: MatchRenderer,
+  sim: { state: { teams: { id: string }[] } },
+  shimmer: boolean,
+): void {
+  const fake: Record<
+    string,
+    { shellMaterial?: 'iron' | 'crystal'; attachments?: string[]; glow?: string }
+  > = {
+    a: { shellMaterial: 'iron', attachments: ['spikes', 'plates'] },
+    b: { shellMaterial: 'crystal', glow: '#7fe3ff' },
+  };
+  renderer.setTechVisuals((id) => fake[id]);
+  const [first, second] = sim.state.teams;
+  renderer.setResearchTeams([
+    { id: first?.id ?? '', researching: shimmer, researched: ['a'] },
+    { id: second?.id ?? '', researched: ['b'] },
+  ]);
+}
+
+/** Runs one deterministic screenshot scene. */
 /**
  * Deterministic capture mode (`?shot=1&cam=close|wide|crater|flight|aim&seed=&quality=`). Time is
  * simulated (fixed dt per frame, manual scheduler), randomness is seeded, so repeated loads
@@ -286,6 +308,8 @@ export async function runShot(canvas: HTMLCanvasElement, params: URLSearchParams
     renderer.addLayer(hint.layer);
     hint.set(aimInput);
   }
+  if (params.has('research'))
+    applyFakeResearch(renderer, sim, params.get('research') === 'shimmer');
   renderer.pushSnapshot(sim.snapshot());
   await settle();
   if (cam === 'crater') {

@@ -2,6 +2,7 @@ import { createToonMaterial } from './style/materials.js';
 import { PALETTE } from './style/palette.js';
 import { buildSnailBody, type SnailBodyParts } from './snail/body-geometry.js';
 import { buildShellGeometry, shellParamsFromSeed, type ShellLod } from './snail/shell-geometry.js';
+import type { ShellMaterialKind } from './research/shell-look.js';
 import { createShellMaterial, shellMaterialKey } from './snail/shell-material.js';
 import type { QualityTier } from './quality.js';
 import * as THREE from 'three';
@@ -103,8 +104,13 @@ export class SnailAssets {
   }
 
   /** Shared shell material for a team colour, pattern id and damage step (cached). */
-  shellMaterial(colour: number, pattern: number, damageStep = 0): THREE.MeshToonMaterial {
-    const opts = { colour, pattern, damageStep, tier: this.tier };
+  shellMaterial(
+    colour: number,
+    pattern: number,
+    damageStep = 0,
+    kind: ShellMaterialKind | null = null,
+  ): THREE.MeshToonMaterial {
+    const opts = { colour, pattern, damageStep, kind, tier: this.tier };
     const key = shellMaterialKey(opts);
     let m = this.shellMats.get(key);
     if (!m) {

@@ -10,6 +10,7 @@ import {
 import { declutterLabels, type LabelBox } from './label-declutter.js';
 import { hashShellSeed } from './snail/shell-geometry.js';
 import type { QualityTier } from './quality.js';
+import type { ResearchVisuals } from './research/research-visuals.js';
 import { SnailMesh } from './snail-mesh.js';
 import { reactionsForEvent, scareStrength } from './snail/snail-expression.js';
 import { snailViewsFromSnapshot, type SnailView } from './snail-view.js';
@@ -38,6 +39,8 @@ export interface SnailLayerOptions {
   tier?: QualityTier;
   /** Snail bodies cast shadows (default false). */
   shadows?: boolean;
+  /** Research feedback source: shell looks and shimmer flags per team. */
+  research?: ResearchVisuals;
 }
 
 /** Owns all snail meshes; keeps them in sync with a list of snail views by id. */
@@ -61,8 +64,12 @@ export class SnailLayer {
     this.shadows = opts.shadows ?? false;
     this.group.name = 'snails';
     const select = opts.selectViews ?? ((s: RenderState) => snailViewsFromSnapshot(s.snapshot));
+    const research = opts.research;
     this.updater = (dt, state) => {
-      if (state) this.sync(select(state), dt);
+      if (!state) return;
+      const views = select(state);
+      if (research) for (const v of views) v.research = research.get(v.teamId);
+      this.sync(views, dt);
     };
   }
 
@@ -80,6 +87,16 @@ export class SnailLayer {
   /** Number of live meshes. */
   get size(): number {
     return this.meshes.size;
+  }
+
+  /** World positions (chest height) of a team's living snails. */
+  livingPositions(teamId: string): THREE.Vector3[] {
+    const out: THREE.Vector3[] = [];
+    for (const mesh of this.meshes.values()) {
+      if (mesh.teamId !== teamId || !mesh.bodyGroup.visible) continue;
+      out.push(mesh.group.position.clone().add(new THREE.Vector3(0, 0.5, 0)));
+    }
+    return out;
   }
 
   /** Mesh for a snail id, if present. */
