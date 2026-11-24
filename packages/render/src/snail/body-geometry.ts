@@ -85,7 +85,6 @@ const BELLY_COL = new THREE.Color(PALETTE.snailSkin).lerp(new THREE.Color(PALETT
 const BACK_COL = new THREE.Color(PALETTE.snailSkin).lerp(new THREE.Color(PALETTE.soil), 0.12);
 const EYE_COL = new THREE.Color(PALETTE.uiPaper).lerp(new THREE.Color(0xffffff), 0.7);
 const INK_COL = new THREE.Color(PALETTE.uiInk);
-const BLUSH_COL = new THREE.Color(PALETTE.snailSkin).lerp(new THREE.Color(0xff6fb8), 0.35);
 
 /** A swept surface: `rings` of `m` points each, optional single-point caps at either end. */
 interface Sweep {
@@ -263,41 +262,35 @@ function buildPupil(lod: BodyLod): THREE.BufferGeometry {
   return merged;
 }
 
-/** Small lower tentacles on each side of the mouth, merged into the body. */
-function buildTentacles(lod: BodyLod): THREE.BufferGeometry[] {
-  const sides = lod === 0 ? 5 : 4;
-  const out: THREE.BufferGeometry[] = [];
-  for (const z of [0.1, -0.1]) {
-    const x0 = BODY_TAIL_X + BODY_LENGTH - 0.1;
-    const y0 = centreY(1) + 0.1;
-    const path: Vec3[] = [0, 1, 2, 3].map((k) => {
-      const t = k / 3;
-      return [x0 + 0.1 * t, y0 - 0.02 * t, z * (1 + 0.5 * t)];
-    });
-    out.push(tube(path, [0.04, 0.034, 0.027, 0.018], sides, BLUSH_COL.clone().lerp(SKIN, 0.5)));
-  }
-  return out;
+/** Eyelid: a skin-coloured cap over the top half of an eyeball (pole +Y), origin at the eye. */
+function buildLid(lod: BodyLod): THREE.BufferGeometry {
+  const segs = Math.max(6, BODY_LOD_DETAIL[lod].eyeSegs);
+  const g = new THREE.SphereGeometry(EYE_RADIUS, segs, 4, 0, Math.PI * 2, 0, Math.PI / 2);
+  g.deleteAttribute('uv');
+  return paint(g, SKIN);
 }
 
 /** The pieces of a snail body, built in body space (facing +X, sole on y = 0). */
 export interface SnailBodyParts {
-  /** Torso, tail, head and lower tentacles. */
+  /** Torso: tail, rounded head and flat sole (no tentacles; the face stays clean). */
   body: THREE.BufferGeometry;
   /** Eye stalk with eyeball for the +Z side and the -Z side, origin at the stalk root. */
   stalks: [THREE.BufferGeometry, THREE.BufferGeometry];
   /** Pupil with glint, origin at the pupil centre. */
   pupil: THREE.BufferGeometry;
+  /** Eyelid cap (unit eyeball radius, pole up), origin at the eye centre. */
+  lid: THREE.BufferGeometry;
 }
 
 /** Builds the body, both eye stalks and the pupil for a level of detail. */
 export function buildSnailBody(lod: BodyLod = 0): SnailBodyParts {
   const torso = buildBodySweep(lod);
-  const tentacles = buildTentacles(lod);
-  const body = mergeGeometries([torso, ...tentacles], false);
-  torso.dispose();
-  for (const t of tentacles) t.dispose();
-  if (!body) throw new Error('snail body merge failed');
-  return { body, stalks: [buildStalk(1, lod), buildStalk(-1, lod)], pupil: buildPupil(lod) };
+  return {
+    body: torso,
+    stalks: [buildStalk(1, lod), buildStalk(-1, lod)],
+    pupil: buildPupil(lod),
+    lid: buildLid(lod),
+  };
 }
 
 /** Shell height in metres (normalised shell height is 1): about 60% of the snail's height. */

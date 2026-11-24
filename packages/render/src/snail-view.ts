@@ -18,6 +18,14 @@ export interface SnailView {
   alive: boolean;
   name: string;
   isActive: boolean;
+  /** Resting on the ground (absent = grounded). Drives the jump pose. */
+  grounded?: boolean;
+  /** Active snail in the aim part of its turn (animation lean). */
+  aiming?: boolean;
+  /** Aim elevation in radians above the facing direction (absent = 0). */
+  aimAngle?: number;
+  /** Active snail retreating after its shot (animation). */
+  retreating?: boolean;
 }
 
 /** Fallback team palette, indexed by team order. */
@@ -47,6 +55,8 @@ export function snailViewsFromSnapshot(snapshot: GameSnapshot): SnailView[] {
   snapshot.teams.forEach((team, index) => {
     const colour = resolveTeamColour(team.colour, index);
     for (const s of team.snails) {
+      const active = snapshot.turn.activeSnailId === s.id;
+      const phase = snapshot.turn.phase;
       views.push({
         id: s.id,
         teamId: team.id,
@@ -58,7 +68,11 @@ export function snailViewsFromSnapshot(snapshot: GameSnapshot): SnailView[] {
         maxHealth: s.maxHealth,
         alive: s.alive,
         name: s.name,
-        isActive: snapshot.turn.activeSnailId === s.id,
+        isActive: active,
+        grounded: s.grounded !== false,
+        aiming: active && s.alive && phase === 'action' && !snapshot.turn.fired,
+        aimAngle: s.aim?.angle ?? 0,
+        retreating: active && s.alive && phase === 'retreat',
       });
     }
   });

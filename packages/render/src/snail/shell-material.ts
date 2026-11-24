@@ -26,22 +26,27 @@ float stripe(float v, float width) {
   float w = max(fwidth(v), 1e-4) * 0.8;
   return smoothstep(width + w, width - w, f) * smoothstep(0.0, w, f);
 }
+float faceWeight(float a) {
+  float c = cos(a * 6.2831853);
+  return smoothstep(0.0, 1.0, clamp((0.75 - c) / 0.4, 0.0, 1.0));
+}
 float shellMask(float id, float s, float a) {
-  if (id < 0.5) return stripe(s * 16.0, 0.4);
+  float f = faceWeight(a);
+  if (id < 0.5) return stripe(s * 16.0, 0.4) * f;
   if (id < 1.5) return stripe(a * 3.0 + 0.12, 0.34);
   if (id < 2.5) {
     float row = floor(a * 4.0);
     vec2 c = vec2(fract(s * 12.0 + mod(row, 2.0) * 0.5) - 0.5, fract(a * 4.0) - 0.5);
     return 1.0 - smoothstep(0.27, 0.33, length(vec2(c.x * 1.4, c.y)));
   }
-  if (id < 3.5) return stripe(s * 4.5, 0.5);
-  if (id < 4.5) return stripe(s * 12.0 + abs(fract(a * 3.0) - 0.5) * 1.6, 0.45);
+  if (id < 3.5) return stripe(s * 4.5, 0.5) * f;
+  if (id < 4.5) return stripe(s * 12.0 + abs(fract(a * 3.0) - 0.5) * 1.6, 0.45) * f;
   if (id < 5.5) {
     float c = mod(floor(s * 12.0) + floor(a * 4.0), 2.0);
-    return 1.0 - c;
+    return (1.0 - c) * f;
   }
   if (id < 6.5) return 1.0 - edge(s, 0.34);
-  return stripe(s * 10.0 + a * 2.0, 0.42);
+  return stripe(s * 10.0 + a * 2.0, 0.42) * f;
 }
 `;
 

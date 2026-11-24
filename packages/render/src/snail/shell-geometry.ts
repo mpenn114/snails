@@ -3,15 +3,15 @@ import * as THREE from 'three';
 
 /** Parameters of a procedural shell (see docs/snail-visuals.md, "Procedural shell generation"). */
 export interface ShellParams {
-  /** Starting radius of the spiral (0.05..0.12); also blunts the apex. */
+  /** Starting radius of the spiral (0.05..0.10); also blunts the apex. */
   a: number;
-  /** Growth rate per radian (0.15..0.30). */
+  /** Growth rate per radian (0.20..0.27). */
   b: number;
-  /** Whorls (3..5.5). */
+  /** Whorls (2.6..3.4). */
   turns: number;
-  /** Apex lean in radians (0..25 degrees). */
+  /** Apex lean in radians (-4..4 degrees; the disc stays upright). */
   tilt: number;
-  /** Cross-section aspect (0.8..1.3): width along the coil axis over in-plane height. */
+  /** Cross-section aspect (1.9..2.3): width along the coil axis over in-plane height. */
   ellipse: number;
   /** Growth ridges along the spiral (0..12). */
   ridges: number;
@@ -38,7 +38,7 @@ export const SHELL_LOD_BUDGET: Readonly<Record<ShellLod, number>> = {
 export const SHELL_HEIGHT = 1;
 
 /** Tube radius as a fraction of the spiral radius. */
-const TUBE = 0.62;
+const TUBE = 0.4;
 /** Scales `b` so the visible whorls stay chunky (about 1.7x to 2.8x growth per turn). */
 const GROWTH = 0.55;
 /** Lip flare factor on the last ring. */
@@ -71,11 +71,11 @@ export function shellParamsFromSeed(seed: number): ShellParams {
   const rnd = seededRandom(seed);
   const range = (lo: number, hi: number): number => lo + (hi - lo) * rnd();
   return {
-    a: range(0.05, 0.12),
-    b: range(0.15, 0.3),
-    turns: range(3, 5.5),
-    tilt: (range(0, 25) * Math.PI) / 180,
-    ellipse: range(0.8, 1.3),
+    a: range(0.05, 0.1),
+    b: range(0.2, 0.27),
+    turns: range(2.6, 3.4),
+    tilt: (range(-4, 4) * Math.PI) / 180,
+    ellipse: range(1.9, 2.3),
     ridges: Math.round(range(0, 12)),
     bumpiness: rnd(),
   };
@@ -141,10 +141,12 @@ function normalise(pos: Float32Array, p: ShellParams, last: Ring): void {
   for (let i = 0; i < pos.length; i++) pos[i] = (pos[i] as number) * s;
 }
 
-function buildIndex(n: number, m: number, apex: number): number[] {
+function buildIndex(n: number, m: number, apex: number, lip: number): number[] {
   const cols = m + 1;
   const index: number[] = [];
   for (let j = 0; j < m; j++) index.push(apex, j, j + 1);
+  const last = (n - 1) * cols;
+  for (let j = 0; j < m; j++) index.push(lip, last + j + 1, last + j);
   for (let k = 0; k < n - 1; k++) {
     for (let j = 0; j < m; j++) {
       const a = k * cols + j;
@@ -166,7 +168,7 @@ export function buildShellGeometry(params: ShellParams, lod: ShellLod = 0): THRE
   const rnd = seededRandom(Math.floor(params.a * 1e6 + params.b * 1e4 + params.turns * 100));
   const rings = buildRings(params, n, rnd);
   const cols = m + 1;
-  const vCount = n * cols + 1;
+  const vCount = n * cols + 2;
   const pos = new Float32Array(vCount * 3);
   const spiral = new Float32Array(vCount);
   const around = new Float32Array(vCount);
@@ -179,16 +181,31 @@ export function buildShellGeometry(params: ShellParams, lod: ShellLod = 0): THRE
     }
   });
   const first = rings[0] as Ring;
-  const apex = vCount - 1;
+  const apex = vCount - 2;
+  const lipCap = vCount - 1;
   // Dome the apex backwards along the (negative) spiral tangent.
   const back = first.rho * 0.7;
   pos.set([first.cx + first.ny * back, first.cy - first.nx * back, 0], apex * 3);
-  normalise(pos, params, rings[n - 1] as Ring);
+  // Close the mouth with a shallow rounded cap (no hollow spout sticking out of the whorl).
+  const end = rings[n - 1] as Ring;
+  const tl = Math.hypot(-end.ny + params.b * GROWTH * end.nx, end.nx + params.b * GROWTH * end.ny);
+  const push = (end.rho * 0.55) / tl;
+  pos.set(
+    [
+      end.cx + (-end.ny + params.b * GROWTH * end.nx) * push,
+      end.cy + (end.nx + params.b * GROWTH * end.ny) * push,
+      0,
+    ],
+    lipCap * 3,
+  );
+  spiral[lipCap] = 1;
+  around[lipCap] = 0.5;
+  normalise(pos, params, end);
   const geo = new THREE.BufferGeometry();
   geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
   geo.setAttribute('aSpiral', new THREE.BufferAttribute(spiral, 1));
   geo.setAttribute('aAround', new THREE.BufferAttribute(around, 1));
-  geo.setIndex(buildIndex(n, m, apex));
+  geo.setIndex(buildIndex(n, m, apex, lipCap));
   geo.computeVertexNormals();
   geo.computeBoundingBox();
   geo.computeBoundingSphere();

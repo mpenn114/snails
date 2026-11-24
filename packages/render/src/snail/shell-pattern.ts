@@ -22,6 +22,17 @@ export const LIP_START = 0.98;
 const fract = (x: number): number => x - Math.floor(x);
 
 /**
+ * Fades spiral-direction patterns out on the outer rim (a = 0), so the whorl faces show the
+ * wedges and swirls while the rim stays a clean team colour (no shrimp-like banding edge-on).
+ */
+export function faceWeight(a: number): number {
+  const c = Math.cos(a * Math.PI * 2);
+  const t = Math.min(1, Math.max(0, (0.75 - c) / 0.4));
+  return t * t * (3 - 2 * t);
+}
+const onFace = (v: number, a: number): number => (v * faceWeight(a) > 0.5 ? 1 : 0);
+
+/**
  * Pattern id for a team slot: every slot below {@link SHELL_PATTERNS}.length gets a different
  * pattern, so two teams in one match never share one. Wraps for larger indices.
  */
@@ -38,7 +49,7 @@ export function shellPatternForTeam(teamIndex: number): number {
 export function patternMask(pattern: number, s: number, a: number): number {
   switch (SHELL_PATTERNS[shellPatternForTeam(pattern)]) {
     case 'ribs':
-      return fract(s * 16) < 0.4 ? 1 : 0;
+      return onFace(fract(s * 16) < 0.4 ? 1 : 0, a);
     case 'lines':
       return fract(a * 3 + 0.12) < 0.34 ? 1 : 0;
     case 'spots': {
@@ -48,15 +59,15 @@ export function patternMask(pattern: number, s: number, a: number): number {
       return Math.hypot(cx * 1.4, cy) < 0.3 ? 1 : 0;
     }
     case 'bands':
-      return fract(s * 4.5) < 0.5 ? 1 : 0;
+      return onFace(fract(s * 4.5) < 0.5 ? 1 : 0, a);
     case 'zigzag':
-      return fract(s * 12 + Math.abs(fract(a * 3) - 0.5) * 1.6) < 0.45 ? 1 : 0;
+      return onFace(fract(s * 12 + Math.abs(fract(a * 3) - 0.5) * 1.6) < 0.45 ? 1 : 0, a);
     case 'checker':
-      return (Math.floor(s * 12) + Math.floor(a * 4)) % 2 === 0 ? 1 : 0;
+      return onFace((Math.floor(s * 12) + Math.floor(a * 4)) % 2 === 0 ? 1 : 0, a);
     case 'tip':
       return s < 0.34 ? 1 : 0;
     default:
-      return fract(s * 10 + a * 2) < 0.42 ? 1 : 0;
+      return onFace(fract(s * 10 + a * 2) < 0.42 ? 1 : 0, a);
   }
 }
 
