@@ -95,6 +95,16 @@ shapes; some add material.
   side-on 2.5D view; vertical depth matters through tunnels and burrows.
 - **Camera:** Display-side concern; follows action, never decides rules.
 
+## Map styles
+
+Procedural maps pick a terrain style (`packages/core/src/terrain/styles/`). Reusable SDF helpers
+(`features.ts`: `buildTunnel`, `tunnelCarve`, `wobblyPath`) bore tunnels along wobbly capsule chains.
+
+- **Highlands:** a big mountainous island with two ridged, terraced peaks (about 17 to 20 m) and a
+  saddle between them, steep rocky cliffs, flat shelves where snails can stand, foothills and a
+  narrow shore. One tunnel is bored through each peak, both mouths on dry ground so snails can
+  crawl through, plus a few noise caves. Cliffs and peaks are rock; gentle shelves keep soil.
+
 ## Wind
 
 - Wind is a 2D vector, redrawn every turn, shown as an arrow and leaf particles.

@@ -288,7 +288,7 @@ must keep. `pnpm shots` has a `display-style-<name>` overview per style.
 | ID | Task | Area | Depends on | Status |
 |---|---|---|---|---|
 | M9-01 | Terrain style framework: `TerrainStyleImpl`, `style` in config and protocol, shared invariant tests, `?style=` shots | core | M8 | ✅ |
-| M9-02 | Highlands style: ridged mountains, cliffs and passes, plus reusable tunnel carving (`styles/features.ts`) | core | M9-01 | ⬜ |
+| M9-02 | Highlands style: ridged mountains, cliffs and passes, plus reusable tunnel carving (`styles/features.ts`) | core | M9-01 | ✅ |
 | M9-03 | Archipelago style: several islands, beaches, sea stacks and a rock arch | core | M9-01 | ⬜ |
 | M9-04 | Snail body redesign: smooth, cute, clearly a head and a foot, not flesh-coloured | render | M7 | ⬜ |
 | M9-05 | Caverns style: a hollow mesa with big connected caves and tunnels opening to the surface | core | M9-02 | ⬜ |
