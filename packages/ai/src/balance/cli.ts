@@ -1,5 +1,5 @@
 import { writeFileSync } from 'node:fs';
-import { loadContentPacks } from '@snails/core';
+import { loadContentPacks, TERRAIN_STYLES } from '@snails/core';
 import { basePack } from '@snails/content-base';
 import { runBalance, timingOf, type BalanceOptions } from './match-runner.js';
 import { aggregate, formatDashboard } from './stats.js';
@@ -11,15 +11,20 @@ function arg(name: string): string | undefined {
 
 /**
  * Headless balance runner: `pnpm sim:balance [--matches 40] [--mode researchRace]
- * [--snails 2] [--turns 60] [--out file.json]`. Dashboard goes to stderr, JSON to stdout or
+ * [--snails 2] [--turns 60] [--style island|...] [--out file.json]`. Dashboard goes to stderr, JSON to stdout or
  * `--out`.
  */
+const style = TERRAIN_STYLES.find((t) => t === arg('style'));
+if (arg('style') !== undefined && style === undefined) {
+  throw new Error(`unknown --style (use ${TERRAIN_STYLES.join(', ')})`);
+}
 const options: BalanceOptions = {
   registries: loadContentPacks([basePack]).registries,
   matches: Number(arg('matches') ?? 40),
   mode: arg('mode') === 'researchRace' ? 'researchRace' : 'elimination',
   snailsPerTeam: Number(arg('snails') ?? 2),
   turnCap: Number(arg('turns') ?? 60),
+  ...(style === undefined ? {} : { style }),
 };
 const report = aggregate(runBalance(options), timingOf(options));
 const out = arg('out');

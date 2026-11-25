@@ -1,9 +1,9 @@
-import { loadContentPacks } from '@snails/core';
+import { loadContentPacks, TERRAIN_STYLES } from '@snails/core';
 import { basePack } from '@snails/content-base';
 import { describe, expect, it } from 'vitest';
 import { DIFFICULTY_PROFILES } from '../cpu/difficulty.js';
 import { runAiMatch } from './run-match.js';
-import { runAiMatches, summarize, withoutTimings } from './summary.js';
+import { formatStyleTable, runAiMatches, summarize, withoutTimings } from './summary.js';
 import { thinkTimeStats } from './think-time.js';
 
 const registries = loadContentPacks([basePack]).registries;
@@ -86,4 +86,18 @@ describe('retreat delivery', () => {
     });
     expect(moved).toBeGreaterThan(0.5);
   }, 30_000);
+});
+
+describe('terrain styles', () => {
+  it.each(TERRAIN_STYLES)(
+    'plays a match on %s without CPU errors',
+    (style) => {
+      const rec = runAiMatch({ ...opts, seed: 3, style });
+      expect(rec.style).toBe(style);
+      expect(rec.errors).toEqual([]);
+      expect(rec.turns).toBeGreaterThan(0);
+      expect(formatStyleTable([rec])).toContain(style);
+    },
+    60_000,
+  );
 });

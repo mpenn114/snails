@@ -92,9 +92,69 @@ function surfaceAt(grid: SdfGrid, x: number, z: number): number | null {
   return null;
 }
 
+/** Smallest spacing of the fallback pass: two snails (radius 0.5) never overlap. */
+const MIN_FALLBACK_SPACING = 1.1;
+
+/** Steepest surface (normal.y) the strict pass accepts, and the fallback pass for crowded lobbies. */
+const STRICT_FLATNESS = 0.85;
+const FALLBACK_FLATNESS = 0.6;
+
+/** A dry, gentle, open-sky surface point at cell column (x, z), or null. */
+function spawnCandidate(
+  grid: SdfGrid,
+  descriptor: TerrainDescriptor,
+  x: number,
+  z: number,
+  flatness = STRICT_FLATNESS,
+): Vec3 | null {
+  const y = surfaceAt(grid, x, z);
+  if (y === null || y < descriptor.waterLevel + 0.5) return null;
+  const p = { x: x * grid.cellSize, y, z: z * grid.cellSize };
+  return grid.normal(p).y < flatness ? null : p;
+}
+
+const farEnough = (out: readonly Vec3[], p: Vec3, spacing: number): boolean =>
+  !out.some((q) => Math.hypot(q.x - p.x, q.z - p.z) < spacing);
+
 /**
- * Picks up to `count` deterministic spawn points on gentle, dry, solid surface, at least
- * `minSpacing` metres apart (horizontally). May return fewer.
+ * Fallback for crowded lobbies (up to 8 teams x 8 snails on a small map): scans every valid
+ * surface cell in a seeded shuffled order and tops `out` up at shrinking spacings, so spread
+ * stays as wide as the terrain allows. Only runs when the normal pass came up short.
+ */
+function topUpSpawnPoints(
+  grid: SdfGrid,
+  descriptor: TerrainDescriptor,
+  count: number,
+  rng: Rng,
+  minSpacing: number,
+  out: Vec3[],
+): void {
+  const candidates: Vec3[] = [];
+  const margin = 2;
+  for (let z = margin; z <= grid.nz - 1 - margin; z++) {
+    for (let x = margin; x <= grid.nx - 1 - margin; x++) {
+      const p = spawnCandidate(grid, descriptor, x, z, FALLBACK_FLATNESS);
+      if (p) candidates.push(p);
+    }
+  }
+  for (let i = candidates.length - 1; i > 0; i--) {
+    const j = rng.int(0, i);
+    [candidates[i], candidates[j]] = [candidates[j] as Vec3, candidates[i] as Vec3];
+  }
+  for (let s = minSpacing * 0.75; out.length < count; s = Math.max(MIN_FALLBACK_SPACING, s * 0.8)) {
+    for (const p of candidates) {
+      if (out.length >= count) return;
+      if (farEnough(out, p, s)) out.push(p);
+    }
+    if (s <= MIN_FALLBACK_SPACING) return;
+  }
+}
+
+/**
+ * Picks up to `count` deterministic spawn points on gentle, dry, solid surface (the topmost
+ * surface of a column, so the sky above is open), at least `minSpacing` metres apart
+ * (horizontally). If the normal random pass cannot place everyone, a fallback pass tightens the
+ * spacing down to {@link MIN_FALLBACK_SPACING}. May still return fewer.
  */
 export function findSpawnPoints(
   grid: SdfGrid,
@@ -108,12 +168,9 @@ export function findSpawnPoints(
   for (let i = 0; i < count * 300 && out.length < count; i++) {
     const x = rng.int(margin, grid.nx - 1 - margin);
     const z = rng.int(margin, grid.nz - 1 - margin);
-    const y = surfaceAt(grid, x, z);
-    if (y === null || y < descriptor.waterLevel + 0.5) continue;
-    const p = { x: x * grid.cellSize, y, z: z * grid.cellSize };
-    if (grid.normal(p).y < 0.85) continue;
-    if (out.some((q) => Math.hypot(q.x - p.x, q.z - p.z) < minSpacing)) continue;
-    out.push(p);
+    const p = spawnCandidate(grid, descriptor, x, z);
+    if (p && farEnough(out, p, minSpacing)) out.push(p);
   }
+  if (out.length < count) topUpSpawnPoints(grid, descriptor, count, rng, minSpacing, out);
   return out;
 }
