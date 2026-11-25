@@ -107,7 +107,7 @@ vec3 tierSurface(float t, vec3 col, vec2 su, out vec3 glow) {
     col *= 1.0 - 0.35 * (tierRing(c, 0.3) - stud);
     return col;
   }
-  col = mix(col, vec3(0.62, 0.9, 0.93), 0.4);
+  col = mix(col, vec3(0.62, 0.9, 0.93), 0.3);
   ${crystal}
   return col;
 }

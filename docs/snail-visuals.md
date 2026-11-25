@@ -118,6 +118,8 @@ A snail's shell must keep its collision proxy fixed so gameplay is never affecte
 `seed = hash(teamId, snailIndex)`; mesh is built once on spawn (about 3000 triangles) and cached.
 Upgrades add geometry (spikes) rather than regenerate the base.
 
+Readability review of tiers and cracks: [readability-review.md](development/readability-review.md).
+
 ## Technical notes
 
 - **Shader uniforms/instances:** `uDamage` (0 to 1, `1 - h`), `uTeamColor` (vec3), `uPatternId`

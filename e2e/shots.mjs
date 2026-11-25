@@ -23,6 +23,7 @@ const cmpIdx = process.argv.indexOf('--compare');
 const compareDir = cmpIdx > 0 ? resolve(process.argv[cmpIdx + 1] ?? '') : null;
 mkdirSync(out, { recursive: true });
 
+const PHONE_VIEWPORT = { width: 390, height: 844 };
 const GL_ARGS = ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'];
 const DISPLAY_SHOTS = [
   ['display-close', 'close', 'Display 1920x1080, High: close-up of one snail'],
@@ -40,6 +41,32 @@ const DISPLAY_SHOTS = [
     'Display 1920x1080, High: researched shell looks (iron spikes, shimmer)',
     '&research=shimmer',
   ],
+  [
+    'display-review-tiers',
+    'wide',
+    'Display, High: shell tiers in a row (plain, chalky, calcified, iron, crystal)',
+    '&review=tiers',
+  ],
+  [
+    'display-review-cracks',
+    'wide',
+    'Display, High: crack states at health 100/70/40/15%',
+    '&review=cracks',
+  ],
+  [
+    'display-review-tiers-phone',
+    'wide',
+    'Phone-size proxy 390x844 (display harness, no phone spectate path): shell tiers',
+    '&review=tiers',
+    PHONE_VIEWPORT,
+  ],
+  [
+    'display-review-cracks-phone',
+    'wide',
+    'Phone-size proxy 390x844 (display harness): crack states',
+    '&review=cracks',
+    PHONE_VIEWPORT,
+  ],
 ];
 // SHOTS_ONLY=display-flight,display-aim limits the run (and the phone shot unless phone-my-turn is listed) while iterating.
 const only = process.env.SHOTS_ONLY?.split(',');
@@ -51,10 +78,11 @@ async function displayShots(browser, base, errors) {
     deviceScaleFactor: 1,
     reducedMotion: 'reduce',
   });
-  for (const [name, cam, caption, extra = ''] of DISPLAY_SHOTS) {
+  for (const [name, cam, caption, extra = '', viewport = DISPLAY_VIEWPORT] of DISPLAY_SHOTS) {
     if (only && !only.includes(name)) continue;
     const page = await ctx.newPage();
     watch(page, name, errors);
+    await page.setViewportSize(viewport);
     await page.goto(`${base}/display/harness.html?shot=1&cam=${cam}&seed=7&quality=high${extra}`);
     await page.waitForFunction(() => window.__shotReady === true, null, { timeout: 900000 });
     await page.screenshot({ path: join(out, `${name}.png`), timeout: SHOT_TIMEOUT });
