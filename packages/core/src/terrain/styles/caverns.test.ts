@@ -67,6 +67,7 @@ describe('caverns style', () => {
     let thin = 0;
     for (let z = 0; z < grid.nz; z++) {
       for (let x = 0; x < grid.nx; x++) {
+        if (Math.hypot(x - grid.nx / 2, z - grid.nz / 2) * CS > 12) continue;
         const top = topSolid(grid, x, z);
         let y = top;
         while (y >= 0 && grid.get(x, y, z) < 0) y--;
@@ -74,8 +75,8 @@ describe('caverns style', () => {
         if (y >= minY && top * CS > C.waterLevel + 8 && (top - y) * CS < 2.4) thin++;
       }
     }
-    // A few columns on the sloping cliff lip beside a mouth may be thin; the interior is not.
-    expect(thin).toBeLessThan(40);
+    // Only the interior is checked: the tunnel mouths thin the roof near the cliff by design.
+    expect(thin).toBeLessThan(10);
   });
 
   it.each([1, 3, 7])('seed %i: at least 2 entrances open to the outside air', (seed) => {

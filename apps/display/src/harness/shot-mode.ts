@@ -220,7 +220,7 @@ function poseFor(
     const wind = sim.snapshot().wind;
     return aimPose(predictTrajectory(snail, active.facing, AIM, HARNESS_WEAPON.launch, wind, 28));
   }
-  return shotPose(
+  const pose = shotPose(
     cam,
     snail,
     blast,
@@ -229,6 +229,32 @@ function poseFor(
     num(params.get('az'), 0.8),
     num(params.get('dist'), 3.4),
   );
+  return cam === 'wide'
+    ? orbitWide(pose, num(params.get('wideAz'), 0), num(params.get('wideEl'), 0))
+    : pose;
+}
+
+/**
+ * Orbits the wide camera around its look-at point: `?wideAz=` turns it (radians) and `?wideEl=`
+ * lowers it (radians of elevation to remove; 0 keeps the default high view).
+ */
+function orbitWide(pose: ShotPose, az: number, el: number): ShotPose {
+  if (az === 0 && el === 0) return pose;
+  const dx = pose.eye.x - pose.look.x;
+  const dy = pose.eye.y - pose.look.y;
+  const dz = pose.eye.z - pose.look.z;
+  const horiz = Math.hypot(dx, dz);
+  const pitch = Math.max(0.05, Math.atan2(dy, horiz) - el);
+  const len = Math.hypot(horiz, dy);
+  const yaw = Math.atan2(dz, dx) + az;
+  return {
+    look: pose.look,
+    eye: {
+      x: pose.look.x + Math.cos(yaw) * Math.cos(pitch) * len,
+      y: pose.look.y + Math.sin(pitch) * len,
+      z: pose.look.z + Math.sin(yaw) * Math.cos(pitch) * len,
+    },
+  };
 }
 
 /** Pins the camera to `pose` every frame. */
