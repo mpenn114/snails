@@ -385,6 +385,8 @@ export class SnailMesh {
       }
       if (r) this.extras?.setLook(r.look);
     }
+    this.extras?.setTeam(v.teamIndex, v.colour);
+    this.extras?.setFlag(v.alive && v.isActive);
     this.extras?.setShimmer(v.alive && r?.researching === true);
   }
 
