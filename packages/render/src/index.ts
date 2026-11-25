@@ -49,3 +49,4 @@ export * from './snail/crack-damage.js';
 export * from './research/shell-look.js';
 export * from './research/research-visuals.js';
 export * from './effects/tech-unlock-burst.js';
+export * from './audio/index.js';

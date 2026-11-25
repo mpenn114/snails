@@ -6,7 +6,13 @@ import {
   motionConfig,
   resolveReducedMotion,
   pickDefaultTier,
+  audioContextFactory,
+  createSynth,
+  loadAudioSettings,
+  muteFromQuery,
 } from '@snails/render';
+import type { AudioWindow } from '@snails/render';
+import { createDisplayAudio } from './audio/display-audio';
 import { injectTheme } from '@snails/render';
 import type { QualityTier } from '@snails/render';
 
@@ -99,3 +105,30 @@ client.onMessage = (m) => {
   }
 };
 client.connect();
+
+// Audio: synthesised SFX and music bed; `?mute=1` silences it. Unlocks on the first gesture.
+const audioSettings = loadAudioSettings(
+  (() => {
+    try {
+      return window.localStorage;
+    } catch {
+      return undefined;
+    }
+  })(),
+);
+const synth = createSynth({
+  createContext: audioContextFactory(window as unknown as AudioWindow),
+  muted: audioSettings.muted || muteFromQuery(location.search),
+  volume: audioSettings.volume,
+});
+const displayAudio = createDisplayAudio(synth);
+for (const g of ['pointerdown', 'keydown', 'click'] as const) {
+  window.addEventListener(g, () => synth.unlock(), { once: false, capture: true });
+}
+synth.unlock();
+setInterval(() => displayAudio.tick(performance.now()), 100);
+const prevOnMessage = client.onMessage;
+client.onMessage = (m) => {
+  prevOnMessage(m);
+  displayAudio.handle(m);
+};
