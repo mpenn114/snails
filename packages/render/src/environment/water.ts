@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import type { SdfGrid } from '@snails/core';
 import { PALETTE } from '../style/palette.js';
 import { tierProfile, type QualityTier } from '../quality.js';
-import { buildOriginalHeightMap, createOriginalHeightTexture } from '../terrain/original-height.js';
+import { buildWaterHeightMap, createOriginalHeightTexture } from '../terrain/original-height.js';
 import { WATER_FRAG, WATER_VERT } from './water-shader.js';
 
 /** Water options. */
@@ -163,7 +163,7 @@ export function createWater(opts: WaterOptions): Water {
     },
     setTerrain(grid) {
       heightTex?.dispose();
-      heightTex = createOriginalHeightTexture(buildOriginalHeightMap(grid));
+      heightTex = createOriginalHeightTexture(buildWaterHeightMap(grid, level));
       const ws = grid.worldSize();
       u['uHeights']!.value = heightTex;
       (u['uInvSize']!.value as THREE.Vector2).set(1 / ws.x, 1 / ws.z);
