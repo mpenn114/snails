@@ -36,7 +36,7 @@ Scan QR -> Join (name, colour) -> Lobby -> [Match: Waiting <-> My turn <-> Resea
 - Shows players, teams and their shells (live 3D preview that rotates the shell).
 - **Team assignment:** drag yourself between teams, or tap "New team". Host can move anyone.
 - **Add CPU:** the host taps "+ CPU", picks difficulty and personality ([ai.md](ai.md)).
-- **Host settings:** mode, map, turn time, research, wind, crates, sudden death
+- **Host settings:** mode, map (a select: Random, Island, Archipelago, Highlands, Caverns, Canyon, each with a one-line description; the TV lobby shows the choice in its settings chips), turn time, research, wind, crates, sudden death
   ([game-design.md](game-design.md)). Non-hosts see settings read-only.
 - Ready toggle per player; the host starts when all are ready.
 

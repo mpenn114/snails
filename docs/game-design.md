@@ -100,6 +100,11 @@ shapes; some add material.
 Procedural maps pick a terrain style (`packages/core/src/terrain/styles/`). Reusable SDF helpers
 (`features.ts`: `buildTunnel`, `tunnelCarve`, `wobblyPath`) bore tunnels along wobbly capsule chains.
 
+- **Choosing a map:** the host picks the **Map** setting in the phone lobby: Random (default),
+  Island, Archipelago, Highlands, Caverns or Canyon. `mapStyle` is a normal match setting (saved
+  with the others). On match start the server resolves Random with `resolveMapStyle(setting, seed)`
+  (uniform over the styles, a pure function of the seed) and sends the concrete `style` in the
+  terrain params, so every client builds the same map. The Weapons demo arena ignores the style.
 - **Highlands:** a big mountainous island with two ridged, terraced peaks (about 17 to 20 m) and a
   saddle between them, steep rocky cliffs, flat shelves where snails can stand, foothills and a
   narrow shore. One tunnel is bored through each peak, both mouths on dry ground so snails can

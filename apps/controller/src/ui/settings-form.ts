@@ -7,6 +7,14 @@ export type SettingField =
   | { kind: 'select'; key: keyof MatchSettings; label: string; options: readonly Option[] }
   | { kind: 'check'; key: keyof MatchSettings; label: string };
 
+const MAP: readonly Option[] = [
+  ['random', 'Random: a surprise map each match'],
+  ['island', 'Island: one central landmass'],
+  ['archipelago', 'Archipelago: scattered islets'],
+  ['highlands', 'Highlands: tall peaks and tunnels'],
+  ['caverns', 'Caverns: a roofed cave network'],
+  ['canyon', 'Canyon: a deep gorge with ledges'],
+];
 const HEALTH: readonly Option[] = [
   ['50', '50'],
   ['100', '100'],
@@ -48,6 +56,7 @@ const FALL: readonly Option[] = [
 /** The settings the host can change in the lobby, in display order (game-design "Match settings"). */
 export const SETTING_FIELDS: readonly SettingField[] = [
   { kind: 'select', key: 'mode', label: 'Game mode', options: MODE },
+  { kind: 'select', key: 'mapStyle', label: 'Map', options: MAP },
   { kind: 'select', key: 'startingHealth', label: 'Starting health', options: HEALTH },
   { kind: 'select', key: 'wind', label: 'Wind', options: WIND },
   { kind: 'select', key: 'crates', label: 'Crates', options: CRATES },

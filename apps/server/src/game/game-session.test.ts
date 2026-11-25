@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { resolveMapStyle } from '@snails/core';
 import { Inventory, MatchStarted, decodeSnapshot } from '@snails/protocol';
 import {
   GameSession,
@@ -42,6 +43,15 @@ describe('GameSession', () => {
     expect(snap.wind.strength).toBe(0);
     expect(snap.waterLevel).toBe(s.matchStartedMessage().terrain.waterLevel);
     expect(s.matchStartedMessage().settings).toMatchObject({ startingHealth: 60, wind: 'off' });
+  });
+
+  it('puts the resolved map style into the terrain params', () => {
+    const fixed = make({ settings: { ...settings, mapStyle: 'canyon' } });
+    expect(fixed.matchStartedMessage().terrain.style).toBe('canyon');
+    const random = make({ settings: { ...settings, mapStyle: 'random' } });
+    const style = random.matchStartedMessage().terrain.style;
+    expect(style).toBe(resolveMapStyle('random', settings.seed));
+    expect(random.matchStartedMessage().settings.mapStyle).toBe('random');
   });
 
   it('is deterministic for equal seed and intents', () => {
