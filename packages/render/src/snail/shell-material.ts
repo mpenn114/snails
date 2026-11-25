@@ -44,8 +44,8 @@ float stripe(float v, float width) {
   return smoothstep(width + w, width - w, f) * smoothstep(0.0, w, f);
 }
 float shellMask(float id, float s, float a) {
-  float clear = smoothstep(${APEX_CLEAR.toFixed(2)}, ${(APEX_CLEAR + 0.05).toFixed(2)}, s);
-  if (id < 0.5) return stripe(s * 20.0, 0.3) * clear;
+  float clear = smoothstep(${APEX_CLEAR.toFixed(2)}, ${(APEX_CLEAR + 0.14).toFixed(2)}, s);
+  if (id < 0.5) return stripe(s * 20.0, 0.32) * clear;
   if (id < 1.5) return stripe(a * 4.0 + 0.1, 0.3);
   if (id < 2.5) {
     float row = floor(a * 4.0);

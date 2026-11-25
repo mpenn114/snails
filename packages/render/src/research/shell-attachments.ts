@@ -145,11 +145,27 @@ export function attachmentGeometry(kind: AttachmentDef['kind']): THREE.BufferGeo
   });
 }
 
-/** Shared flat decal geometry for a team emblem. */
-export function decalGeometry(index: number): THREE.BufferGeometry {
+/** One Chaikin corner-cutting pass: softens sharp corners so the emblem reads as painted. */
+function rounded(pts: Pt[]): Pt[] {
+  const out: Pt[] = [];
+  pts.forEach((a, i) => {
+    const b = pts[(i + 1) % pts.length] as Pt;
+    out.push([a[0] * 0.75 + b[0] * 0.25, a[1] * 0.75 + b[1] * 0.25]);
+    out.push([a[0] * 0.25 + b[0] * 0.75, a[1] * 0.25 + b[1] * 0.75]);
+  });
+  return out;
+}
+
+/**
+ * Shared flat decal geometry for a team emblem: corners softened, `inset` 1 is the full
+ * outline (dark rim) and a smaller value the lighter painted fill inside it.
+ */
+export function decalGeometry(index: number, inset = 1): THREE.BufferGeometry {
   const i = ((Math.trunc(index) % 8) + 8) % 8;
-  return cached(`decal${i}`, () => {
-    const shape = new THREE.Shape(decalOutline(i).map(([x, y]) => new THREE.Vector2(x, y)));
-    return new THREE.ShapeGeometry(shape);
+  return cached(`decal${i}|${inset}`, () => {
+    const pts = rounded(rounded(decalOutline(i))).map(
+      ([x, y]) => new THREE.Vector2(x * inset, y * inset),
+    );
+    return new THREE.ShapeGeometry(new THREE.Shape(pts));
   });
 }

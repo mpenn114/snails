@@ -34,8 +34,8 @@ export const PUPIL_REST: readonly [number, number, number] = [0.07, 0.01, 0];
 
 /** Stalk root positions on the head (body space); index 0 is +Z, index 1 is -Z. */
 export const STALK_ROOTS: readonly (readonly [number, number, number])[] = [
-  [0.4, bodyTopY(0.4) - 0.08, 0.13],
-  [0.4, bodyTopY(0.4) - 0.08, -0.13],
+  [0.44, bodyTopY(0.44) - 0.08, 0.13],
+  [0.44, bodyTopY(0.44) - 0.08, -0.13],
 ];
 const EYE_COL = new THREE.Color(PALETTE.uiPaper).lerp(new THREE.Color(0xffffff), 0.7);
 const INK_COL = new THREE.Color(PALETTE.uiInk);
@@ -125,7 +125,7 @@ export function buildSnailBody(lod: BodyLod = 0): SnailBodyParts {
 /** Shell height in metres (normalised shell height is 1): about 60% of the snail's height. */
 export const SHELL_SCALE = 1.0;
 /** X of the shell bounding-box centre on the back. */
-const SHELL_CENTRE_X = -0.13;
+const SHELL_CENTRE_X = -0.19;
 /** How deep the shell's lowest point sinks into the back, in metres. */
 const SHELL_SINK = 0.15;
 

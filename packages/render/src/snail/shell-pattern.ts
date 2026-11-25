@@ -23,7 +23,7 @@ export const LIP_START = 0.972;
 export const SUTURE_AROUND = 0.39;
 
 /** Across-growth patterns stay off the tiny apex whorls (no spoke hub on the spire). */
-export const APEX_CLEAR = 0.25;
+export const APEX_CLEAR = 0.42;
 
 const fract = (x: number): number => x - Math.floor(x);
 
@@ -54,7 +54,7 @@ export function patternMask(pattern: number, s: number, a: number): number {
   switch (SHELL_PATTERNS[shellPatternForTeam(pattern)]) {
     case 'ribs':
       // Narrow ribs across the growth direction (they fan out as the whorls widen).
-      return s > APEX_CLEAR && fract(s * 20) < 0.3 ? 1 : 0;
+      return s > APEX_CLEAR && fract(s * 20) < 0.32 ? 1 : 0;
     case 'lines':
       // Stripes along the growth direction, following the spiral.
       return fract(a * 4 + 0.1) < 0.3 ? 1 : 0;

@@ -96,7 +96,7 @@ function skinAt(u: number, y: number, side: number): THREE.Color {
   c.lerp(RIM, smooth(0.26, 0.04, y));
   const head = smooth(0.78, 0.9, u);
   c.lerp(RIM, 0.12 * head * smooth(0.6, 0.1, y));
-  return c.multiplyScalar(1 + 0.06 * mottle(u, y, side));
+  return c.multiplyScalar(1 + 0.018 * mottle(u, y, side));
 }
 
 /** Foot, tail and raised head as one smooth sweep with a flared foot rim. */

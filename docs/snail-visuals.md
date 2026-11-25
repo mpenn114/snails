@@ -29,7 +29,8 @@ Three independent channels so teams stay distinguishable for colour-blind player
    high-contrast set.
 2. **Pattern:** stripes (along the spiral), spots, bands, zigzag, or checker. Assigned
    per team, so two teams never share a pattern in a match.
-3. **Decal:** a small emblem on the last whorl (leaf, star, skull, bolt, flower, moon...).
+3. **Decal:** a small emblem on the last whorl (leaf, star, skull, bolt, flower, moon...), drawn with softened corners as a darker rim plus a lighter inset fill so it reads as painted on.
+   Across-growth patterns (ribs, zigzag, checker) stay clear of the apex (`APEX_CLEAR` 0.42, soft fade) so no spoke hub forms; the body uses a soft wrap ramp (no hard bands) and faint mottling.
    Players can choose one in the lobby.
 
 A team name tag floats above the active snail only; other snails rely on shells.

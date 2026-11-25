@@ -228,11 +228,11 @@ export interface ShellDecalSpot {
 function findDecalSpot(geo: THREE.BufferGeometry, n: number, m: number): ShellDecalSpot {
   const pos = geo.getAttribute('position');
   const nor = geo.getAttribute('normal');
-  const view = new THREE.Vector3(0.5, 0.3, -1).normalize();
+  const view = new THREE.Vector3(0.1, 0.1, -1).normalize();
   const cols = m + 1;
   let best = -Infinity;
   let at = 0;
-  for (let k = Math.floor(n * 0.7); k < n - 6; k++) {
+  for (let k = Math.floor(n * 0.6); k < n - 6; k++) {
     for (let j = 0; j < m; j++) {
       const i = k * cols + j;
       const score = nor.getX(i) * view.x + nor.getY(i) * view.y + nor.getZ(i) * view.z;
