@@ -296,6 +296,12 @@ must keep. `pnpm shots` has a `display-style-<name>` overview per style.
 | M9-07 | Shell redesign: visible spiral whorls, sutures, aperture lip, smooth shading, patterns that follow the spiral | render | M9-04 | ✅ |
 | M9-08 | Map style lobby setting (with Random), saved with settings, shown on TV and phone lobbies | server | M9-01 | ✅ |
 | M9-09 | Terrain look per surface: rock on steep cliffs, snow on peaks, beach sand, darker cave interiors | render | M9-02 | ✅ |
+
+## M10: Polish
+
+| ID | Task | Area | Depends | Status |
+|---|---|---|---|---|
+| M10-01 | Snails tilt to follow terrain slope (render only) | render | M9-04 | ✅ |
 | M9-10 | Docs, CPU gate and screenshots for every style; balance check that no style breaks AI or spawns | docs | M9-02..M9-09 | ✅ |
 | M9-11 | Snail polish: decal, shell pattern centre, body surface and front read | render | M9-07 | ✅ |
 

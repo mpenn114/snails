@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import type { SimEvent } from '@snails/core';
+import type { SdfGrid, SimEvent } from '@snails/core';
 import type { FrameUpdater, RenderState } from './render-loop.js';
 import {
   BAR_WIDTH,
@@ -16,6 +16,7 @@ import { reactionsForEvent, scareStrength } from './snail/snail-expression.js';
 import { FlowerAssets, createFlower } from './snail/death-flower.js';
 import { ShellDebris, crossingFragmentCount, hitFragmentCount } from './snail/shell-debris.js';
 import { crackStateFor } from './snail/crack-damage.js';
+import { groundNormalAt } from './snail/terrain-tilt.js';
 import { snailViewsFromSnapshot, type SnailView } from './snail-view.js';
 
 /** Camera distance (m) at which labels have their base size. */
@@ -63,6 +64,7 @@ export class SnailLayer {
   private readonly flowerAssets = new FlowerAssets();
   private readonly lastDied = new Map<string, { x: number; y: number; z: number }>();
   private waterLevel: number | null = null;
+  private terrain: SdfGrid | null = null;
   private readonly ratios = new Map<string, number>();
   private readonly maxHealths = new Map<string, number>();
 
@@ -91,6 +93,11 @@ export class SnailLayer {
   setShadows(on: boolean): void {
     this.shadows = on;
     for (const mesh of this.meshes.values()) mesh.setCastShadow(on);
+  }
+
+  /** Sets the (live, carvable) terrain grid that snails tilt to; null = always upright. */
+  setTerrain(grid: SdfGrid | null): void {
+    this.terrain = grid;
   }
 
   /** Sets the water surface height (drowned shells float there); null = unknown. */
@@ -180,6 +187,11 @@ export class SnailLayer {
         this.group.add(mesh.group);
       }
       mesh.apply(v);
+      const g = this.terrain;
+      mesh.groundNormal =
+        g && v.alive && v.grounded !== false
+          ? groundNormalAt((p) => g.normal(p), v.position)
+          : null;
       mesh.animate(dt, v);
       this.updateDebris(v, mesh, dt);
       this.faceCamera(mesh);

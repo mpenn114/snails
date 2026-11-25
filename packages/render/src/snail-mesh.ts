@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { MAX_TILT, dampTilt, tiltQuaternion } from './snail/terrain-tilt.js';
 import {
   BAR_WIDTH,
   SnailAssets,
@@ -56,6 +57,8 @@ export class SnailMesh {
   /** Root group, positioned at the snail. */
   readonly group = new THREE.Group();
   /** Rotated by facing; holds body, shell, eyes. */
+  /** Parent of the body and ring: tilts the snail onto the ground normal (foot is the pivot). */
+  readonly tiltGroup = new THREE.Group();
   readonly bodyGroup = new THREE.Group();
   /** Billboarded group holding the health bar quads. */
   readonly barGroup = new THREE.Group();
@@ -81,6 +84,9 @@ export class SnailMesh {
   private speed = 0;
   private vy = 0;
   private elapsed = 0;
+  private readonly tiltTarget = new THREE.Quaternion();
+  /** Ground normal under the foot set by the layer each frame; null = upright. */
+  groundNormal: { x: number; y: number; z: number } | null = null;
   private healthFrac = 1;
   private shellRoughness = 0.5;
   private damage = 0;
@@ -146,7 +152,8 @@ export class SnailMesh {
     this.nameTag = new THREE.Sprite(this.nameMaterial);
     this.nameTag.renderOrder = 1002;
     this.setLabelScale(1);
-    this.group.add(this.bodyGroup, this.highlight, this.barGroup, this.nameTag);
+    this.tiltGroup.add(this.bodyGroup, this.highlight);
+    this.group.add(this.tiltGroup, this.barGroup, this.nameTag);
   }
 
   private buildRig(shellSeed: number): SnailRig {
@@ -324,6 +331,7 @@ export class SnailMesh {
     }
     this.lastPos = (this.lastPos ?? new THREE.Vector3()).copy(here);
     this.elapsed += dt;
+    this.updateTilt(dt, v);
     const pose = this.animator.update(dt, {
       speed: this.speed,
       vy: this.vy,
@@ -343,6 +351,13 @@ export class SnailMesh {
     const face = this.expression.update(dt, v.alive ? worry : 0);
     if (dying) this.poseDeath(dt, v);
     else this.poseRig(pose, face);
+  }
+
+  /** Eases the tilt group towards the ground normal (upright when airborne or dead). */
+  private updateTilt(dt: number, v: SnailView): void {
+    const on = v.alive && v.grounded !== false && this.deathState.phase === 'alive';
+    tiltQuaternion(on ? this.groundNormal : null, MAX_TILT, this.tiltTarget);
+    dampTilt(this.tiltGroup.quaternion, this.tiltTarget, dt);
   }
 
   /** Marks the death as a drowning (from a `snailDrowned` event). */

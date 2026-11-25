@@ -142,6 +142,15 @@ Upgrades add geometry (spikes) rather than regenerate the base.
 
 Readability review of tiers and cracks: [readability-review.md](development/readability-review.md).
 
+## Terrain tilt (M10-01)
+
+Snails follow the ground: a `tiltGroup` above the yaw group rotates local up onto the terrain
+normal (pitch and roll), while yaw stays `facing`. The normal is the average of the SDF gradient
+at the foot and four points 0.3 m around it, read from the live (carved) grid, so craters count.
+Tilt is clamped to 50 degrees and damped (rate 9/s, frame-rate independent); airborne and dead
+snails ease back upright. The foot position is the pivot, so nothing floats. Labels stay upright.
+Maths in `packages/render/src/snail/terrain-tilt.ts`. Render only: physics is unchanged.
+
 ## Technical notes
 
 - **Shader uniforms/instances:** `uDamage` (0 to 1, `1 - h`), `uTeamColor` (vec3), `uPatternId`
