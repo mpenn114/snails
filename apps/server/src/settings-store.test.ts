@@ -24,6 +24,16 @@ describe('settings-store', () => {
     expect(loadLobbySettings(dir)).toBeUndefined();
   });
 
+  it('round-trips mapStyle and loads old files that lack it', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'snails-'));
+    saveLobbySettings(dir, MatchSettings.parse({ mapStyle: 'caverns' }));
+    expect(loadLobbySettings(dir)?.mapStyle).toBe('caverns');
+    writeFileSync(join(dir, SETTINGS_FILE), '{"turnTimeSeconds":40,"seed":3}');
+    expect(loadLobbySettings(dir)).toMatchObject({ turnTimeSeconds: 40, mapStyle: 'random' });
+    writeFileSync(join(dir, SETTINGS_FILE), '{"mapStyle":"moon"}');
+    expect(loadLobbySettings(dir)).toBeUndefined();
+  });
+
   it('picks OS data dirs and honours SNAILS_DATA_DIR', () => {
     expect(defaultDataDir({ SNAILS_DATA_DIR: '/x' }, 'linux', '/h')).toBe('/x');
     expect(defaultDataDir({}, 'linux', '/h')).toBe(join('/h', '.config', 'snails'));

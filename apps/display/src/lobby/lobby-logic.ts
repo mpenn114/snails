@@ -106,6 +106,7 @@ export function settingsChips(s: MatchSettingsInput): [label: string, value: str
       : `Round ${m.suddenDeathRound}, ${{ water: 'rising water', drain: 'health drain', both: 'water and drain' }[m.suddenDeathType]}`;
   return [
     ['Mode', MODE_LABEL[m.mode]],
+    ['Map', m.demo ? 'Weapons demo' : cap(m.mapStyle)],
     ['Turn', `${m.turnTimeSeconds} s${m.lazyStart ? ' (lazy start)' : ''}`],
     ['Snails', `${m.snailsPerTeam} per team`],
     ['Health', String(m.startingHealth)],

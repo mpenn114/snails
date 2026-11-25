@@ -5,6 +5,8 @@ import type { WindDefinition } from '../content/types.js';
 import { DEFAULT_HAZARD_CONFIG, type HazardConfig } from './hazards.js';
 import { windConfigFromDefinition, type WindConfig } from '../sim/wind.js';
 import type { TurnConfig } from '../turn/turn-phases.js';
+import { Rng } from '../rng.js';
+import { TERRAIN_STYLES, type TerrainStyle } from '../terrain/styles/types.js';
 
 /** Wind presets of the Wind setting; the content wind definition id is `base:<preset>`. */
 export const WIND_SETTINGS = ['off', 'low', 'normal', 'storm'] as const;
@@ -17,12 +19,17 @@ export const GAME_MODES = ['elimination', 'researchRace', 'kingOfTheHill'] as co
 /** Fall damage presets. */
 export const FALL_DAMAGE_SETTINGS = ['off', 'on', 'high'] as const;
 
+/** Values of the Map setting: a concrete terrain style, or `random` (resolved from the seed). */
+export const MAP_STYLE_SETTINGS = ['random', ...TERRAIN_STYLES] as const;
+
 /**
  * Host-chosen gameplay settings of a match (docs/game-design.md "Match settings"). Every field
  * has a default, so `MatchSettingsSchema.parse({})` is the Classic ruleset. Lobby-only concerns
  * (seed, control mode) live in the protocol's wire settings, which extend this schema.
  */
 export const MatchSettingsSchema = z.object({
+  /** Map style; `random` picks one style from the match seed (see {@link resolveMapStyle}). */
+  mapStyle: z.enum(MAP_STYLE_SETTINGS).default('random'),
   /** Seconds of the action phase of a turn. */
   turnTimeSeconds: z.number().int().min(10).max(120).default(30),
   /** Seconds of the retreat window after a shot. */
@@ -126,4 +133,20 @@ export function windConfigFromSettings(
 ): WindConfig | undefined {
   const def = winds.find((w) => w.id === `base:${s.wind}`);
   return def ? windConfigFromDefinition(def) : undefined;
+}
+
+/**
+ * Resolves the Map setting to one concrete terrain style. A concrete setting is returned as is;
+ * `random` picks uniformly from {@link TERRAIN_STYLES} as a pure function of the seed.
+ * @param setting the `mapStyle` match setting
+ * @param seed the match seed (uint32)
+ */
+export function resolveMapStyle(
+  setting: (typeof MAP_STYLE_SETTINGS)[number],
+  seed: number,
+): TerrainStyle {
+  if (setting !== 'random') return setting;
+  const rng = new Rng((seed ^ 0x5bd1e995) >>> 0);
+  rng.next();
+  return TERRAIN_STYLES[Math.floor(rng.next() * TERRAIN_STYLES.length)] ?? 'island';
 }
