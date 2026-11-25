@@ -1,16 +1,33 @@
+import { existsSync } from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { app, BrowserWindow } from 'electron';
 import { startServer } from '@snails/server';
+import { resolveAssetDirs, resolveDisplayUrl, type PathInputs } from './paths.js';
+import { pickFreePort } from './port.js';
 
-const PORT = 3000;
+const PREFERRED_PORT = 3000;
 
-/** Starts the in-process server and opens the display window. */
+/** Gathers environment facts used for path resolution. */
+function pathInputs(): PathInputs {
+  const here = path.dirname(fileURLToPath(import.meta.url));
+  return {
+    isPackaged: app.isPackaged,
+    resourcesPath: process.resourcesPath,
+    displayUrlEnv: process.env['SNAILS_DISPLAY_URL'],
+    devDisplayBuilt: existsSync(path.resolve(here, '../../display/dist/index.html')),
+  };
+}
+
+/** Starts the in-process server on a free port and opens the display window. */
 async function boot(): Promise<void> {
-  const server = await startServer(PORT);
+  const inputs = pathInputs();
+  const dirs = resolveAssetDirs(inputs);
+  const port = await pickFreePort(PREFERRED_PORT);
+  const server = await startServer(port, dirs.staticDir, dirs.displayDir);
   console.log(`Snails join URL: ${server.url}\nTV view: ${server.displayUrl}`);
   const win = new BrowserWindow({ width: 1280, height: 720, fullscreenable: true });
-  // Display build is served by the server in packaged releases; in dev use the Vite server.
-  const displayUrl = process.env['SNAILS_DISPLAY_URL'] ?? `http://localhost:5173`;
-  await win.loadURL(`${displayUrl}/?room=${server.roomCode}`);
+  await win.loadURL(resolveDisplayUrl(inputs, server.displayUrl, server.roomCode));
   app.on('before-quit', () => void server.close());
 }
 
