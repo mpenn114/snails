@@ -1,3 +1,5 @@
+import { loadAudioSettings, saveAudioSettings } from '@snails/render';
+import { AUDIO_CHANGED_EVENT, MUTE_KEY } from '../feedback/audio';
 import {
   REDUCED_MOTION_CSS,
   TEXT_SIZES,
@@ -31,7 +33,9 @@ function build(doc: Document): HTMLElement {
     <button type="button" class="a11y-btn" aria-label="Accessibility settings" aria-expanded="false">Aa</button>
     <div class="a11y-panel" role="dialog" aria-label="Accessibility settings"><h2>Accessibility</h2>
       <div class="row" role="group" aria-label="Text size">${sizes}</div>
-      <label><input type="checkbox" class="rm" /> Reduce motion</label></div>`;
+      <label><input type="checkbox" class="rm" /> Reduce motion</label>
+      <label><input type="checkbox" class="snd-mute" /> Mute sound</label>
+      <label>Volume <input type="range" class="snd-vol" min="0" max="100" step="5" aria-label="Volume" /></label></div>`;
   return root;
 }
 
@@ -73,4 +77,29 @@ export function mountA11yPanel(
   }
   rm.addEventListener('change', () => set({ ...s, reducedMotion: rm.checked }));
   paint();
+  mountAudioControls(el, storage);
+}
+
+/** Wires the mute checkbox and volume slider to storage and notifies the feedback engine. */
+function mountAudioControls(el: HTMLElement, storage: Storage | undefined): void {
+  const mute = el.querySelector<HTMLInputElement>('.snd-mute')!;
+  const vol = el.querySelector<HTMLInputElement>('.snd-vol')!;
+  const read = (): void => {
+    const a = loadAudioSettings(storage);
+    mute.checked = a.muted;
+    vol.value = String(Math.round(a.volume * 100));
+  };
+  const write = (): void => {
+    saveAudioSettings(storage, { muted: mute.checked, volume: Number(vol.value) / 100 });
+    try {
+      storage?.setItem(MUTE_KEY, mute.checked ? '1' : '0');
+    } catch {
+      // Storage is a convenience only.
+    }
+    window.dispatchEvent(new Event(AUDIO_CHANGED_EVENT));
+  };
+  mute.addEventListener('change', write);
+  vol.addEventListener('input', write);
+  el.querySelector('.a11y-btn')?.addEventListener('click', read);
+  read();
 }
