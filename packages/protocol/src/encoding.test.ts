@@ -81,6 +81,16 @@ function makeSnapshot(count: number): DecodedSnapshot {
 }
 
 describe('snapshot encoding', () => {
+  it('round-trips the King of the Hill zone and scores, and omits it otherwise', () => {
+    const s = {
+      ...makeSnapshot(2),
+      hill: { position: { x: 5, y: 2, z: 7 }, radius: 3, scores: [4, 9] },
+    };
+    const d = decodeSnapshot(Snapshot.parse(JSON.parse(JSON.stringify(encodeSnapshot(s)))));
+    expect(d.hill).toEqual(s.hill);
+    expect(decodeSnapshot(encodeSnapshot(makeSnapshot(2))).hill).toBeUndefined();
+  });
+
   it('round-trips within millimetre precision', () => {
     const s = makeSnapshot(16);
     const wire = Snapshot.parse(JSON.parse(JSON.stringify(encodeSnapshot(s))));

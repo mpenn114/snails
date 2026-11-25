@@ -179,6 +179,14 @@ the zone at the end of its turn, 3 for holding it alone. First to 30 wins. Elimi
 respawn after 2 rounds as a shell-less "hatchling" with 20 health. Encourages aggression and
 makes mobility techs valuable.
 
+Implementation notes (`mode: 'kingOfTheHill'`): the zone is a 3 m radius, 4 m tall column placed
+on dry, fairly flat ground from the terrain RNG stream (first at match creation, then at the
+start of every 3rd round, preferring at least 9 m from its previous spot). Scoring happens at
+the end of each turn for the team that just played: 1 point per living snail of that team in
+the zone, plus 2 when no other team has snails in it (so a lone snail scores 3). The first team
+to 30 wins (`matchEnded` reason `hill`); last-team-standing and the turn limit still apply.
+Events: `hillMoved`, `hillScored`. Hatchling respawns are not implemented yet.
+
 Modes are content definitions; custom modes are possible via the event bus.
 
 ## Match settings

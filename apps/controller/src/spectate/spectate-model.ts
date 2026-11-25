@@ -32,7 +32,7 @@ export interface SpectateState {
   status: 'won' | 'draw' | null;
   winnerTeamId: string | null;
   /** Why the match ended when not by elimination. */
-  reason?: 'research';
+  reason?: 'research' | 'hill';
 }
 
 /** Fresh state for a player. */

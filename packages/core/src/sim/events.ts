@@ -46,7 +46,22 @@ export interface MatchEndedEvent {
   status: MatchStatus['status'];
   winnerTeamId?: string;
   /** Set when the match ended by completing a capstone. */
-  reason?: 'research';
+  reason?: 'research' | 'hill';
+}
+
+/** King of the Hill: the zone moved to a new place. */
+export interface HillMovedEvent {
+  type: 'hillMoved';
+  position: Vec3;
+  radius: number;
+}
+
+/** King of the Hill: a team scored at the end of its turn. */
+export interface HillScoredEvent {
+  type: 'hillScored';
+  teamId: string;
+  points: number;
+  total: number;
 }
 
 /** A weapon launched a projectile. */
@@ -383,7 +398,9 @@ export type SimEvent =
   | CrateCollectedEvent
   | CrateDestroyedEvent
   | SuddenDeathStartedEvent
-  | WaterRoseEvent;
+  | WaterRoseEvent
+  | HillMovedEvent
+  | HillScoredEvent;
 
 /** Discriminator values of {@link SimEvent}. */
 export type SimEventType = SimEvent['type'];
@@ -426,6 +443,8 @@ export const SIM_EVENT_TYPES: readonly SimEventType[] = [
   'crateDestroyed',
   'suddenDeathStarted',
   'waterRose',
+  'hillMoved',
+  'hillScored',
   'calciumChanged',
   'researchQueued',
   'researchStarted',

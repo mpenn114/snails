@@ -12,6 +12,10 @@ export interface TeamBar {
   /** 0..1 fill. */
   fraction: number;
   active: boolean;
+  /** King of the Hill score, or null in other modes. */
+  score: number | null;
+  /** Score needed to win (King of the Hill), or null. */
+  target: number | null;
 }
 
 /** Everything the HUD shows. */
@@ -25,7 +29,7 @@ export interface HudModel {
   timerSeconds: number;
   bars: TeamBar[];
   /** Set once the match ended: winning team (`name` null for a draw). */
-  winner: { name: string | null; colour: string | null; reason?: 'research' } | null;
+  winner: { name: string | null; colour: string | null; reason?: 'research' | 'hill' } | null;
   /** Standing announcement (sudden death is on), or null. */
   notice: string | null;
 }
@@ -61,6 +65,8 @@ export function hudFromSnapshot(
       maxHealth,
       fraction: maxHealth > 0 ? Math.min(1, health / maxHealth) : 0,
       active: t.id === s.turn.activeTeamId,
+      score: s.hill ? (s.hill.scores[t.id] ?? 0) : null,
+      target: s.hill ? s.hill.target : null,
     };
   });
   return {

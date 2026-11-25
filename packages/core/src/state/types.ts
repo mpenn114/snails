@@ -256,12 +256,24 @@ export interface Projectile {
   steer?: number;
 }
 
+/** King of the Hill zone and scores (serialisable). */
+export interface HillState {
+  /** Centre of the Dewdrop Zone on the ground. */
+  position: Vec3;
+  /** Horizontal radius in metres. */
+  radius: number;
+  /** Score per team id. */
+  scores: Record<string, number>;
+  /** Score that wins. */
+  target: number;
+}
+
 /** Match outcome. */
 export interface MatchStatus {
   status: 'playing' | 'won' | 'draw';
   winnerTeamId: string | null;
   /** Why the match ended when not by elimination (`research`: a capstone was completed). */
-  reason?: 'research';
+  reason?: 'research' | 'hill';
 }
 
 /** Top-level game state (plain JSON-serialisable data). */
@@ -298,6 +310,8 @@ export interface GameState {
   research?: ResearchSetting;
   /** Research race: the capstone tech ids; completing any of them wins. Absent = elimination. */
   raceCapstones?: string[];
+  /** King of the Hill: the zone and scores. Absent = another mode. */
+  hill?: HillState;
 }
 
 /** Serialisable snapshot of a game state. */

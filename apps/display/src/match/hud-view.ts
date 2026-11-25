@@ -1,9 +1,14 @@
-import type { HudModel } from './hud-model';
+import type { HudModel, TeamBar } from './hud-model';
 
 const esc = (s: string): string =>
   s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!);
 
 const safeColour = (c: string | null): string => (c && /^#[0-9a-f]{3,8}$/i.test(c) ? c : '#888');
+
+const scoreText = (b: TeamBar): string =>
+  b.score === null ? '' : ` <b class="score">${b.score}/${b.target ?? ''}</b>`;
+
+const WIN_SUFFIX = { research: ' the research race', hill: ' the hill' } as const;
 
 /** Renders the HUD model to HTML (pure; unit tested). */
 export function hudHtml(m: HudModel): string {
@@ -14,12 +19,12 @@ export function hudHtml(m: HudModel): string {
   const bars = m.bars
     .map(
       (b) =>
-        `<div class="bar${b.active ? ' active' : ''}"><span>${esc(b.name)}</span>` +
+        `<div class="bar${b.active ? ' active' : ''}"><span>${esc(b.name)}${scoreText(b)}</span>` +
         `<i style="width:${Math.round(b.fraction * 100)}%;background:${safeColour(b.colour)}"></i></div>`,
     )
     .join('');
   const win = m.winner
-    ? `<div class="winner">${m.winner.name ? `${esc(m.winner.name)} wins${m.winner.reason === 'research' ? ' the research race' : ''}!` : 'Draw!'}</div>`
+    ? `<div class="winner">${m.winner.name ? `${esc(m.winner.name)} wins${m.winner.reason ? WIN_SUFFIX[m.winner.reason] : ''}!` : 'Draw!'}</div>`
     : '';
   const notice = m.notice ? `<div class="notice">${esc(m.notice)}</div>` : '';
   return `${turn}${notice}<div class="bars">${bars}</div>${win}`;
