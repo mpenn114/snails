@@ -139,8 +139,14 @@ export class SoftPuffs {
       this.offset.setXYZ(i, p.pos[k] ?? 0, p.pos[k + 1] ?? 0, p.pos[k + 2] ?? 0);
       this.size.setX(i, (p.size[i] ?? 0) * Math.max(0, this.style.scale(t)));
       this.alpha.setX(i, this.style.alpha?.(t) ?? 1);
-      if (this.style.colour) this.style.colour(t, rgb);
-      else {
+      if (this.style.colour) {
+        this.style.colour(t, rgb);
+        if (this.style.tint) {
+          rgb[0] = (rgb[0] ?? 1) * (p.colour[k] ?? 1);
+          rgb[1] = (rgb[1] ?? 1) * (p.colour[k + 1] ?? 1);
+          rgb[2] = (rgb[2] ?? 1) * (p.colour[k + 2] ?? 1);
+        }
+      } else {
         rgb[0] = p.colour[k] ?? 1;
         rgb[1] = p.colour[k + 1] ?? 1;
         rgb[2] = p.colour[k + 2] ?? 1;

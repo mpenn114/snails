@@ -29,6 +29,7 @@ import {
   type ParticlePhysics,
 } from './particles.js';
 import { createSoftSpriteTexture } from './soft-sprite.js';
+import { pickWeighted, scaleCounts, vfxFor, type WeaponVfx } from './weapon-vfx.js';
 
 /** Options for {@link ExplosionEffects}. */
 export interface ExplosionEffectsOptions {
@@ -63,10 +64,11 @@ interface FlashSlot {
   age: number;
   radius: number;
   active: boolean;
+  /** Colour the flash ball cools towards. */
+  cool: THREE.Color;
 }
 
 const flashHot = new THREE.Color(PALETTE.uiPaper);
-const flashWarm = new THREE.Color(PALETTE.uiAccent);
 
 /** Additive spark pool backed by one THREE.Points. */
 class SparkPool {
@@ -143,6 +145,7 @@ export class ExplosionEffects {
       scale: smokeScale,
       colour: smokeColour,
       alpha: smokeAlpha,
+      tint: true,
     });
     this.cubes = new InstancedChunks(this.cubeGeo, this.debrisMat, cap(DEBRIS_CAP / 2), DEBRIS, {
       scale: debrisScale,
@@ -185,10 +188,11 @@ export class ExplosionEffects {
     if (!slot) return;
     this.nextSlot = (this.nextSlot + 1) % this.slots.length;
     this.startSlot(slot, e, radius);
-    const n = blastCounts(radius, this.quality);
-    this.spawnSmoke(e, radius, n.smoke);
-    this.spawnDebris(e, radius, n.debris);
-    this.spawnSparks(e, radius, n.sparks);
+    const prof = vfxFor(e.weaponId);
+    const n = scaleCounts(blastCounts(radius, this.quality), prof);
+    this.spawnSmoke(e, radius, n.smoke, prof);
+    this.spawnDebris(e, radius, n.debris, prof);
+    this.spawnSparks(e, radius, n.sparks, prof);
   }
 
   /** Advances flashes and particles by `dt` seconds. */
@@ -226,11 +230,11 @@ export class ExplosionEffects {
     this.group.removeFromParent();
   }
 
-  private spawnSmoke(e: ExplosionEvent, radius: number, count: number): void {
+  private spawnSmoke(e: ExplosionEvent, radius: number, count: number, prof: WeaponVfx): void {
     const r = this.random;
     for (let i = 0; i < count; i++) {
       const phi = r() * Math.PI * 2;
-      const out = radius * (0.1 + 0.55 * r());
+      const out = radius * (0.1 + 0.55 * r()) * prof.spread;
       const speed = radius * (0.5 + 0.8 * r());
       emitChunk(this.smoke.pool, {
         x: e.position.x + Math.cos(phi) * out,
@@ -246,14 +250,14 @@ export class ExplosionEffects {
         sy: 0,
         sz: 0,
         size: radius * (0.12 + 0.3 * r() * r()),
-        colour: PALETTE.uiPaper,
+        colour: prof.smokeTint,
         life: 1.1 + 0.8 * r(),
         floorY: 0,
       });
     }
   }
 
-  private spawnDebris(e: ExplosionEvent, radius: number, count: number): void {
+  private spawnDebris(e: ExplosionEvent, radius: number, count: number, prof: WeaponVfx): void {
     const r = this.random;
     const grow = 0.8 + 0.05 * radius;
     for (let i = 0; i < count; i++) {
@@ -276,14 +280,14 @@ export class ExplosionEffects {
         sy: (r() - 0.5) * 14,
         sz: (r() - 0.5) * 14,
         size: (0.1 + 0.2 * r()) * grow,
-        colour: pickDebrisColour(r()),
+        colour: prof.debrisColours ? pickWeighted(prof.debrisColours, r()) : pickDebrisColour(r()),
         life: 1.1 + 0.6 * r(),
         floorY: e.position.y - radius * 0.35,
       });
     }
   }
 
-  private spawnSparks(e: ExplosionEvent, radius: number, count: number): void {
+  private spawnSparks(e: ExplosionEvent, radius: number, count: number, prof: WeaponVfx): void {
     spawnBurst(
       this.sparks.data,
       {
@@ -295,7 +299,7 @@ export class ExplosionEffects {
         speedMax: radius * 3.5,
         lifeMin: 0.3,
         lifeMax: 0.6,
-        colour: PALETTE.sunLight,
+        colour: prof.sparkColour,
         upBias: 0.5,
       },
       this.random,
@@ -325,10 +329,13 @@ export class ExplosionEffects {
       light.visible = false;
       this.group.add(light);
     }
-    return { light, ball, ring, age: 0, radius: 1, active: false };
+    return { light, ball, ring, age: 0, radius: 1, active: false, cool: new THREE.Color() };
   }
 
   private startSlot(s: FlashSlot, e: ExplosionEvent, radius: number): void {
+    const prof = vfxFor(e.weaponId);
+    s.cool.set(prof.flashColour);
+    (s.ring.material as THREE.MeshBasicMaterial).color.set(prof.ringColour);
     s.active = true;
     s.age = 0;
     s.radius = radius;
@@ -363,7 +370,7 @@ export class ExplosionEffects {
     s.ball.scale.set(size, size, size);
     const ballMat = s.ball.material as THREE.MeshBasicMaterial;
     ballMat.opacity = flashOpacity(t);
-    ballMat.color.lerpColors(flashHot, flashWarm, t);
+    ballMat.color.lerpColors(flashHot, s.cool, t);
     const u = s.age / RING_LIFE;
     const rs = ringRadius(s.radius) * ringScale(u);
     s.ring.scale.set(rs, 1, rs);
