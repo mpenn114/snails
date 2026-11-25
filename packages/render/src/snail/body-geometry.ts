@@ -141,6 +141,10 @@ export function shellSeat(box: THREE.Box3): {
   const x = SHELL_CENTRE_X;
   return {
     scale: SHELL_SCALE,
-    position: [x - cx * SHELL_SCALE, bodyTopY(x) - SHELL_SINK - box.min.y * SHELL_SCALE, 0],
+    position: [
+      x - cx * SHELL_SCALE,
+      bodyTopY(x) - SHELL_SINK - box.min.y * SHELL_SCALE,
+      -((box.min.z + box.max.z) / 2) * SHELL_SCALE,
+    ],
   };
 }

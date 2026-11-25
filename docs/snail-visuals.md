@@ -112,13 +112,28 @@ snails on the same team look related but not identical.
 
 | Parameter | Range | Effect |
 |---|---|---|
-| `a` | 0.05 to 0.12 | Starting radius (apex size). |
-| `b` | 0.15 to 0.30 | Growth rate; high = flatter, wide whorls. |
-| `turns` | 3 to 5.5 | Number of whorls. |
-| `tilt` | 0 to 25 degrees | How far the apex leans. |
-| `ellipse` | 0.8 to 1.3 | Cross-section aspect. |
-| `ridges` | 0 to 12 | Spiral ridge count (shader and geometry bump). |
-| `bumpiness` | 0 to 1 | Noise on the surface. |
+| `a` | 0.05 to 0.10 | Starting radius (apex size, blunts the tip). |
+| `b` | 0.20 to 0.27 | Growth rate (scaled by 0.5 per radian; whorls grow 1.9x to 2.4x per turn). |
+| `turns` | 2.8 to 3.5 | Number of whorls. |
+| `tilt` | -4 to 4 degrees | Extra lean about the aperture axis. |
+| `ellipse` | 1.0 to 1.2 | Cross-section aspect (coil-axis extent over in-plane extent). |
+| `ridges` | 0 to 12 | Gentle growth swells along the spiral. |
+| `bumpiness` | 0 to 1 | Tiny surface noise. |
+
+**Geometry (M9-07).** The centre line is a conical logarithmic spiral (slope 0.22: a raised spire)
+and the tube radius grows with it (`0.5 r + 0.55 a`). Consecutive whorls overlap, so their
+intersection forms the **suture groove** without extra geometry; normals are smooth (the duplicated
+seam column is welded) and the material is not flat-shaded. The last 12% of the tube flares into a
+rounded **lip**, then the mouth rolls inward into a hollow interior (`aSpiral` 1). The coil axis
+leans 26 degrees so a face shows from the front camera. LOD0 is 46 rings x 12 (about 1100
+triangles), LOD1 20 x 6. `userData.decal` carries a flat seat on the last whorl (position + normal)
+which the emblem decal follows.
+
+**Patterns follow the spiral.** `lines` and `bands` run along the growth direction (functions of
+`aAround`); `ribs`, `zigzag`, `checker`, `diagonal` run across it with fixed `aSpiral` frequency, so
+they fan out as whorls widen, and are cleared from the apex (`APEX_CLEAR`) to avoid a spoke hub;
+`spots` cells scale with the whorl. Every shell gets subtle growth lines, a darkened suture
+(`sutureWeight`), a pale lip, a dark mouth and a soft satin highlight (high tiers).
 
 A snail's shell must keep its collision proxy fixed so gameplay is never affected. Generation uses
 `seed = hash(teamId, snailIndex)`; mesh is built once on spawn (about 3000 triangles) and cached.

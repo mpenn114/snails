@@ -11,7 +11,14 @@ import {
   tierOfKind,
   type TierUniforms,
 } from './shell-tier.js';
-import { LIP_START, lipColour, patternTint, shellPatternForTeam } from './shell-pattern.js';
+import {
+  LIP_START,
+  APEX_CLEAR,
+  SUTURE_AROUND,
+  lipColour,
+  patternTint,
+  shellPatternForTeam,
+} from './shell-pattern.js';
 
 const VERTEX_DECL = /* glsl */ `
 attribute float aSpiral;
@@ -36,27 +43,28 @@ float stripe(float v, float width) {
   float w = max(fwidth(v), 1e-4) * 0.8;
   return smoothstep(width + w, width - w, f) * smoothstep(0.0, w, f);
 }
-float faceWeight(float a) {
-  float c = cos(a * 6.2831853);
-  return smoothstep(0.0, 1.0, clamp((0.75 - c) / 0.4, 0.0, 1.0));
-}
 float shellMask(float id, float s, float a) {
-  float f = faceWeight(a);
-  if (id < 0.5) return stripe(s * 16.0, 0.4) * f;
-  if (id < 1.5) return stripe(a * 3.0 + 0.12, 0.34);
+  float clear = smoothstep(${APEX_CLEAR.toFixed(2)}, ${(APEX_CLEAR + 0.05).toFixed(2)}, s);
+  if (id < 0.5) return stripe(s * 20.0, 0.3) * clear;
+  if (id < 1.5) return stripe(a * 4.0 + 0.1, 0.3);
   if (id < 2.5) {
     float row = floor(a * 4.0);
-    vec2 c = vec2(fract(s * 12.0 + mod(row, 2.0) * 0.5) - 0.5, fract(a * 4.0) - 0.5);
-    return 1.0 - smoothstep(0.27, 0.33, length(vec2(c.x * 1.4, c.y)));
+    vec2 c = vec2(fract(s * 30.0 + mod(row, 2.0) * 0.5) - 0.5, fract(a * 4.0) - 0.5);
+    return 1.0 - smoothstep(0.29, 0.35, length(c));
   }
-  if (id < 3.5) return stripe(s * 4.5, 0.5) * f;
-  if (id < 4.5) return stripe(s * 12.0 + abs(fract(a * 3.0) - 0.5) * 1.6, 0.45) * f;
-  if (id < 5.5) {
-    float c = mod(floor(s * 12.0) + floor(a * 4.0), 2.0);
-    return (1.0 - c) * f;
+  if (id < 3.5) {
+    float w = max(fwidth(a), 1e-4);
+    return max(1.0 - smoothstep(0.045 - w, 0.045 + w, abs(a - 0.17)),
+               1.0 - smoothstep(0.045 - w, 0.045 + w, abs(a - 0.83)));
   }
-  if (id < 6.5) return 1.0 - edge(s, 0.34);
-  return stripe(s * 10.0 + a * 2.0, 0.42) * f;
+  if (id < 4.5) return stripe(s * 26.0 + abs(fract(a * 3.0) - 0.5) * 1.4, 0.4) * clear;
+  if (id < 5.5) return (1.0 - mod(floor(s * 28.0) + floor(a * 4.0), 2.0)) * clear;
+  if (id < 6.5) return 1.0 - edge(s, 0.3);
+  return stripe(s * 22.0 + a * 2.0, 0.4) * clear;
+}
+float sutureW(float a) {
+  float d = min(abs(a - ${SUTURE_AROUND.toFixed(2)}), abs(a - ${(1 - SUTURE_AROUND).toFixed(2)}));
+  return 1.0 - smoothstep(0.0, 0.07, d);
 }
 `;
 
@@ -65,11 +73,26 @@ const FRAGMENT_COLOR = /* glsl */ `
 {
   float m = shellMask(uPattern, vSpiral, vAround);
   diffuseColor.rgb = mix(diffuseColor.rgb, uPatternColor, m);
-  float lip = edge(vSpiral, ${LIP_START.toFixed(3)});
+  // Subtle growth lines, darker sutures between whorls, pale lip, dark mouth interior.
+  diffuseColor.rgb *= 1.0 - 0.06 * stripe(vSpiral * 90.0, 0.12);
+  diffuseColor.rgb *= 1.0 - 0.38 * sutureW(vAround) * smoothstep(0.02, 0.1, vSpiral);
+  float lip = smoothstep(${LIP_START.toFixed(3)}, ${(LIP_START + 0.012).toFixed(3)}, vSpiral);
   diffuseColor.rgb = mix(diffuseColor.rgb, uLipColor, lip);
+  diffuseColor.rgb *= 1.0 - 0.65 * smoothstep(0.997, 1.0, vSpiral);
   ${TIER_COLOR}
   ${CRACK_COLOR}
 }
+`;
+
+/** Gentle satin highlight from the first directional light (soft, toon-stepped). */
+const SATIN = /* glsl */ `
+#if NUM_DIR_LIGHTS > 0
+{
+  vec3 satinH = normalize(directionalLights[0].direction + normalize(vViewPosition));
+  float satin = smoothstep(0.82, 0.9, dot(normalize(normal), satinH));
+  totalEmissiveRadiance += vec3(0.1) * satin;
+}
+#endif
 `;
 
 /** Exposed-flesh emissive tint under the broken section at critical damage. */
@@ -136,7 +159,6 @@ export function createShellMaterial(o: ShellMaterialOptions): THREE.MeshToonMate
   const pattern = shellPatternForTeam(o.pattern);
   const material = createToonMaterial({
     color: o.colour,
-    flat: true,
     rim: 0.3,
     ...(o.tier ? { tier: o.tier } : {}),
   });
@@ -167,7 +189,10 @@ export function createShellMaterial(o: ShellMaterialOptions): THREE.MeshToonMate
         `#include <common>\n${FRAGMENT_DECL}${crackDecl(cheap)}${tierDecl(cheap)}`,
       )
       .replace('#include <color_fragment>', FRAGMENT_COLOR)
-      .replace('#include <emissivemap_fragment>', CRACK_EMISSIVE + TIER_EMISSIVE);
+      .replace(
+        '#include <emissivemap_fragment>',
+        CRACK_EMISSIVE + TIER_EMISSIVE + (cheap ? '' : SATIN),
+      );
   };
   const rimKey = material.customProgramCacheKey.bind(material);
   material.customProgramCacheKey = () => `shell-${cheap ? 'lo' : 'hi'}-${rimKey()}`;

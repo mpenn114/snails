@@ -34,7 +34,7 @@ const noseRound = (u: number): number =>
 /** Half width of the body cross-section at `u` (0 = tail tip, 1 = nose): slim neck, round head. */
 export function bodyHalfWidth(u: number): number {
   if (u <= 0 || u >= 1) return 0;
-  const swell = 1 - 0.1 * bump(u, 0.68, 0.08) + 0.15 * bump(u, 0.85, 0.13);
+  const swell = 1 - 0.16 * bump(u, 0.66, 0.09) + 0.2 * bump(u, 0.86, 0.12);
   return HALF_WIDTH * tail(u) * swell * noseRound(u);
 }
 
@@ -70,8 +70,10 @@ const OUTLINE: Record<BodyLod, readonly (readonly [number, number])[]> = {
     [1.06, 0.14],
     [0.92, 0.3],
     [0.88, 0.5],
-    [0.76, 0.78],
-    [0.42, 0.96],
+    [0.8, 0.68],
+    [0.68, 0.84],
+    [0.45, 0.95],
+    [0.2, 0.99],
     [0, 1],
   ],
   1: [
@@ -147,14 +149,14 @@ export function buildFace(lod: BodyLod): THREE.BufferGeometry[] {
   const segs = lod === 0 ? 7 : 4;
   const mouth: Vec3[] = [];
   for (let i = 0; i < segs; i++) {
-    const z = (i / (segs - 1) - 0.5) * 0.2;
-    const y = cy - 0.05 + 0.07 * (z / 0.1) ** 2;
+    const z = (i / (segs - 1) - 0.5) * 0.26;
+    const y = cy - 0.05 + 0.09 * (z / 0.13) ** 2;
     mouth.push([faceX(y, z) + 0.004, y, z]);
   }
   parts.push(
     tube(
       mouth,
-      mouth.map(() => 0.011),
+      mouth.map(() => 0.013),
       lod === 0 ? 5 : 3,
       INK,
     ),
@@ -169,7 +171,7 @@ export function buildFace(lod: BodyLod): THREE.BufferGeometry[] {
       [x0 + 0.08, y0 + 0.0, z0 * 1.1],
       [x0 + 0.14, y0 + 0.02, z0 * 1.3],
     ];
-    parts.push(tube(path, [0.045, 0.034, 0.02], sides, SKIN.clone().lerp(RIM, 0.2)));
+    parts.push(tube(path, [0.05, 0.045, 0.034], sides, SKIN.clone().lerp(RIM, 0.2)));
   }
   return parts;
 }
