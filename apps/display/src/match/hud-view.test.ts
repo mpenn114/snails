@@ -19,6 +19,8 @@ describe('hudHtml', () => {
           maxHealth: 2,
           fraction: 0.5,
           active: true,
+          score: null,
+          target: null,
         },
       ],
       winner: { name: null, colour: null },
@@ -34,5 +36,25 @@ describe('hudHtml', () => {
     expect(hudHtml({ ...EMPTY_HUD, notice: 'Sudden death! <b>' })).toContain(
       '<div class="notice">Sudden death! &lt;b&gt;</div>',
     );
+  });
+  it('shows King of the Hill scores and the hill win line', () => {
+    const bar = {
+      teamId: 'a',
+      name: 'Red',
+      colour: '#f00',
+      health: 1,
+      maxHealth: 1,
+      fraction: 1,
+      active: false,
+      score: 12,
+      target: 30,
+    };
+    const html = hudHtml({
+      ...EMPTY_HUD,
+      bars: [bar],
+      winner: { name: 'Red', colour: '#f00', reason: 'hill' },
+    });
+    expect(html).toContain('<b class="score">12/30</b>');
+    expect(html).toContain('Red wins the hill!');
   });
 });

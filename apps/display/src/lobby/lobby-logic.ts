@@ -70,6 +70,12 @@ export function settingsSummary(s: MatchSettingsInput): string {
   return `${m.turnTimeSeconds}s turns, ${m.snailsPerTeam} snails per team, seed ${m.seed}`;
 }
 
+const MODE_LABEL = {
+  elimination: 'Elimination',
+  researchRace: 'Research race',
+  kingOfTheHill: 'King of the Hill',
+} as const;
+
 const cap = (word: string): string => word.charAt(0).toUpperCase() + word.slice(1);
 
 /**
@@ -83,7 +89,7 @@ export function settingsChips(s: MatchSettingsInput): [label: string, value: str
       ? 'Off'
       : `Round ${m.suddenDeathRound}, ${{ water: 'rising water', drain: 'health drain', both: 'water and drain' }[m.suddenDeathType]}`;
   return [
-    ['Mode', m.mode === 'researchRace' ? 'Research race' : 'Elimination'],
+    ['Mode', MODE_LABEL[m.mode]],
     ['Turn', `${m.turnTimeSeconds} s${m.lazyStart ? ' (lazy start)' : ''}`],
     ['Snails', `${m.snailsPerTeam} per team`],
     ['Health', String(m.startingHealth)],

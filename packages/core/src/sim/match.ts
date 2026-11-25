@@ -40,6 +40,7 @@ import {
   turnSystem,
   type TurnConfig,
 } from '../turn/turn-phases.js';
+import { initHill, registerHill } from '../rules/hill.js';
 import { registerLingeringEffects } from './lingering.js';
 import { Simulation } from './simulation.js';
 import { DEFAULT_WIND_CONFIG, midFlightWindSystem, type WindConfig } from './wind.js';
@@ -215,6 +216,7 @@ export function createMatch(options: MatchOptions): MatchSetup {
   };
   const windConfig =
     options.wind ?? windConfigFromSettings(settings, options.winds ?? []) ?? DEFAULT_WIND_CONFIG;
+  if (settings.mode === 'kingOfTheHill') initHill(state, grid, rng.terrain);
   if (!settings.friendlyFire) state.rules = { friendlyFire: false };
   sim.registerCommandHandler('move', moveCommandHandler);
   sim.addSystem('movement', movementSystem(undefined, content.statuses));
@@ -226,6 +228,7 @@ export function createMatch(options: MatchOptions): MatchSetup {
   registerLingeringEffects(sim, content);
   registerMatchRules(sim, content, settings, options.crateRules);
   registerResearch(sim, content);
+  if (settings.mode === 'kingOfTheHill') registerHill(sim);
   faceEnemies(sim);
   startTurn(state, turnConfig, () => undefined, { rng: rng.wind, config: windConfig });
   return { sim, weapons, content, turnConfig };

@@ -1,4 +1,12 @@
-import type { Crate, GameSnapshot, ScheduledEffect, Snail, Team } from '@snails/core';
+import {
+  HILL_TARGET,
+  type Crate,
+  type GameSnapshot,
+  type HillState,
+  type ScheduledEffect,
+  type Snail,
+  type Team,
+} from '@snails/core';
 import type { CrateState, DecodedSnapshot, ScheduledState } from '@snails/protocol';
 
 /** Roster entry of one team, as announced by the server's `matchStarted` message. */
@@ -83,7 +91,16 @@ export class WireSnapshotMapper {
       crates: s.crates.map(crateFromWire),
       nextCrateId: 0,
       match: { status: 'playing', winnerTeamId: null },
+      ...(s.hill ? { hill: this.hill(s.hill) } : {}),
     };
+  }
+
+  private hill(h: NonNullable<DecodedSnapshot['hill']>): HillState {
+    const scores: Record<string, number> = {};
+    this.info.teams.forEach((t, i) => {
+      scores[t.id] = h.scores[i] ?? 0;
+    });
+    return { position: h.position, radius: h.radius, scores, target: HILL_TARGET };
   }
 
   private snail(

@@ -35,7 +35,7 @@ const plain = [
     type: z.literal('matchEnded'),
     status: z.enum(['playing', 'won', 'draw']),
     winnerTeamId: z.string().optional(),
-    reason: z.enum(['research']).optional(),
+    reason: z.enum(['research', 'hill']).optional(),
   }),
   z.object({
     type: z.literal('projectileFired'),
@@ -170,6 +170,13 @@ const plain = [
     kind: z.enum(['water', 'drain', 'both']),
   }),
   z.object({ type: z.literal('waterRose'), level: z.number(), delta: z.number() }),
+  z.object({ type: z.literal('hillMoved'), position: V, radius: z.number() }),
+  z.object({
+    type: z.literal('hillScored'),
+    teamId: z.string(),
+    points: z.number(),
+    total: z.number(),
+  }),
   z.object({
     type: z.literal('calciumChanged'),
     teamId: z.string(),

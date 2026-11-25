@@ -99,6 +99,8 @@ export const Snapshot = z.object({
   crates: z.array(WireCrate).optional(),
   /** Water surface height in mm; absent = the level announced in `matchStarted` (sudden death raises it). */
   water: int.optional(),
+  /** King of the Hill zone `[x, y, z, radius]` (mm) then each team's score in roster order. */
+  hill: z.array(int).optional(),
   /** Research preset; absent = off. */
   research: WireResearchSetting.optional(),
   /** Per-team research entries; absent = research off. */
@@ -190,6 +192,8 @@ export interface DecodedSnapshot {
   crates: CrateState[];
   /** Water surface height in metres; absent = unchanged from the terrain parameters. */
   waterLevel?: number;
+  /** King of the Hill zone centre, radius and per-team scores (roster order); absent = other mode. */
+  hill?: { position: Vec3; radius: number; scores: number[] };
   /** Research preset; absent = off. */
   research?: z.infer<typeof WireResearchSetting>;
   /** Per-team research entries (private `research` only where the viewer may see it). */
@@ -253,9 +257,30 @@ export function encodeSnapshot(s: DecodedSnapshot): Snapshot {
     scheduled: s.scheduled.map(encodeScheduled),
     crates: s.crates.map(encodeCrate),
     ...(s.waterLevel === undefined ? {} : { water: q(s.waterLevel) }),
+    ...(s.hill === undefined ? {} : { hill: encodeHill(s.hill) }),
     ...(s.research === undefined ? {} : { research: s.research }),
     ...(s.teams === undefined ? {} : { teams: s.teams }),
   };
+}
+
+function encodeHill(h: NonNullable<DecodedSnapshot['hill']>): number[] {
+  return [q(h.position.x), q(h.position.y), q(h.position.z), q(h.radius), ...h.scores];
+}
+
+function decodeAreas(list: Snapshot['areas']): AreaState[] {
+  return (list ?? []).map(([id, kind, px, py, pz, radius, turnsLeft]) => ({
+    id,
+    kind,
+    position: dv(px, py, pz),
+    radius: dq(radius),
+    turnsLeft,
+  }));
+}
+
+function decodeHill(m: number[] | undefined): { hill?: NonNullable<DecodedSnapshot['hill']> } {
+  if (m === undefined || m.length < 4) return {};
+  const [x = 0, y = 0, z = 0, r = 0] = m;
+  return { hill: { position: dv(x, y, z), radius: dq(r), scores: m.slice(4) } };
 }
 
 function encodeScheduled(e: ScheduledState): z.infer<typeof WireScheduled> {
@@ -315,13 +340,7 @@ export function decodeSnapshot(m: Snapshot): DecodedSnapshot {
       turnsLeft,
       magnitude: dq(magnitude),
     })),
-    areas: (m.areas ?? []).map(([id, kind, px, py, pz, radius, turnsLeft]) => ({
-      id,
-      kind,
-      position: dv(px, py, pz),
-      radius: dq(radius),
-      turnsLeft,
-    })),
+    areas: decodeAreas(m.areas),
     scheduled: (m.scheduled ?? []).map(([id, groupId, px, py, pz, radius, turnsLeft, style]) => ({
       id,
       groupId,
@@ -337,6 +356,7 @@ export function decodeSnapshot(m: Snapshot): DecodedSnapshot {
       grounded: grounded === 1,
     })),
     ...(m.water === undefined ? {} : { waterLevel: dq(m.water) }),
+    ...decodeHill(m.hill),
     ...(m.research === undefined ? {} : { research: m.research }),
     ...(m.teams === undefined ? {} : { teams: m.teams }),
   };

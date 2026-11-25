@@ -36,7 +36,7 @@ import {
 } from './intent.js';
 
 import { loadServerContent } from './server-content.js';
-import { snailWireState, wireCrates, wireScheduled } from './wire-views.js';
+import { snailWireState, wireCrates, wireHill, wireScheduled } from './wire-views.js';
 import { researchFields } from './privacy.js';
 import { mayCommandTurn, researchTeamFor, pickActivePlayer } from './rotation.js';
 
@@ -491,6 +491,7 @@ export class GameSession {
       scheduled: wireScheduled(s.scheduled),
       crates: wireCrates(s.crates),
       waterLevel: s.terrain.waterLevel,
+      ...wireHill(s),
     };
   }
 }
