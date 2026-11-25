@@ -243,7 +243,7 @@ moved to MG (IDs kept). M7 keeps what depends on weapons (M4) and research (M5).
 
 | ID | Task | Area | Depends on | Status |
 |---|---|---|---|---|
-| M7-03 | Material tiers (basic, reinforced, crystal, armoured) driven by tech state | render | M7-01, M5-05 | ⬜ |
+| M7-03 | Material tiers (basic, reinforced, crystal, armoured) driven by tech state | render | M7-01, M5-05 | ✅ |
 | M7-04 | Attachments and decals (antennae, flags, scratches) | render | M7-02 | ⬜ |
 | M7-05 | Crack shader with 4 damage states | render | M7-01, M1-13 | ✅ |
 | M7-06 | Fragment spawning on damage and critical state visuals | render | M7-05 | ⬜ |
