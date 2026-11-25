@@ -25,20 +25,19 @@ Semantic versioning for the game and all workspace packages (kept in lockstep, s
 
 ```mermaid
 graph LR
-  T[Push tag v*.*.*] --> M{Matrix}
-  M --> U[ubuntu-latest]
-  M --> W[windows-latest]
-  M --> A[macos-latest]
-  U & W & A --> B[pnpm install --frozen-lockfile; build all]
-  B --> E[electron-builder]
-  E --> R[Upload to GitHub Release]
+  T[Push tag v*.*.*] --> M{build matrix}
+  M --> U[ubuntu / windows / macos]
+  U --> V[version from tag, semver check]
+  V --> E[build + electron-builder]
+  E --> A[upload artifacts]
+  A --> P[publish: SHA256SUMS.txt + one GitHub release]
 ```
 
-- Matrix: `ubuntu-latest`, `windows-latest`, `macos-latest`, each: checkout, setup pnpm + Node 22, `pnpm install --frozen-lockfile`, `pnpm build`, `pnpm -F @snails/desktop dist` (electron-builder).
-- Artifacts: Windows NSIS installer `.exe`, Linux `.AppImage` and `.deb`, macOS `.dmg` (and `.zip`), named `Snails-<version>-<os>-<arch>.<ext>`.
-- Upload with `softprops/action-gh-release` (draft release created from the tag, body from the changelog section) or electron-builder's GitHub publisher with `GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}`; `permissions: contents: write`.
+- `build` (matrix `ubuntu-latest`, `windows-latest`, `macos-latest`): derive the version from the tag (`${GITHUB_REF_NAME#v}`), fail if it is not semver, set it in `apps/desktop/package.json` (`npm pkg set version`), then `pnpm install --frozen-lockfile`, `pnpm build`, `pnpm -F @snails/desktop dist`, and upload the installers as workflow artifacts only.
+- `publish` (`needs: build`, tags only): downloads all artifacts, writes `SHA256SUMS.txt`, extracts the `CHANGELOG.md` section for the version with `scripts/changelog-section.mjs` (empty if absent), and creates the release once with `softprops/action-gh-release` (`generate_release_notes: true`, changelog section as body). Tags containing `-` (e.g. `v0.1.0-rc.1`) are marked as pre-releases.
+- Dry run: start the workflow manually (`workflow_dispatch`, optional `version` input). It builds all platforms and uploads artifacts but skips `publish`.
 - Code signing and macOS notarisation are not set up yet: builds are unsigned, so Windows SmartScreen and macOS Gatekeeper warn on first launch. When certificates exist, supply them via repository secrets (`CSC_LINK`, `CSC_KEY_PASSWORD`, `APPLE_ID`, ...).
-- After the matrix completes, review the draft release, check the artifacts launch, then publish.
+- Verify downloads with `sha256sum -c SHA256SUMS.txt`.
 
 ## Running the game from a release
 

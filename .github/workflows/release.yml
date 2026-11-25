@@ -2,10 +2,16 @@ name: Release
 on:
   push:
     tags: ['v*.*.*']
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to build, semver without leading v (dry run: nothing is published)'
+        required: true
+        default: '0.0.0-dryrun.1'
 permissions:
-  contents: write
+  contents: read
 jobs:
-  release:
+  build:
     strategy:
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
@@ -17,19 +23,49 @@ jobs:
         with:
           node-version: 22
           cache: pnpm
+      - name: Derive version
+        shell: bash
+        env:
+          INPUT_VERSION: ${{ inputs.version }}
+        run: |
+          if [ "$GITHUB_REF_TYPE" = "tag" ]; then VERSION="${GITHUB_REF_NAME#v}"; else VERSION="$INPUT_VERSION"; fi
+          if ! echo "$VERSION" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?(\+[0-9A-Za-z.-]+)?$'; then
+            echo "::error::'$VERSION' is not a semver version"; exit 1
+          fi
+          cd apps/desktop && npm pkg set version="$VERSION"
       - run: pnpm install --frozen-lockfile
       - run: pnpm build
       - run: pnpm --filter @snails/desktop dist
-      - uses: actions/upload-artifact@v7
+      - uses: actions/upload-artifact@v4
         with:
           name: snails-${{ matrix.os }}
+          if-no-files-found: error
           path: |
             apps/desktop/release/*.AppImage
             apps/desktop/release/*.exe
             apps/desktop/release/*.dmg
+  publish:
+    needs: build
+    if: github.ref_type == 'tag'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+      - name: Checksums and notes
+        run: |
+          (cd dist && sha256sum * > SHA256SUMS.txt && cat SHA256SUMS.txt)
+          node scripts/changelog-section.mjs "${GITHUB_REF_NAME#v}" > RELEASE_NOTES.md
       - uses: softprops/action-gh-release@v3
         with:
-          files: |
-            apps/desktop/release/*.AppImage
-            apps/desktop/release/*.exe
-            apps/desktop/release/*.dmg
+          files: dist/*
+          body_path: RELEASE_NOTES.md
+          generate_release_notes: true
+          prerelease: ${{ contains(github.ref_name, '-') }}
