@@ -40,7 +40,13 @@ See [adr/README.md](adr/README.md) for the index and template.
 | [0007](adr/0007-electron-desktop-distribution.md) | Electron desktop distribution |
 | [0008](adr/0008-phone-renders-game-view.md) | Phones render the 3D game view (`@snails/render`) |
 | [0009](adr/0009-stylised-low-poly-art-direction.md) | Stylised low-poly art direction |
-| [0009](adr/0009-stylised-low-poly-art-direction.md) | Stylised low-poly art direction |
+| [0010](adr/0010-code-signing.md) | Code signing: ship unsigned for v0.1.0 |
+
+## Users
+
+| Doc | Description |
+| --- | --- |
+| [troubleshooting.md](troubleshooting.md) | Installing unsigned builds, firewalls, and phones that cannot join. |
 
 ## Development
 
