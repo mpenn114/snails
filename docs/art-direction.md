@@ -93,7 +93,7 @@ fill, never black: darkest lit band stays at 58% brightness.
 - Shell is about 60% of snail height ([snail-visuals.md](snail-visuals.md) `SHELL_HEIGHT_FRACTION`).
 - Round every silhouette corner: bevel or radius of at least 8% of the object's smallest
   dimension. No sharp thin spikes except cosmetic weapon upgrades, and keep those chunky.
-- Triangle budgets (LOD0, per instance): snail 1500 (shell 700 of that), prop 200, projectile 120,
+- Triangle budgets (LOD0, per instance): snail 2000 (shell 700 of that), prop 200, projectile 120,
   particle sprite or mesh 40. Reuse via instancing for props and debris.
 - Scale reference: snail is about 0.5 m long; clover leaf about 0.35 m; mushroom 0.4 to 1.2 m;
   pebble 0.15 to 0.6 m; leaf 0.8 m. Garden objects are larger than life to read at TV distance.

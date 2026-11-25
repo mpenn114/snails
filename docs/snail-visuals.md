@@ -6,9 +6,14 @@ state ([graphics.md](graphics.md)); everything here is derived from `SnailState`
 
 ## Anatomy
 
-- **Body (foot):** soft, glossy, tapered tail. Skin tint is a neutral per-team tone, slightly
-  desaturated so the shell reads first.
-- **Head and eye stalks:** two retractable stalks, each with an eye. Stalks carry most of the
+- **Body (foot):** one smooth, continuously curved sweep (`snail/body-torso.ts`): a long, low
+  foot tapering to a neat tail behind the shell, a slim neck and a rounded head raised in front of
+  the shell. The cross-section has a flared, flatter sole rim in a lighter tone, so the body sits
+  on the ground. Colour is a warm khaki-taupe (never flesh) with a darker back, a light rim and
+  underside, and soft vertex mottling; the toon material keeps the sheen satin. Smooth normals,
+  16 sides by 21 rings at LOD 0 (8 by 10 at LOD 1).
+- **Face:** a small smile line and two short lower tentacles are merged into the body geometry.
+- **Head and eye stalks:** two slim, smooth stalks, each with an eye on top. Stalks carry most of the
   expression (see animations). Small tentacles below.
 - **Shell:** a logarithmic spiral cone, 3 to 5 whorls, sitting on the back. The shell has a
   base material, a team pattern, an optional decal, attachments (spikes, plates) and a damage layer.
