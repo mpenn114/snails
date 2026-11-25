@@ -291,7 +291,7 @@ must keep. `pnpm shots` has a `display-style-<name>` overview per style.
 | M9-02 | Highlands style: ridged mountains, cliffs and passes, plus reusable tunnel carving (`styles/features.ts`) | core | M9-01 | ✅ |
 | M9-03 | Archipelago style: several islands, beaches, sea stacks and a rock arch | core | M9-01 | ✅ |
 | M9-04 | Snail body redesign: smooth, cute, clearly a head and a foot, not flesh-coloured | render | M7 | ✅ |
-| M9-05 | Caverns style: a hollow mesa with big connected caves and tunnels opening to the surface | core | M9-02 | ⬜ |
+| M9-05 | Caverns style: a hollow mesa with big connected caves and tunnels opening to the surface | core | M9-02 | ✅ |
 | M9-06 | Canyon style: deep winding gorges with ledges, overhangs and natural bridges | core | M9-02 | ✅ |
 | M9-07 | Shell redesign: visible spiral whorls, sutures, aperture lip, smooth shading, patterns that follow the spiral | render | M9-04 | ⬜ |
 | M9-08 | Map style lobby setting (with Random), saved with settings, shown on TV and phone lobbies | server | M9-01 | ⬜ |

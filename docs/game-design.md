@@ -111,6 +111,11 @@ Procedural maps pick a terrain style (`packages/core/src/terrain/styles/`). Reus
   pillars) stand in the water, and one natural rock arch spans the shallows beside the big island.
   Islands have gentle hills. Shapes scale with the grid size. Implemented in `styles/archipelago.ts`
   and `styles/coast.ts`.
+- **Caverns:** a tall flat-topped mesa (about 16 m with a rolling top, rocky knolls, shallow hollows and a stepped second tier, clean steep strata cliffs, a low shelf around its foot)
+  hollowed by 2-3 domed chambers (5-8 m wide, 3-5 m tall, flat floors above the water) joined by
+  tunnels. Each chamber has a mouth at ground level in the cliff, and two skylight shafts drop
+  from the mesa top into chambers. At least 2.5 m of rock roofs every chamber. Walls and cave
+  shells are rock; the top keeps soil. Implemented in `styles/caverns.ts`.
 - **Canyon:** a high tableland island (top about 13 to 16 m, gently rolling, with soil) cut by a
   winding gorge and a tributary (4 to 8 m wide) that reach the sea at both mouths. Walls are steep
   layered rock (alternating rock and clay bands), with stepped ledges snails can stand on and
