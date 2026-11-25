@@ -380,19 +380,22 @@ export class SnailMesh {
       const m = this.rig.shell.material;
       if (m instanceof THREE.Material) beginTierTransition(shellTierUniforms(m), tierOfKind(kind));
     }
+    // Created eagerly: the team decal and active flag show even without research.
+    if (!this.extras) {
+      this.extras = new ShellExtras(this.rig.shell.geometry);
+      this.rig.shell.add(this.extras.group);
+    }
     const key = r ? lookKey(r.look) : '';
     if (key !== this.appliedLook) {
       this.appliedLook = key;
-      if (r && !this.extras) {
-        this.extras = new ShellExtras(this.rig.shell.geometry);
-        this.rig.shell.add(this.extras.group);
-      }
-      if (r) this.extras?.setLook(r.look);
+      if (r) this.extras.setLook(r.look);
     }
-    this.extras?.setShimmer(v.alive && r?.researching === true);
+    this.extras.setTeam(v.teamIndex, v.colour);
+    this.extras.setFlag(v.alive && v.isActive);
+    this.extras.setShimmer(v.alive && r?.researching === true);
   }
 
-  /** Research decoration of the shell (null until a team look is applied). */
+  /** Decoration of the shell (decal, flag, research attachments); null before the first view. */
   get shellExtras(): ShellExtras | null {
     return this.extras;
   }
