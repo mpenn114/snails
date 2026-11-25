@@ -22,6 +22,21 @@ export const FALL_DAMAGE_SETTINGS = ['off', 'on', 'high'] as const;
 /** Values of the Map setting: a concrete terrain style, or `random` (resolved from the seed). */
 export const MAP_STYLE_SETTINGS = ['random', ...TERRAIN_STYLES] as const;
 
+/** Concrete map sizes (horizontal grid edge in cells; see {@link MAP_SIZE_CELLS}). */
+export const MAP_SIZES = ['small', 'medium', 'large', 'huge'] as const;
+/** A concrete map size. */
+export type MapSize = (typeof MAP_SIZES)[number];
+/** Values of the Size setting: a concrete size, or `auto` (picked from the snail count). */
+export const MAP_SIZE_SETTINGS = ['auto', ...MAP_SIZES] as const;
+
+/** Horizontal grid edge (cells, both nx and nz) per map size: 48, 64, 80 and 96 m at 0.5 m cells. */
+export const MAP_SIZE_CELLS: Record<MapSize, number> = {
+  small: 96,
+  medium: 128,
+  large: 160,
+  huge: 192,
+};
+
 /**
  * Host-chosen gameplay settings of a match (docs/game-design.md "Match settings"). Every field
  * has a default, so `MatchSettingsSchema.parse({})` is the Classic ruleset. Lobby-only concerns
@@ -30,6 +45,8 @@ export const MAP_STYLE_SETTINGS = ['random', ...TERRAIN_STYLES] as const;
 export const MatchSettingsSchema = z.object({
   /** Map style; `random` picks one style from the match seed (see {@link resolveMapStyle}). */
   mapStyle: z.enum(MAP_STYLE_SETTINGS).default('random'),
+  /** Map size; `auto` scales with the total snail count (see {@link resolveMapSize}). */
+  mapSize: z.enum(MAP_SIZE_SETTINGS).default('auto'),
   /** Seconds of the action phase of a turn. */
   turnTimeSeconds: z.number().int().min(10).max(120).default(30),
   /** Seconds of the retreat window after a shot. */
@@ -149,4 +166,20 @@ export function resolveMapStyle(
   const rng = new Rng((seed ^ 0x5bd1e995) >>> 0);
   rng.next();
   return TERRAIN_STYLES[Math.floor(rng.next() * TERRAIN_STYLES.length)] ?? 'island';
+}
+
+/**
+ * Resolves the Size setting to one concrete map size. A concrete setting is returned as is;
+ * `auto` picks by total snail count: up to 6 small, 12 medium, 24 large, more huge.
+ * @param setting the `mapSize` match setting
+ * @param snailCount total snails in the match (teams x snails per team)
+ */
+export function resolveMapSize(
+  setting: (typeof MAP_SIZE_SETTINGS)[number],
+  snailCount: number,
+): MapSize {
+  if (setting !== 'auto') return setting;
+  if (snailCount <= 6) return 'small';
+  if (snailCount <= 12) return 'medium';
+  return snailCount <= 24 ? 'large' : 'huge';
 }

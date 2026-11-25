@@ -77,6 +77,11 @@ describe('display lobby logic', () => {
     );
   });
 
+  it('shows the map size, Auto by default', () => {
+    expect(Object.fromEntries(settingsChips({}))['Size']).toBe('Auto');
+    expect(Object.fromEntries(settingsChips({ mapSize: 'huge' }))['Size']).toBe('Huge');
+  });
+
   it('fetches info and tolerates failures', async () => {
     const ok = async () => ({
       ok: true,

@@ -1,8 +1,6 @@
 import {
   FIXED_DT,
   createMatch,
-  DEFAULT_TERRAIN_CONFIG,
-  resolveMapStyle,
   type MatchSetup,
   type SimEvent,
   type Snail,
@@ -27,6 +25,7 @@ import {
 } from '@snails/protocol';
 import type { CpuPlayer } from '@snails/ai';
 import { CpuDriver } from './cpu-driver.js';
+import { terrainParamsFor } from './terrain-params.js';
 import {
   intentToCommand,
   type GameIntent,
@@ -142,8 +141,7 @@ export class GameSession {
     this.clock = opts.clock ?? realClock;
     this.snapshotEvery = Math.max(1, Math.round(1 / (FIXED_DT * (opts.snapshotHz ?? 20))));
     this.maxSteps = Math.max(1, opts.maxStepsPerFrame ?? 8);
-    const style = resolveMapStyle(this.settings.mapStyle, this.settings.seed);
-    this.terrainParams = { ...DEFAULT_TERRAIN_CONFIG, style, ...opts.terrain };
+    this.terrainParams = terrainParamsFor(this.settings, opts.teams.length, opts.terrain);
     const content = loadServerContent().registries;
     const defs = opts.weapons ?? content.weapons.list();
     // Default pick: an unlimited plain projectile that needs no research, else the first ungated.

@@ -15,6 +15,13 @@ const MAP: readonly Option[] = [
   ['caverns', 'Caverns: a roofed cave network'],
   ['canyon', 'Canyon: a deep gorge with ledges'],
 ];
+const SIZE: readonly Option[] = [
+  ['auto', 'Auto: grows with the snail count'],
+  ['small', 'Small: 48 m, up to 6 snails'],
+  ['medium', 'Medium: 64 m, up to 12 snails'],
+  ['large', 'Large: 80 m, up to 24 snails'],
+  ['huge', 'Huge: 96 m, a big crowd'],
+];
 const HEALTH: readonly Option[] = [
   ['50', '50'],
   ['100', '100'],
@@ -57,6 +64,7 @@ const FALL: readonly Option[] = [
 export const SETTING_FIELDS: readonly SettingField[] = [
   { kind: 'select', key: 'mode', label: 'Game mode', options: MODE },
   { kind: 'select', key: 'mapStyle', label: 'Map', options: MAP },
+  { kind: 'select', key: 'mapSize', label: 'Size', options: SIZE },
   { kind: 'select', key: 'startingHealth', label: 'Starting health', options: HEALTH },
   { kind: 'select', key: 'wind', label: 'Wind', options: WIND },
   { kind: 'select', key: 'crates', label: 'Crates', options: CRATES },
