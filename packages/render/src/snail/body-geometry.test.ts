@@ -1,7 +1,8 @@
 import * as THREE from 'three';
 import { describe, expect, it } from 'vitest';
-import { TRIANGLE_BUDGETS } from '../style/palette.js';
+import { PALETTE, TRIANGLE_BUDGETS } from '../style/palette.js';
 import { buildShellGeometry, shellParamsFromSeed } from './shell-geometry.js';
+import { bodyHalfWidth, bodyLift } from './body-torso.js';
 import {
   BODY_LENGTH,
   BODY_TAIL_X,
@@ -75,5 +76,46 @@ describe('snail body geometry', () => {
     const lowest = seat.position[1] + (geo.boundingBox as THREE.Box3).min.y * seat.scale;
     expect(lowest).toBeLessThan(bodyTopY(-0.2));
     expect(lowest).toBeGreaterThan(bodyTopY(-0.2) - 0.3);
+  });
+
+  it('has a slim tail, a neck narrower than the head, and a raised head', () => {
+    expect(bodyHalfWidth(0)).toBe(0);
+    expect(bodyHalfWidth(1)).toBe(0);
+    expect(bodyHalfWidth(0.05)).toBeLessThan(bodyHalfWidth(0.4));
+    expect(bodyHalfWidth(0.68)).toBeLessThan(bodyHalfWidth(0.85));
+    expect(bodyTopY(0.45)).toBeGreaterThan(bodyTopY(-0.3) + 0.15);
+    expect(bodyLift(0.9)).toBeGreaterThan(bodyLift(0.5));
+  });
+
+  it('has a lighter foot rim than back, and a skin tone that is not flesh', () => {
+    const { body } = buildSnailBody(0);
+    const pos = body.getAttribute('position');
+    const col = body.getAttribute('color');
+    const lum = (i: number): number => 0.3 * col.getX(i) + 0.6 * col.getY(i) + 0.1 * col.getZ(i);
+    let low = 0;
+    let lowN = 0;
+    let high = 0;
+    let highN = 0;
+    for (let i = 0; i < pos.count; i++) {
+      if (pos.getX(i) > -0.3 || pos.getX(i) < -0.6) continue;
+      if (pos.getY(i) < 0.08) {
+        low += lum(i);
+        lowN++;
+      } else if (pos.getY(i) > 0.2) {
+        high += lum(i);
+        highN++;
+      }
+    }
+    expect(low / lowN).toBeGreaterThan(high / highN);
+    const skin = new THREE.Color(PALETTE.snailSkin);
+    expect(skin.r - skin.b).toBeLessThan(0.2);
+  });
+
+  it('is smooth: more rings than before on LOD0, face parts merged into the body', () => {
+    const lod0 = buildSnailBody(0);
+    const lod1 = buildSnailBody(1);
+    expect(tris(lod0.body)).toBeGreaterThan(500);
+    expect(tris(lod1.body)).toBeLessThan(tris(lod0.body) / 3);
+    expect(lod0.body.getAttribute('normal').count).toBe(lod0.body.getAttribute('position').count);
   });
 });

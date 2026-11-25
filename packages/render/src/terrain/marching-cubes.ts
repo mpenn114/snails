@@ -118,7 +118,13 @@ class Builder {
     const { cellSize: h, origin } = this.input;
     const ga = this.grad(a);
     const gb = this.grad(b);
-    const g = [0, 1, 2].map((n) => num(ga[n]) + t * (num(gb[n]) - num(ga[n])));
+    let g = [0, 1, 2].map((n) => num(ga[n]) + t * (num(gb[n]) - num(ga[n])));
+    // Saturated samples (steep walls on coarse LODs) can cancel the gradient; a zero normal
+    // becomes NaN in the shader and blacks out the bloom chain, so use the edge direction.
+    if (Math.hypot(num(g[0]), num(g[1]), num(g[2])) < 1e-6) {
+      const sign = vb > va ? 1 : -1;
+      g = [0, 1, 2].map((n) => (num(b[n]) - num(a[n])) * sign);
+    }
     const len = Math.hypot(num(g[0]), num(g[1]), num(g[2])) || 1;
     for (let n = 0; n < 3; n++) {
       const an = num(a[n]);
