@@ -246,7 +246,7 @@ moved to MG (IDs kept). M7 keeps what depends on weapons (M4) and research (M5).
 | M7-03 | Material tiers (basic, reinforced, crystal, armoured) driven by tech state | render | M7-01, M5-05 | ✅ |
 | M7-04 | Attachments and decals (antennae, flags, scratches) | render | M7-02 | ✅ |
 | M7-05 | Crack shader with 4 damage states | render | M7-01, M1-13 | ✅ |
-| M7-06 | Fragment spawning on damage and critical state visuals | render | M7-05 | ⬜ |
+| M7-06 | Fragment spawning on damage and critical state visuals | render | M7-05 | ✅ |
 | M7-07 | Death shells and death sequence | render | M7-06, M1-20 | ⬜ |
 | M7-10 | Per-weapon VFX pass (builds on the MG-09 explosion style) | render | MG-09, M4-19 | ✅ |
 | M7-11 | Audio system, SFX and music pass on display and phone (include snail reactions and impact cues, playtest #9) | display | M3-25, M7-10 | ⬜ |
