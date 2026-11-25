@@ -131,7 +131,8 @@ export function shellMaterialKey(o: ShellMaterialOptions): string {
 export function createShellMaterial(o: ShellMaterialOptions): THREE.MeshToonMaterial {
   const base = new THREE.Color(o.colour);
   const damageUniform = { value: o.damage ?? 0 };
-  const cheap = o.tier === 'low';
+  // Phones (`mobile`) and Low share the cheap shader: no noise warp, no hairlines, no facets.
+  const cheap = o.tier === 'low' || o.tier === 'mobile';
   const pattern = shellPatternForTeam(o.pattern);
   const material = createToonMaterial({
     color: o.colour,

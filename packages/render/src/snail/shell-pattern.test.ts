@@ -52,4 +52,11 @@ describe('shell patterns', () => {
     expect(shellDamageUniform(m).value).toBe(1);
     m.dispose();
   });
+  it('uses the cheap shell shader on the low and mobile tiers', () => {
+    const key = (tier: 'high' | 'medium' | 'low' | 'mobile') =>
+      createShellMaterial({ colour: 0xff0000, pattern: 0, tier }).customProgramCacheKey();
+    expect(key('mobile')).toMatch(/^shell-lo-/);
+    expect(key('low')).toMatch(/^shell-lo-/);
+    expect(key('medium')).toMatch(/^shell-hi-/);
+  });
 });
