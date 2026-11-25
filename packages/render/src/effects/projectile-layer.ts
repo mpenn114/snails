@@ -13,6 +13,7 @@ import {
   lookFor,
   type ProjectileLook,
 } from './projectile-looks.js';
+import { DEFAULT_VFX, vfxFor } from './weapon-vfx.js';
 import { createTrailState, emitTrail, type TrailSpec, type TrailState } from './trail-emitter.js';
 
 /** Options for {@link ProjectileLayer}. */
@@ -153,11 +154,17 @@ export class ProjectileLayer {
         this.group.add(mesh.group);
       }
       mesh.apply(p, this.radiusScale);
+      const prof = vfxFor(p.weaponId);
       const spec: TrailSpec = {
-        spacing: this.spacing,
-        size: Math.max(0.05, p.radius) * this.radiusScale * LOOK_SCALE[mesh.look] * 0.5,
+        spacing: this.spacing * prof.trail.spacing,
+        size:
+          Math.max(0.05, p.radius) *
+          this.radiusScale *
+          LOOK_SCALE[mesh.look] *
+          0.5 *
+          prof.trail.size,
         life: PUFF_LIFE,
-        colour: LOOK_TRAIL[mesh.look],
+        colour: prof.trail === DEFAULT_VFX.trail ? LOOK_TRAIL[mesh.look] : prof.trail.colour,
       };
       emitTrail(this.puffs.pool, mesh.trail, p.position.x, p.position.y, p.position.z, spec);
     }
