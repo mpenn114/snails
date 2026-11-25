@@ -67,7 +67,15 @@ const DISPLAY_SHOTS = [
     '&review=cracks',
     PHONE_VIEWPORT,
   ],
+  ...['archipelago', 'highlands', 'caverns', 'canyon'].map((style) => [
+    `display-style-${style}`,
+    'wide',
+    `Display 1920x1080, High: wide overview of the ${style} map style`,
+    `&style=${style}`,
+  ]),
 ];
+// SHOTS_EXTRA='&seed=3' is appended to every display shot URL (e.g. to try another seed or style).
+const shotsExtra = process.env.SHOTS_EXTRA ?? '';
 // SHOTS_ONLY=display-flight,display-aim limits the run (and the phone shot unless phone-my-turn is listed) while iterating.
 const only = process.env.SHOTS_ONLY?.split(',');
 const captions = [];
@@ -83,7 +91,9 @@ async function displayShots(browser, base, errors) {
     const page = await ctx.newPage();
     watch(page, name, errors);
     await page.setViewportSize(viewport);
-    await page.goto(`${base}/display/harness.html?shot=1&cam=${cam}&seed=7&quality=high${extra}`);
+    await page.goto(
+      `${base}/display/harness.html?shot=1&cam=${cam}&seed=7&quality=high${extra}${shotsExtra}`,
+    );
     await page.waitForFunction(() => window.__shotReady === true, null, { timeout: 900000 });
     await page.screenshot({ path: join(out, `${name}.png`), timeout: SHOT_TIMEOUT });
     captions.push({ file: `${name}.png`, caption });

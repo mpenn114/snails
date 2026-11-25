@@ -7,6 +7,7 @@ import {
   type SdfGrid,
   type SimEvent,
   type Simulation,
+  type TerrainStyle,
   type WeaponDefinition,
 } from '@snails/core';
 import { TEAM_COLORS, hexToCss } from '@snails/render';
@@ -37,6 +38,8 @@ export interface HarnessMatchOptions {
   seed: number;
   teams?: number;
   snailsPerTeam?: number;
+  /** Terrain style (`?style=` in the harness URL); omitted means `island`. */
+  style?: TerrainStyle;
 }
 
 /** Builds match options for `teams` x `snailsPerTeam` snails on a large seeded island. */
@@ -51,7 +54,7 @@ export function harnessMatchOptions(o: HarnessMatchOptions): MatchOptions {
       colour: TEAM_COLOURS[t % TEAM_COLOURS.length] as string,
       snailNames: Array.from({ length: per }, (_, i) => snailName(t * per + i)),
     })),
-    terrain: { nx: 160, ny: 48, nz: 160, caveDensity: 0.1 },
+    terrain: { nx: 160, ny: 48, nz: 160, caveDensity: 0.1, style: o.style },
     turn: { introDuration: 0.5, retreatDuration: 1, maxTurns: 200 },
     weapons: [HARNESS_WEAPON],
   };

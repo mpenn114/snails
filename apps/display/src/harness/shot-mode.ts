@@ -3,6 +3,8 @@ import {
   createMatch,
   createScriptedBot,
   predictTrajectory,
+  TERRAIN_STYLES,
+  type MatchOptions,
   type SimEvent,
   type Vec3,
 } from '@snails/core';
@@ -278,6 +280,20 @@ async function applyReact(
 }
 
 /** Runs one deterministic screenshot scene. */
+/** Match options of a shot: a small review line-up or three teams of three, on `?style=`. */
+function shotMatchOptions(
+  params: URLSearchParams,
+  seed: number,
+  review: ReturnType<typeof reviewKind>,
+): MatchOptions {
+  const style = TERRAIN_STYLES.find((s) => s === params.get('style'));
+  return harnessMatchOptions(
+    review
+      ? { seed, teams: reviewTeamCount(review), snailsPerTeam: 1, style }
+      : { seed, teams: 3, snailsPerTeam: 3, style },
+  );
+}
+
 /**
  * Deterministic capture mode (`?shot=1&cam=close|wide|crater|flight|aim&seed=&quality=`). Time is
  * simulated (fixed dt per frame, manual scheduler), randomness is seeded, so repeated loads
@@ -294,11 +310,7 @@ export async function runShot(canvas: HTMLCanvasElement, params: URLSearchParams
   renderer.resize(window.innerWidth, window.innerHeight);
 
   const review = reviewKind(params);
-  const options = harnessMatchOptions(
-    review
-      ? { seed, teams: reviewTeamCount(review), snailsPerTeam: 1 }
-      : { seed, teams: 3, snailsPerTeam: 3 },
-  );
+  const options = shotMatchOptions(params, seed, review);
   const sim = createMatch(options).sim;
   renderer.init({ grid: sim.terrain, waterLevel: sim.state.terrain.waterLevel });
   await Promise.all([renderer.terrainTexturesReady, renderer.view?.postReady]);
