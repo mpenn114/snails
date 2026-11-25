@@ -1,14 +1,7 @@
 import type { Rng } from '../../rng.js';
 import { MATERIAL_ROCK, MATERIAL_SAND } from '../materials.js';
 import type { ValueNoise } from '../noise.js';
-import {
-  archCarve,
-  archWallDistance,
-  nearRock,
-  stackDistance,
-  type Arch,
-  type Stack,
-} from './coast.js';
+import { archDistance, nearRock, stackDistance, type Arch, type Stack } from './coast.js';
 import { smoothstep as smooth } from './shared.js';
 import type { StyleConfig, StyleField, TerrainStyleImpl } from './types.js';
 
@@ -60,43 +53,62 @@ function segDist(px: number, pz: number, a: Island, b: Island): number {
   return Math.hypot(px - a.x - dx * t, pz - a.z - dz * t);
 }
 
-/** Tall rock pillars: some hugging island shores. */
+/** Tall rock pillars: some alone, some clustered next to a taller sibling. */
 function makeStacks(c: StyleConfig, isl: Island[], rng: Rng): Stack[] {
   const out: Stack[] = [];
   const w = Math.min(c.nx, c.nz);
-  const place = (i: number, ang: number, gap: number): void => {
-    const s = isl[i] as Island;
-    const d = s.r * (1.02 + gap);
+  const add = (x: number, z: number, rf: number, height: number): void => {
+    const top = c.waterLevel + height;
     out.push({
-      x: s.x + Math.cos(ang) * d,
-      z: s.z + Math.sin(ang) * d,
-      r: w * rng.range(0.014, 0.022),
-      top: c.waterLevel + rng.range(7, 10),
+      x,
+      z,
+      r: w * rf,
+      top,
+      leanX: rng.range(-0.05, 0.05),
+      leanZ: rng.range(-0.05, 0.05),
+      phase1: rng.range(0, 6.3),
+      phase2: rng.range(0, 6.3),
+      ledge1: c.waterLevel + height * rng.range(0.35, 0.5),
+      ledge2: c.waterLevel + height * rng.range(0.65, 0.8),
     });
   };
-  place(0, rng.range(2.6, 3.6), 0.18);
-  place(0, rng.range(-1.5, -0.9), 0.22);
-  place(1, rng.range(3.2, 4.2), 0.25);
-  place(2, rng.range(4.0, 5.0), 0.2);
+  const place = (i: number, ang: number, gap: number, height: number, mates: number): void => {
+    const s = isl[i] as Island;
+    const d = s.r * (1.04 + gap);
+    const x = s.x + Math.cos(ang) * d;
+    const z = s.z + Math.sin(ang) * d;
+    const rf = rng.range(0.016, 0.024);
+    add(x, z, rf, height);
+    for (let m = 0; m < mates; m++) {
+      const a = rng.range(0, 6.3);
+      add(
+        x + Math.cos(a) * w * 0.05,
+        z + Math.sin(a) * w * 0.05,
+        rf * 0.7,
+        height * rng.range(0.45, 0.7),
+      );
+    }
+  };
+  place(0, rng.range(2.6, 3.6), 0.18, rng.range(8, 11), 2);
+  place(0, rng.range(-1.5, -0.9), 0.22, rng.range(6, 8), 0);
+  place(1, rng.range(3.2, 4.2), 0.25, rng.range(7, 10), 1);
+  place(2, rng.range(4.0, 5.0), 0.2, rng.range(5, 7), 0);
   return out.filter((s) => s.x > 5 && s.z > 5 && s.x < c.nx - 6 && s.z < c.nz - 6);
 }
 
-/** A rock arch standing in shallow water just off the big island's shore. */
+/** A bent rock arch over the shallows at the big island's shore: one foot ashore, one in the sea. */
 function makeArch(c: StyleConfig, big: Island, rng: Rng): Arch {
-  const w = Math.min(c.nx, c.nz);
   const ang = rng.range(0.1, 0.7);
-  const d = big.r * 0.98;
+  const cs = c.cellSize;
   return {
-    x: big.x + Math.cos(ang) * d,
-    z: big.z + Math.sin(ang) * d,
+    x: (big.x + Math.cos(ang) * big.r * 1.0) * cs,
+    z: (big.z + Math.sin(ang) * big.r * 1.0) * cs,
     ux: Math.cos(ang),
     uz: Math.sin(ang),
-    halfLen: w * 0.05,
-    halfThick: w * 0.016,
-    top: c.waterLevel + 7,
-    openY: c.waterLevel + 0.4,
-    openW: w * 0.04,
-    openH: 3.3,
+    ring: 4,
+    tube: 1.45,
+    y0: c.waterLevel - 0.2,
+    phase: rng.range(0, 6.3),
   };
 }
 
@@ -137,6 +149,27 @@ function sandbar(c: StyleConfig, noise: ValueNoise, isl: Island[], x: number, z:
   return best;
 }
 
+/** Box-blurs a table in place (3x3, `passes` times) to round off spurs and sharp creases. */
+function blur(t: Float32Array, nx: number, nz: number, passes: number): void {
+  const tmp = new Float32Array(t.length);
+  for (let p = 0; p < passes; p++) {
+    for (let z = 0; z < nz; z++) {
+      for (let x = 0; x < nx; x++) {
+        let sum = 0;
+        for (let dz = -1; dz <= 1; dz++) {
+          for (let dx = -1; dx <= 1; dx++) {
+            const xx = Math.min(nx - 1, Math.max(0, x + dx));
+            const zz = Math.min(nz - 1, Math.max(0, z + dz));
+            sum += t[zz * nx + xx] as number;
+          }
+        }
+        tmp[z * nx + x] = sum / 9;
+      }
+    }
+    t.set(tmp);
+  }
+}
+
 /** Builds the height and cliff tables for the whole map. */
 function buildColumns(c: StyleConfig, noise: ValueNoise, isl: Island[]): Columns {
   const hf = c.cellSize * c.hillFrequency;
@@ -152,15 +185,16 @@ function buildColumns(c: StyleConfig, noise: ValueNoise, isl: Island[]): Columns
         const f = 1 - Math.hypot(x - s.x, z - s.z) / s.r + warp;
         if (f <= best) continue;
         best = f;
-        const hills = Math.max(0, 0.45 + noise.fbm2(x * hf * 1.6, z * hf * 1.6, 3) * 2.2);
-        const ang = Math.atan2(z - s.z, x - s.x);
-        ch = s.bias + 1.1 * noise.fbm2(Math.cos(ang) * 2 + s.x, Math.sin(ang) * 2 + s.z, 2);
+        const hills = 0.25 + 0.95 * smooth(-0.5, 0.5, noise.fbm2(x * hf * 1.3, z * hf * 1.3, 3));
+        ch = s.bias + 1.3 * noise.fbm2(x * hf * 0.5 + 200, z * hf * 0.5 - 60, 2);
         h = profile(c, f, ch, c.waterLevel + 1.2 + s.rise * hills * 0.9);
       }
       height[z * c.nx + x] = Math.max(h, sandbar(c, noise, isl, x, z));
       cliff[z * c.nx + x] = ch;
     }
   }
+  blur(height, c.nx, c.nz, 2);
+  blur(cliff, c.nx, c.nz, 2);
   return { height, cliff };
 }
 
@@ -176,11 +210,10 @@ export const archipelagoStyle: TerrainStyleImpl = {
     return {
       surface: (x, z) => cols.height[col(x, z)] as number,
       add(x, y, z) {
-        let v = archWallDistance(arch, cs, x, y, z);
+        let v = archDistance(arch, cs, x, y, z);
         for (const s of stacks) v = Math.min(v, stackDistance(s, cs, x, y, z));
         return v;
       },
-      carve: (x, y, z) => archCarve(arch, cs, x, y, z),
       material(x, y, z, h) {
         if (nearRock(stacks, arch, cs, x, y, z)) return MATERIAL_ROCK;
         const depth = h - y * cs;
