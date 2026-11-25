@@ -15,7 +15,8 @@ import {
 } from './snail/snail-expression.js';
 import { hashShellSeed } from './snail/shell-geometry.js';
 import { damageForRatio, easeDamage } from './snail/crack-damage.js';
-import { shellDamageUniform } from './snail/shell-material.js';
+import { shellDamageUniform, shellTierUniforms } from './snail/shell-material.js';
+import { advanceTierTransition, beginTierTransition, tierOfKind } from './snail/shell-tier.js';
 import { shellPatternForTeam } from './snail/shell-pattern.js';
 import { ShellExtras } from './research/shell-extras.js';
 import { lookKey, type ShellMaterialKind } from './research/shell-look.js';
@@ -295,6 +296,8 @@ export class SnailMesh {
    */
   animate(dt: number, v: SnailView): void {
     this.extras?.update(dt);
+    const sm = this.rig.shell.material;
+    if (sm instanceof THREE.Material) advanceTierTransition(shellTierUniforms(sm), dt);
     const here = this.group.position;
     if (dt > 0 && this.lastPos) {
       const ease = 1 - Math.exp(-14 * dt);
@@ -374,7 +377,8 @@ export class SnailMesh {
     const kind = r?.look.material ?? null;
     if (kind !== this.materialKind) {
       this.materialKind = kind;
-      this.refreshShellMaterial();
+      const m = this.rig.shell.material;
+      if (m instanceof THREE.Material) beginTierTransition(shellTierUniforms(m), tierOfKind(kind));
     }
     const key = r ? lookKey(r.look) : '';
     if (key !== this.appliedLook) {
