@@ -1,7 +1,9 @@
 // Shared helpers for the e2e scripts (copied from smoke.mjs).
 import { createRequire } from 'node:module';
 import { spawn } from 'node:child_process';
+import { mkdtempSync } from 'node:fs';
 import { createServer } from 'node:net';
+import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -75,7 +77,11 @@ export async function startServer() {
   const port = await freePort();
   const server = spawn('node', ['dist/main.js'], {
     cwd: join(root, 'apps/server'),
-    env: { ...process.env, PORT: String(port) },
+    env: {
+      ...process.env,
+      PORT: String(port),
+      SNAILS_DATA_DIR: mkdtempSync(join(tmpdir(), 'snails-e2e-')),
+    },
     stdio: ['ignore', 'pipe', 'inherit'],
   });
   const base = `http://127.0.0.1:${port}`;

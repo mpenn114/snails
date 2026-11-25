@@ -1,3 +1,5 @@
+import { LEGACY_KEYS, loadPrefs, updatePrefs } from '../ui/prefs-store';
+import type { PrefsStorage } from '../ui/prefs-store';
 import type { AimStore } from './aim-store';
 
 /** Label of the Aim button for the current state. */
@@ -5,15 +7,11 @@ export function aimButtonLabel(aimMode: boolean): string {
   return aimMode ? 'Exit aim' : 'Aim';
 }
 
-/** Storage key remembering that the player has used the Aim button (stops the attention pulse). */
-export const AIM_SEEN_KEY = 'snails.aimButtonUsed';
+/** Legacy storage key (now part of the versioned prefs record) remembering that the player has used the Aim button (stops the attention pulse). */
+export const AIM_SEEN_KEY = LEGACY_KEYS.aimButtonUsed;
 
-function seen(storage: Pick<Storage, 'getItem'> | null): boolean {
-  try {
-    return storage?.getItem(AIM_SEEN_KEY) === '1';
-  } catch {
-    return false;
-  }
+function seen(storage: PrefsStorage | null): boolean {
+  return loadPrefs(storage ?? undefined).aimButtonUsed;
 }
 
 /**
@@ -24,7 +22,7 @@ function seen(storage: Pick<Storage, 'getItem'> | null): boolean {
 export function wireAimButton(
   button: HTMLElement,
   store: AimStore,
-  storage: Pick<Storage, 'getItem' | 'setItem'> | null = safeStorage(),
+  storage: PrefsStorage | null = safeStorage(),
 ): () => void {
   let used = seen(storage);
   const render = (): void => {
@@ -37,11 +35,7 @@ export function wireAimButton(
   const markUsed = (): void => {
     if (used) return;
     used = true;
-    try {
-      storage?.setItem(AIM_SEEN_KEY, '1');
-    } catch {
-      // Storage blocked: the pulse simply comes back next session.
-    }
+    updatePrefs(storage ?? undefined, { aimButtonUsed: true });
   };
   const onClick = (): void => {
     store.setAimMode(!store.state.aimMode);

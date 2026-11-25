@@ -4,7 +4,8 @@
 import { createRequire } from 'node:module';
 import { spawn } from 'node:child_process';
 import { createServer } from 'node:net';
-import { mkdirSync } from 'node:fs';
+import { mkdirSync, mkdtempSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -82,7 +83,11 @@ const has = (frames, type) => frames.some((m) => m.type === type);
 const port = await freePort();
 const server = spawn('node', ['dist/main.js'], {
   cwd: join(root, 'apps/server'),
-  env: { ...process.env, PORT: String(port) },
+  env: {
+    ...process.env,
+    PORT: String(port),
+    SNAILS_DATA_DIR: mkdtempSync(join(tmpdir(), 'snails-e2e-')),
+  },
   stdio: ['ignore', 'pipe', 'inherit'],
 });
 let browser;

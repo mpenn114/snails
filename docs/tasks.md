@@ -272,7 +272,7 @@ electron-builder config exists but `dist` has never been run end to end.
 | M8-09 | Windows firewall prompt handling and troubleshooting doc | docs | M8-08 | ⬜ |
 | M8-10 | Tutorial overlay on phone and display | controller | M7-11, M3-22 | ✅ |
 | M8-11 | Default settings tuning from playtests | docs | M5-15, M8-10 | ⬜ |
-| M8-12 | Settings persistence (host and phone) | desktop | M8-02 | ⬜ |
+| M8-12 | Settings persistence (host and phone) | desktop | M8-02 | ✅ |
 | M8-13 | Code signing decision and unsigned-install guidance | docs | M8-05 | ⬜ |
 | M8-14 | Update release-process doc and write README quickstart | docs | M8-06 | ⬜ |
 | M8-15 | Non-developer install test: install to playing in under 5 minutes | docs | M8-08, M8-11, M8-07 | ⬜ |

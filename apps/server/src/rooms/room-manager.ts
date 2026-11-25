@@ -1,5 +1,5 @@
 import { randomBytes } from 'node:crypto';
-import type { ErrorCode, Role } from '@snails/protocol';
+import type { ErrorCode, MatchSettings, Role } from '@snails/protocol';
 import { MatchRunner, type MatchRunnerOptions } from '../game/match-runner.js';
 import { Room, type Member, type SendFn } from './room.js';
 
@@ -26,6 +26,10 @@ export interface RoomManagerOptions {
   timers?: Timers;
   /** Overrides for match runners (tests). */
   runner?: MatchRunnerOptions;
+  /** Settings new rooms start with (the remembered ones). */
+  initialSettings?: MatchSettings;
+  /** Called when a room's lobby settings change. */
+  onSettingsChange?: (settings: MatchSettings) => void;
   /** Delay before an empty room is deleted. Defaults to 30 s. */
   emptyRoomDelayMs?: number;
   /** How long a disconnected lobby member is kept before removal. Defaults to 60 s. */
@@ -57,6 +61,8 @@ export class RoomManager {
   private dropTimers = new Map<string, unknown>();
   private nextId = 1;
   private defaultCode: string | null = null;
+  private readonly initialSettings: MatchSettings | undefined;
+  private readonly onSettingsChange: ((settings: MatchSettings) => void) | undefined;
   private readonly random: () => number;
   private readonly token: () => string;
   private readonly timers: Timers;
@@ -70,6 +76,8 @@ export class RoomManager {
     this.token = opts.token ?? ((): string => randomBytes(16).toString('hex'));
     this.timers = opts.timers ?? realTimers;
     this.runnerOptions = opts.runner ?? {};
+    this.initialSettings = opts.initialSettings;
+    this.onSettingsChange = opts.onSettingsChange;
     this.emptyDelay = opts.emptyRoomDelayMs ?? 30_000;
     this.lobbyGrace = opts.lobbyGraceMs ?? 60_000;
     this.matchHold = opts.matchHoldMs ?? 120_000;
@@ -85,6 +93,8 @@ export class RoomManager {
       ).join('');
     } while (this.rooms.has(code));
     const room = new Room(code);
+    if (this.initialSettings) room.settings = { ...this.initialSettings };
+    if (this.onSettingsChange) room.onSettingsChange = this.onSettingsChange;
     room.onMatchStart = (settings, members) => {
       room.match = new MatchRunner(room, settings, members, this.runnerOptions);
     };
