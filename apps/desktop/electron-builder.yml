@@ -4,6 +4,8 @@ directories:
   output: release
 files:
   - dist/**
+  - '!dist/**/*.test.*'
+  - '!dist/**/*.map'
   - package.json
 extraResources:
   - from: ../display/dist
@@ -16,3 +18,7 @@ win:
   target: nsis
 mac:
   target: dmg
+publish:
+  provider: github
+  owner: mpenn114
+  repo: snails

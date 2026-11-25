@@ -261,9 +261,9 @@ electron-builder config exists but `dist` has never been run end to end.
 
 | ID | Task | Area | Depends on | Status |
 |---|---|---|---|---|
-| M8-01 | Desktop main process starts the server in-process and picks a free port | desktop | M3-13 | 🚧 |
-| M8-02 | Desktop loads the bundled display build (no dev URL) | desktop | M8-01 | ⬜ |
-| M8-03 | Bundle server and controller assets via `extraResources` and verify paths | desktop | M8-02, M3-27 | ⬜ |
+| M8-01 | Desktop main process starts the server in-process and picks a free port | desktop | M3-13 | ✅ |
+| M8-02 | Desktop loads the bundled display build (no dev URL) | desktop | M8-01 | ✅ |
+| M8-03 | Bundle server and controller assets via `extraResources` and verify paths | desktop | M8-02, M3-27 | ✅ |
 | M8-04 | Verify `electron-builder` dist on Linux (AppImage) | desktop | M8-03 | ⬜ |
 | M8-05 | Verify dist on Windows (NSIS) and macOS (dmg) via CI matrix | ci | M8-04 | ⬜ |
 | M8-06 | Release workflow hardening (version from tag, checksums, release notes) | ci | M8-05 | ✅ |

@@ -15,13 +15,23 @@ export interface RunningServer {
  * Starts the server on all interfaces, creates a room and returns its join URL.
  * @param port TCP port to listen on
  * @param staticDir optional controller bundle directory override
+ * @param displayDir optional display bundle directory override
  * @returns the room code, join URL and a close function
  */
-export async function startServer(port: number, staticDir?: string): Promise<RunningServer> {
+export async function startServer(
+  port: number,
+  staticDir?: string,
+  displayDir?: string,
+): Promise<RunningServer> {
   const rooms = new RoomManager();
   const room = rooms.createRoom();
   rooms.setDefaultRoom(room.code);
-  const app = await buildServer({ rooms, port, ...(staticDir ? { staticDir } : {}) });
+  const app = await buildServer({
+    rooms,
+    port,
+    ...(staticDir ? { staticDir } : {}),
+    ...(displayDir ? { displayDir } : {}),
+  });
   await app.listen({ port, host: '0.0.0.0' });
   const host = primaryLanIp(detectLanIPv4(), process.env['SNAILS_PUBLIC_HOST']);
   return {
