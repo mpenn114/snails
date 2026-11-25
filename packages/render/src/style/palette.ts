@@ -107,8 +107,8 @@ export const TOON = {
 
 /** Triangle budgets per object class (per instance, at LOD0). */
 export const TRIANGLE_BUDGETS = {
-  snail: 2000,
-  shell: 700,
+  snail: 2800,
+  shell: 1300,
   prop: 200,
   projectile: 120,
   particle: 40,
