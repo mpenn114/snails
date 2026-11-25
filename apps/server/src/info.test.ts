@@ -19,6 +19,8 @@ describe('buildServerInfo', () => {
       protocolVersion: PROTOCOL_VERSION,
       lanIps: ['192.168.1.20', '10.0.0.8'],
       primaryIp: '192.168.1.20',
+      lanFound: true,
+      platform: process.platform,
       port: 3000,
       joinUrl: 'http://192.168.1.20:3000/',
     });
@@ -40,6 +42,7 @@ describe('buildServerInfo', () => {
     const info = buildServerInfo({ port: 3000, networkInterfaces: () => ({}) });
     expect(info.primaryIp).toBe('127.0.0.1');
     expect(info.lanIps).toEqual(['127.0.0.1']);
+    expect(info.lanFound).toBe(false);
   });
 });
 

@@ -268,7 +268,7 @@ electron-builder config exists but `dist` has never been run end to end.
 | M8-05 | Verify dist on Windows (NSIS) and macOS (dmg) via CI matrix | ci | M8-04 | ⬜ |
 | M8-06 | Release workflow hardening (version from tag, checksums, release notes) | ci | M8-05 | ✅ |
 | M8-07 | Installer smoke test in CI (launch, hit `/api/info`, quit) | ci | M8-05 | 🚧 Linux verified locally; Windows/macOS run only in CI |
-| M8-08 | First-run screen with LAN IP, QR and firewall guidance | desktop | M3-07, M8-02 | ⬜ |
+| M8-08 | First-run screen with LAN IP, QR and firewall guidance | desktop | M3-07, M8-02 | ✅ |
 | M8-09 | Windows firewall prompt handling and troubleshooting doc | docs | M8-08 | ⬜ |
 | M8-10 | Tutorial overlay on phone and display | controller | M7-11, M3-22 | ✅ |
 | M8-11 | Default settings tuning from playtests | docs | M5-15, M8-10 | ⬜ |
