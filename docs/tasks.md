@@ -215,24 +215,26 @@ the MG-03 harness to its PR. After the first round looked poor, MG-13 to MG-15 s
 
 ## M6: CPU players
 
-`@snails/ai` has a `CpuPlayer` stub and strategy placeholders. There is no headless AI match
-runner command yet.
+CPU teams plan turns by forking the match: a wind-aware aiming solver, target scoring, movement
+and retreat planning, weapon choice, four difficulties under a deterministic think budget, three
+personalities and a research strategy. `pnpm sim:ai` runs headless CPU matches and
+`pnpm sim:ai --gate` is the CI gate.
 
 | ID | Task | Area | Depends on | Status |
 |---|---|---|---|---|
-| M6-01 | `CpuPlayer` interface and server integration (CPU teams submit intents) | ai | M3-08, M1-21 | 🚧 |
-| M6-02 | State forking in core (cheap clone for lookahead) | core | M1-02 | ⬜ |
-| M6-03 | Ballistic aiming solver (angle and power for target, wind aware) | ai | M6-02, M1-12 | ⬜ |
-| M6-04 | Target selection scoring (damage, kill chance, risk) | ai | M6-03 | 🚧 |
-| M6-05 | Movement planning (reach vantage points, avoid water and falls) | ai | M6-02, M1-10 | ⬜ |
-| M6-06 | Weapon choice per situation | ai | M6-04, M4-19 | ⬜ |
-| M6-07 | Difficulty levels (Rookie, Regular, Veteran, Mastermind) via error and lookahead | ai | M6-03 | ⬜ |
-| M6-08 | Personalities (aggressive, cautious, opportunist) | ai | M6-04 | ⬜ |
-| M6-09 | Research strategy for CPUs | ai | M5-05, M6-04 | ⬜ |
-| M6-10 | Think-time budget and p99 under 250 ms benchmark | ai | M6-07 | ⬜ |
-| M6-11 | Lobby UI for adding CPU teams with difficulty and personality | controller | M6-01, M3-17 | ⬜ |
-| M6-12 | Headless AI match runner command (`pnpm sim:ai`) with seeds, JSON output | ai | M1-22, M6-07 | ⬜ |
-| M6-13 | CI gate: Mastermind beats Rookie in at least 90% of matches | ci | M6-12 | ⬜ |
+| M6-01 | `CpuPlayer` interface and server integration (CPU teams submit intents) | ai | M3-08, M1-21 | ✅ |
+| M6-02 | State forking in core (cheap clone for lookahead) | core | M1-02 | ✅ |
+| M6-03 | Ballistic aiming solver (angle and power for target, wind aware) | ai | M6-02, M1-12 | ✅ |
+| M6-04 | Target selection scoring (damage, kill chance, risk) | ai | M6-03 | ✅ |
+| M6-05 | Movement planning (reach vantage points, avoid water and falls) | ai | M6-02, M1-10 | ✅ |
+| M6-06 | Weapon choice per situation | ai | M6-04, M4-19 | ✅ |
+| M6-07 | Difficulty levels (Rookie, Regular, Veteran, Mastermind) via error and lookahead | ai | M6-03 | ✅ |
+| M6-08 | Personalities (aggressive, cautious, opportunist) | ai | M6-04 | ✅ |
+| M6-09 | Research strategy for CPUs | ai | M5-05, M6-04 | ✅ |
+| M6-10 | Think-time budget and p99 under 250 ms benchmark | ai | M6-07 | ✅ |
+| M6-11 | Lobby UI for adding CPU teams with difficulty and personality | controller | M6-01, M3-17 | ✅ |
+| M6-12 | Headless AI match runner command (`pnpm sim:ai`) with seeds, JSON output | ai | M1-22, M6-07 | ✅ |
+| M6-13 | CI gate: Mastermind beats Rookie in at least 90% of matches | ci | M6-12 | ✅ |
 
 ## M7: Shell upgrades, damage and polish
 

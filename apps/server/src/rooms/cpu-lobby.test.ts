@@ -45,7 +45,7 @@ describe('CPU teams in the lobby', () => {
     expect(room.cpuTeams).toHaveLength(8);
     room.handleLobbyAction(host, addCpu);
     expect(room.cpuTeams).toHaveLength(8);
-    expect(inbox.get('Ann')?.some((m) => m.type === 'error' && m.code === 'room_full')).toBe(true);
+    expect(inbox.get('Ann')?.some((m) => m.type === 'error' && m.code === 'teams_full')).toBe(true);
   });
 
   it('starts with one phone and a CPU, and keeps the CPU colour exclusive', () => {

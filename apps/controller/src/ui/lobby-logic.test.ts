@@ -69,6 +69,7 @@ describe('controller lobby logic', () => {
     expect(parseIntField('1.5')).toBeNaN();
     expect(randomSeed(() => 0.5)).toBe(0x80000000);
     expect(lobbyErrorText('not_host', 'x')).toMatch(/host/);
+    expect(lobbyErrorText('teams_full', '')).toMatch(/another team/);
     expect(lobbyErrorText('invalid_settings', 'Colour already taken')).toBe('Colour already taken');
     expect(lobbyErrorText('not_in_lobby', '')).toMatch(/started/);
     expect(lobbyErrorText('internal', '')).toMatch(/wrong/);

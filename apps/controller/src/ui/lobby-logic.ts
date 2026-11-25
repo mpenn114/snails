@@ -109,6 +109,8 @@ export function lobbyErrorText(code: ErrorCode, message: string): string {
   switch (code) {
     case 'not_host':
       return 'Only the host can start the match';
+    case 'teams_full':
+      return 'No room for another team';
     case 'not_ready':
       return message || 'Everyone must be ready';
     case 'invalid_settings':

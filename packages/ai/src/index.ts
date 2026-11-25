@@ -4,3 +4,7 @@ export * from './weapon-choice.js';
 export * from './balance/index.js';
 export * from './cpu/index.js';
 export * from './solver/index.js';
+export * from './movement/index.js';
+export * from './targeting/index.js';
+export * from './research/index.js';
+export * from './sim-ai/index.js';

@@ -29,7 +29,8 @@ function safeColour(c: string | null): string {
 function playerRow(p: LobbyPlayer): string {
   const dot = `<span class="dot" style="background:${safeColour(p.colour)}"></span>`;
   const state = p.connected ? (p.ready ? 'ready' : 'waiting') : 'offline';
-  return `<li>${dot}${esc(p.name)} <em>${state}</em></li>`;
+  const badge = p.cpu ? ' <span class="badge cpu">CPU</span>' : '';
+  return `<li>${dot}${esc(p.name)}${badge} <em>${state}</em></li>`;
 }
 
 function chipsHtml(s: MatchSettings): string {

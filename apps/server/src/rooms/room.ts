@@ -253,7 +253,7 @@ export class Room {
   ): Failure {
     if (member.id !== this.hostId) return ['not_host', 'Only the host can add a CPU'];
     const ids = this.teamIdSet();
-    if (ids.size >= MAX_TEAMS) return ['room_full', 'No room for another team'];
+    if (ids.size >= MAX_TEAMS) return ['teams_full', 'No room for another team'];
     const claimed = new Set<string>(this.cpuTeams.map((c) => c.colour.toLowerCase()));
     for (const m of this.members.values()) if (m.colour) claimed.add(m.colour.toLowerCase());
     this.cpuTeams.push({

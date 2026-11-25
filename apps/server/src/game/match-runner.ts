@@ -79,6 +79,9 @@ export function buildTeams(
   return [...teams.values()];
 }
 
+/** Wall-clock emergency cutoff (ms) for one CPU turn plan; the work budget normally ends it first. */
+const CPU_DEADLINE_MS = 200;
+
 /** One {@link CpuPlayer} per CPU team, seeded with the match seed plus the team's index. */
 function buildCpuPlayers(
   teams: readonly SessionTeam[],
@@ -89,7 +92,13 @@ function buildCpuPlayers(
   for (const c of cpus) {
     const index = teams.findIndex((t) => t.id === c.id);
     const { difficulty, personality } = c;
-    out.set(c.id, createCpuPlayer({ difficulty, personality, seed: seed + index }));
+    out.set(
+      c.id,
+      createCpuPlayer(
+        { difficulty, personality, seed: seed + index },
+        { deadlineMs: CPU_DEADLINE_MS },
+      ),
+    );
   }
   return out;
 }
