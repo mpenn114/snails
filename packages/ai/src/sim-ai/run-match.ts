@@ -1,7 +1,13 @@
 import { createMatch, type MatchSetup, type SimEvent } from '@snails/core';
 import { createCpuPlayer } from '../cpu/create.js';
 import type { CpuPlayer, PlannedCommand } from '../cpu/types.js';
-import type { AiEndReason, AiErrorRecord, AiMatchOptions, AiMatchRecord } from './types.js';
+import {
+  aiTerrainConfig,
+  type AiEndReason,
+  type AiErrorRecord,
+  type AiMatchOptions,
+  type AiMatchRecord,
+} from './types.js';
 
 const TEAM_IDS = ['a', 'b', 'c', 'd'];
 const COLOURS = ['#e33333', '#3333ee', '#33aa33', '#ddaa22'];
@@ -23,6 +29,8 @@ interface Run {
   planStart: number;
   lastActivity: number;
   fired: boolean;
+  /** Whether a turn has started yet (for idle-turn accounting). */
+  started: boolean;
 }
 
 function message(e: unknown): string {
@@ -50,6 +58,9 @@ function observe(r: Run, e: SimEvent): void {
     if (src === undefined || src === dst) return;
     (teams[src] as { damageDealt: number }).damageDealt += e.amount;
     r.lastHitBy.set(e.snailId, src);
+  } else if (e.type === 'snailDrowned') {
+    r.record.drownings += 1;
+    if (!r.lastHitBy.has(e.snailId)) r.record.unprovokedDrownings += 1;
   } else if (e.type === 'snailDied') {
     const killer = r.lastHitBy.get(e.snailId);
     if (killer !== undefined) (teams[killer] as { kills: number }).kills += 1;
@@ -61,6 +72,8 @@ function observe(r: Run, e: SimEvent): void {
 
 function startTurn(r: Run): void {
   const state = r.m.sim.state;
+  if (r.started && !r.fired) r.record.idleTurns += 1;
+  r.started = true;
   r.fired = false;
   r.pending = [];
   r.retreat = [];
@@ -137,7 +150,7 @@ function build(o: AiMatchOptions, turnCap: number): Run {
       name: (TEAM_IDS[i] as string).toUpperCase(),
       colour: COLOURS[i] as string,
     })),
-    terrain: { nx: 96, ny: 32, nz: 64, caveDensity: 0, islandFalloff: false },
+    terrain: aiTerrainConfig(o.style),
     turn: { maxTurns: turnCap },
     weapons: r.weapons.list(),
     statuses: r.statuses.list(),
@@ -159,6 +172,7 @@ function build(o: AiMatchOptions, turnCap: number): Run {
     planStart: 0,
     lastActivity: 0,
     fired: false,
+    started: false,
     cpus: o.teams.map((t, i) => createCpuPlayer({ ...t, seed: o.seed * 31 + i })),
     record: {
       seed: o.seed,
@@ -167,6 +181,10 @@ function build(o: AiMatchOptions, turnCap: number): Run {
       turns: 0,
       endReason: 'turnLimit',
       errors: [],
+      drownings: 0,
+      unprovokedDrownings: 0,
+      idleTurns: 0,
+      ...(o.style === undefined ? {} : { style: o.style }),
       teams: o.teams.map((t, i) => ({
         ...t,
         index: i,
