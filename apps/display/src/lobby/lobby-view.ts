@@ -55,7 +55,8 @@ function render(m: LobbyModel): string {
     <div class="qr">${qrSvg(m.joinUrl)}</div></div>
     <div class="roster-side"><h2>Players ${ready}/${total} ready</h2>
     <div class="teams">${groups || '<p>Scan the code to join.</p>'}</div>
-    ${chipsHtml(m.settings)}</div></div>`;
+    ${chipsHtml(m.settings)}
+    <p class="howto"><strong>How to play:</strong> take turns to aim and fire from your phone; last team standing wins.</p></div></div>`;
 }
 
 /** Thin DOM lobby screen on the TV; re-renders from a model. */

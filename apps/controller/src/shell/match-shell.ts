@@ -7,6 +7,9 @@ import { mountDebugOverlay } from '../debug/debug-overlay';
 import { mountFeedback } from '../feedback/mount-feedback';
 import type { ControllerClient } from '../net/client';
 import { mountSpectate } from '../spectate/spectate-view';
+import { loadTutorialSeen, shouldShowTutorial } from '../ui/tutorial-steps';
+import { mountTutorial } from '../ui/tutorial-overlay';
+import { safeStorage } from '../platform/ios';
 import { mountPassPhone, shouldPassPhone } from '../ui/pass-phone';
 import { lobbyErrorText, playerTeams } from '../ui/lobby-logic';
 import { mountLobbyView } from '../ui/lobby-view';
@@ -45,6 +48,26 @@ function mountLayers(): Record<'style' | 'hud' | 'controls' | 'banners' | 'modal
   return { style, hud, controls, banners, modal };
 }
 
+/** Mounts the tutorial; `onTurn(mine)` starts it once, on the first turn of one of our teams. */
+function mountFirstTurnTutorial(modal: HTMLElement): {
+  onTurn: (mine: boolean) => void;
+  destroy: () => void;
+} {
+  const storage = safeStorage();
+  const overlay = mountTutorial(modal, storage);
+  let done = false;
+  const wanted = (): boolean =>
+    shouldShowTutorial(loadTutorialSeen(storage), location.search, navigator.webdriver === true);
+  return {
+    onTurn: (mine) => {
+      if (done || !mine || !wanted()) return;
+      done = true;
+      overlay.start();
+    },
+    destroy: overlay.destroy,
+  };
+}
+
 /** Mounts the layers and every in-match module once; returns a disposer for all of it. */
 function mountSession(client: ControllerClient, screen: HTMLElement, playerId: string): () => void {
   const { style, hud, controls, banners, modal } = mountLayers();
@@ -68,6 +91,7 @@ function mountSession(client: ControllerClient, screen: HTMLElement, playerId: s
   const disposeFeedback = mountFeedback(banners, client, playerId);
   let lobby = showLobby();
   const pass = mountPassPhone(modal);
+  const tutorial = mountFirstTurnTutorial(modal);
   const disposeResearch = mountResearch(modal, client, playerId, technologies);
 
   let myTeams: readonly string[] = [];
@@ -80,6 +104,7 @@ function mountSession(client: ControllerClient, screen: HTMLElement, playerId: s
       lobby.update(s);
     }),
     client.on('turnStart', (t) => {
+      tutorial.onTurn(myTeams.includes(t.teamId));
       if (!shouldPassPhone(mode, myTeams, t.teamId)) return pass.hide();
       pass.show(teams.get(t.teamId)?.name ?? t.teamId, undefined, teams.get(t.teamId)?.colour);
     }),
@@ -93,6 +118,7 @@ function mountSession(client: ControllerClient, screen: HTMLElement, playerId: s
   return () => {
     offs.forEach((off) => off());
     pass.destroy();
+    tutorial.destroy();
     disposeResearch();
     disposeFeedback();
     disposeSpectate();
