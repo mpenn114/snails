@@ -121,6 +121,11 @@ describe('event cues', () => {
     expect(dmg(20, 60).map((c) => c.id)).toEqual(['hurt', 'crack']);
     expect(dmg(50, 0).map((c) => c.id)).toEqual(['hurt']);
   });
+  it('matches crack cues to the crack state of the snail max health', () => {
+    const e = ev({ type: 'snailDamaged', snailId: 's', amount: 20, remaining: 130 });
+    expect(cuesForEvent(e, { maxHealthOf: () => 200 }).map((c) => c.id)).toEqual(['hurt']);
+    expect(cuesForEvent(e, { maxHealthOf: () => 160 }).map((c) => c.id)).toEqual(['hurt', 'crack']);
+  });
   it('uses material for shell hits', () => {
     const m = createEventCueMapper({
       materialOf: (id) => (id === 'c' ? 'crystal' : id === 's' ? 'stone' : undefined),

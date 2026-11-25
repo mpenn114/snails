@@ -1,13 +1,16 @@
 import type { SimEvent } from '@snails/core';
+import { crackStateFor } from '../snail/crack-damage.js';
 import type { CueRequest } from './recipes.js';
 
-/** Health thresholds whose crossing plays the shell crack cue (damage layer steps). */
-export const CRACK_THRESHOLDS: readonly number[] = [66, 33];
+/** Max health assumed when the mapper cannot look a snail up. */
+export const DEFAULT_MAX_HEALTH = 100;
 
 /** Options for the event mapper. */
 export interface EventCueOptions {
   /** Shell material of a snail, for tap pitch and crystal chime; unknown yields the default. */
   materialOf?: (snailId: string) => string | undefined;
+  /** Max health of a snail, so the crack cue matches the shell's crack state; default 100. */
+  maxHealthOf?: (snailId: string) => number | undefined;
 }
 
 /** Maps simulation events to cue requests. */
@@ -16,12 +19,15 @@ export interface EventCueMapper {
   map(events: readonly SimEvent[]): CueRequest[];
 }
 
-function damaged(e: Extract<SimEvent, { type: 'snailDamaged' }>): CueRequest[] {
+function damaged(
+  e: Extract<SimEvent, { type: 'snailDamaged' }>,
+  opts: EventCueOptions,
+): CueRequest[] {
   const out: CueRequest[] = [{ id: 'hurt', amount: e.amount }];
-  const before = e.remaining + e.amount;
-  if (e.remaining > 0 && CRACK_THRESHOLDS.some((t) => before >= t && e.remaining < t)) {
-    out.push({ id: 'crack' });
-  }
+  const max = opts.maxHealthOf?.(e.snailId) ?? DEFAULT_MAX_HEALTH;
+  if (max <= 0 || e.remaining <= 0) return out;
+  const before = crackStateFor((e.remaining + e.amount) / max);
+  if (crackStateFor(e.remaining / max) !== before) out.push({ id: 'crack' });
   return out;
 }
 
@@ -49,7 +55,7 @@ export function cuesForEvent(e: SimEvent, opts: EventCueOptions = {}): CueReques
     case 'projectileHit':
       return hit(e, opts);
     case 'snailDamaged':
-      return damaged(e);
+      return damaged(e, opts);
     case 'snailDied':
       return [{ id: 'death' }];
     case 'snailDrowned':
