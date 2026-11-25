@@ -12,8 +12,10 @@ extraResources:
     to: display
   - from: ../controller/dist
     to: controller
+artifactName: ${productName}-${version}.${ext}
 linux:
   target: AppImage
+  executableName: snails
 win:
   target: nsis
 mac:

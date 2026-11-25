@@ -55,6 +55,10 @@ graph LR
 5. If the QR fails: type the URL shown on screen, or open `http://<host-ip>:8080` and enter the room code.
 6. Dropped connection: reopen the page; you rejoin your slot automatically within two minutes.
 
+## Installer smoke test
+
+`scripts/desktop-smoke.mjs` launches the packaged app (Linux AppImage with `--appimage-extract-and-run --no-sandbox` under `xvfb-run`; Windows `win-unpacked/*.exe`; macOS `Snails.app`), reads the `Snails join URL:` line, polls `/api/info` until 200 and checks `/display/` and `/` return HTML. The release workflow runs it after `dist` on every OS. Locally on Linux: `pnpm build && pnpm --filter @snails/desktop dist && xvfb-run -a node scripts/desktop-smoke.mjs`. The Linux executable is named `snails` (`executableName`).
+
 ## Hotfixes and rollbacks
 
 Branch from the tag (`git switch -c hotfix/0.2.1 v0.2.0`), fix, merge to `main`, tag `v0.2.1`. A bad release is marked as pre-release/deleted on GitHub and superseded by a patch; tags are never moved.
