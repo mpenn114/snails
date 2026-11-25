@@ -111,6 +111,12 @@ Procedural maps pick a terrain style (`packages/core/src/terrain/styles/`). Reus
   pillars) stand in the water, and one natural rock arch spans the shallows beside the big island.
   Islands have gentle hills. Shapes scale with the grid size. Implemented in `styles/archipelago.ts`
   and `styles/coast.ts`.
+- **Canyon:** a high tableland island (top about 13 to 16 m, gently rolling, with soil) cut by a
+  winding gorge and a tributary (4 to 8 m wide) that reach the sea at both mouths. Walls are steep
+  layered rock (alternating rock and clay bands), with stepped ledges snails can stand on and
+  undercut overhangs. Floors are sand with a shallow stream, and one natural rock bridge spans each
+  gorge. Gorge walls use a horizontal distance to the centre line, so they stay clean. Snails
+  spawn on the tableland and on ledges. Implemented in `styles/canyon.ts`.
 
 ## Wind
 
