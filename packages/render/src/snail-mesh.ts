@@ -17,6 +17,14 @@ import { hashShellSeed } from './snail/shell-geometry.js';
 import { damageForRatio, easeDamage } from './snail/crack-damage.js';
 import { shellDamageUniform, shellTierUniforms } from './snail/shell-material.js';
 import { advanceTierTransition, beginTierTransition, tierOfKind } from './snail/shell-tier.js';
+import {
+  DeathTracker,
+  deadShellDamage,
+  drownFloat,
+  isDrowned,
+  type DeathState,
+} from './snail/death-sequence.js';
+import { applyFloat, poseDeathRig } from './snail/death-rig.js';
 import { shellPatternForTeam } from './snail/shell-pattern.js';
 import { ShellExtras } from './research/shell-extras.js';
 import { lookKey, type ShellMaterialKind } from './research/shell-look.js';
@@ -60,7 +68,6 @@ export class SnailMesh {
   readonly rig: SnailRig;
   readonly barFill: THREE.Mesh;
   readonly highlight: THREE.Mesh;
-  readonly grave: THREE.Mesh;
   readonly nameTag: THREE.Sprite;
   private readonly nameMaterial = new THREE.SpriteMaterial({ depthTest: false });
   private readonly assets: SnailAssets;
@@ -88,6 +95,15 @@ export class SnailMesh {
   private labelTexture: THREE.Texture | null = null;
   private labelFactor = 1;
   private labelLiftM = 0;
+  private readonly death = new DeathTracker();
+  private deathState: DeathState = { phase: 'alive', progress: 0, justDied: false };
+  private drownedFlag = false;
+  private deadTime = 0;
+  private readonly floatPhase: number;
+  /** Water surface height used to detect and float drowned shells (null = unknown). */
+  waterLevel: number | null = null;
+  /** Called once when a watched snail dies, with its world position (spawns the puff). */
+  onDied: ((at: THREE.Vector3) => void) | null = null;
 
   /**
    * @param shellColour - Team shell colour as a hex number.
@@ -108,6 +124,7 @@ export class SnailMesh {
     this.animator = new SnailAnimator(phase);
     this.expression = new SnailExpression(hashShellSeed(shellSeed, 'blink') | 1);
     this.baseColour = shellColour;
+    this.floatPhase = (hashShellSeed(shellSeed, 'float') % 1000) / 1000;
     this.pattern = shellPatternForTeam(pattern);
     this.rig = this.buildRig(shellSeed);
     this.bodyGroup.add(this.rig.squash);
@@ -115,9 +132,6 @@ export class SnailMesh {
     this.highlight.rotation.x = -Math.PI / 2;
     this.highlight.position.y = 0.02;
     this.highlight.visible = false;
-    this.grave = new THREE.Mesh(assets.grave, assets.graveMat);
-    this.grave.position.y = 0.3;
-    this.grave.visible = false;
     this.barFill = new THREE.Mesh(assets.barFill, assets.barFillMat);
     const barBack = new THREE.Mesh(assets.barBack, assets.barBackMat);
     // Quads are left-anchored; shift them so the billboard pivot is the bar centre.
@@ -132,7 +146,7 @@ export class SnailMesh {
     this.nameTag = new THREE.Sprite(this.nameMaterial);
     this.nameTag.renderOrder = 1002;
     this.setLabelScale(1);
-    this.group.add(this.bodyGroup, this.highlight, this.grave, this.barGroup, this.nameTag);
+    this.group.add(this.bodyGroup, this.highlight, this.barGroup, this.nameTag);
   }
 
   private buildRig(shellSeed: number): SnailRig {
@@ -296,6 +310,8 @@ export class SnailMesh {
    */
   animate(dt: number, v: SnailView): void {
     this.extras?.update(dt);
+    this.deathState = this.death.update(v.alive, dt);
+    if (this.deathState.justDied) this.onDied?.(this.group.position);
     const sm = this.rig.shell.material;
     if (sm instanceof THREE.Material) advanceTierTransition(shellTierUniforms(sm), dt);
     const here = this.group.position;
@@ -317,12 +333,44 @@ export class SnailMesh {
       retreating: v.retreating === true,
     });
     this.healthFrac = v.maxHealth > 0 ? v.health / v.maxHealth : 1;
-    this.setShellDamage(damageForRatio(this.healthFrac));
+    const dying = this.deathState.phase !== 'alive';
+    const dmg = damageForRatio(this.healthFrac);
+    this.setShellDamage(dying ? deadShellDamage(dmg) : dmg);
     if (this.damage !== this.damageTarget) {
       this.writeDamage(easeDamage(this.damage, this.damageTarget, dt));
     }
     const worry = Math.max(0, 1 - this.healthFrac / 0.3);
-    this.poseRig(pose, this.expression.update(dt, v.alive ? worry : 0));
+    const face = this.expression.update(dt, v.alive ? worry : 0);
+    if (dying) this.poseDeath(dt, v);
+    else this.poseRig(pose, face);
+  }
+
+  /** Marks the death as a drowning (from a `snailDrowned` event). */
+  markDrowned(): void {
+    this.drownedFlag = true;
+  }
+
+  /** Death sequence phase, for tests. */
+  get deathPhase(): DeathState['phase'] {
+    return this.deathState.phase;
+  }
+
+  /** Poses the dying body, then floats a drowned shell on the water. */
+  private poseDeath(dt: number, v: SnailView): void {
+    const r = this.rig;
+    poseDeathRig(r, this.deathState);
+    r.squash.scale.set(1, 1, 1);
+    r.squash.position.y = 0;
+    r.squash.rotation.z = 0;
+    r.shell.rotation.z = 0;
+    for (const l of r.lids) l.visible = false;
+    this.deadTime += dt;
+    const w = this.waterLevel;
+    const off =
+      w !== null && isDrowned(this.drownedFlag, v.position.y, w)
+        ? drownFloat(v.position.y, w, this.deadTime, this.floatPhase)
+        : null;
+    applyFloat(this.bodyGroup, r.squash, off);
   }
 
   /** Writes a body pose and a face pose onto the rig transforms. */
@@ -359,8 +407,7 @@ export class SnailMesh {
     this.bodyGroup.rotation.y = v.facing;
     if (v.colour !== this.baseColour) this.setColour(v.colour);
     this.setPattern(v.teamIndex);
-    this.bodyGroup.visible = v.alive;
-    this.grave.visible = !v.alive;
+    this.bodyGroup.visible = true;
     this.barGroup.visible = v.alive;
     this.nameTag.visible = v.alive && v.isActive;
     this.highlight.visible = v.alive && v.isActive;

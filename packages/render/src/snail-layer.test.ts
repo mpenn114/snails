@@ -71,14 +71,37 @@ describe('SnailLayer', () => {
     expect(m?.highlight.visible).toBe(false);
   });
 
-  it('hides body and ui when dead and shows a grave', () => {
+  it('shows only the shell when first seen dead, with cracks and no flag', () => {
     const { layer } = makeLayer();
     layer.sync([view('a', { alive: false, health: 0 })]);
     const m = layer.get('a');
-    expect(m?.bodyGroup.visible).toBe(false);
+    expect(m?.deathPhase).toBe('dead');
+    expect(m?.rig.body.visible).toBe(false);
+    expect(m?.rig.shell.visible).toBe(true);
     expect(m?.nameTag.visible).toBe(false);
     expect(m?.barGroup.visible).toBe(false);
-    expect(m?.grave.visible).toBe(true);
+    expect(m?.roughness).toBeGreaterThanOrEqual(0.75);
+  });
+
+  it('plays the death sequence for a watched death then leaves the shell and a flower', () => {
+    const { layer } = makeLayer();
+    layer.sync([view('a')], 0.1);
+    layer.sync([view('a', { alive: false, health: 0 })], 0.1);
+    const m = layer.get('a');
+    expect(m?.deathPhase).toBe('dying');
+    expect(m?.rig.body.visible).toBe(true);
+    layer.sync([view('a', { alive: false, health: 0 })], 1);
+    expect(m?.deathPhase).toBe('dead');
+    expect(m?.rig.body.visible).toBe(false);
+    expect(layer.group.children.some((c) => c.name === 'elimination-flower')).toBe(true);
+  });
+
+  it('floats a drowned shell on the water', () => {
+    const { layer } = makeLayer();
+    layer.setWaterLevel(0);
+    layer.sync([view('a', { alive: false, health: 0, position: { x: 0, y: -2, z: 0 } })], 0);
+    layer.sync([view('a', { alive: false, health: 0, position: { x: 0, y: -2, z: 0 } })], 0.1);
+    expect(layer.get('a')?.bodyGroup.position.y).toBeGreaterThan(1.5);
   });
 
   it('only recreates the label texture when the name changes', () => {

@@ -13,6 +13,7 @@ import type { QualityTier } from './quality.js';
 import type { ResearchVisuals } from './research/research-visuals.js';
 import { SnailMesh } from './snail-mesh.js';
 import { reactionsForEvent, scareStrength } from './snail/snail-expression.js';
+import { FlowerAssets, createFlower } from './snail/death-flower.js';
 import { ShellDebris, crossingFragmentCount, hitFragmentCount } from './snail/shell-debris.js';
 import { crackStateFor } from './snail/crack-damage.js';
 import { snailViewsFromSnapshot, type SnailView } from './snail-view.js';
@@ -58,6 +59,10 @@ export class SnailLayer {
   private readonly labelFactory: LabelTextureFactory;
   private camera: THREE.Camera | null;
   private readonly debris: ShellDebris;
+  private readonly flowers = new Map<string, THREE.Group>();
+  private readonly flowerAssets = new FlowerAssets();
+  private readonly lastDied = new Map<string, { x: number; y: number; z: number }>();
+  private waterLevel: number | null = null;
   private readonly ratios = new Map<string, number>();
   private readonly maxHealths = new Map<string, number>();
 
@@ -86,6 +91,41 @@ export class SnailLayer {
   setShadows(on: boolean): void {
     this.shadows = on;
     for (const mesh of this.meshes.values()) mesh.setCastShadow(on);
+  }
+
+  /** Sets the water surface height (drowned shells float there); null = unknown. */
+  setWaterLevel(y: number | null): void {
+    this.waterLevel = y;
+    for (const mesh of this.meshes.values()) mesh.waterLevel = y;
+  }
+
+  /** Shows a flower at the last shell of each eliminated team, and removes stale ones. */
+  private syncFlowers(views: readonly SnailView[]): void {
+    const teams = new Map<string, SnailView[]>();
+    for (const v of views) teams.set(v.teamId, [...(teams.get(v.teamId) ?? []), v]);
+    for (const [teamId, vs] of teams) {
+      const out = vs.every((v) => !v.alive);
+      const last = this.lastDied.get(teamId) ?? vs[vs.length - 1]?.position;
+      let flower = this.flowers.get(teamId);
+      if (!out || !last) {
+        if (flower) {
+          flower.removeFromParent();
+          this.flowers.delete(teamId);
+        }
+        continue;
+      }
+      if (!flower) {
+        flower = createFlower(this.flowerAssets);
+        this.flowers.set(teamId, flower);
+        this.group.add(flower);
+      }
+      flower.position.set(last.x + 0.35, last.y, last.z);
+    }
+    for (const [teamId, flower] of this.flowers) {
+      if (teams.has(teamId)) continue;
+      flower.removeFromParent();
+      this.flowers.delete(teamId);
+    }
   }
 
   /** Sets the camera that health bars billboard towards. */
@@ -131,11 +171,16 @@ export class SnailLayer {
           v.teamIndex,
         );
         mesh.setCastShadow(this.shadows);
+        mesh.waterLevel = this.waterLevel;
+        mesh.onDied = (at) => {
+          this.debris.spawnPuff(at);
+          this.lastDied.set(v.teamId, { x: at.x, y: at.y, z: at.z });
+        };
         this.meshes.set(v.id, mesh);
         this.group.add(mesh.group);
       }
       mesh.apply(v);
-      if (v.alive) mesh.animate(dt, v);
+      mesh.animate(dt, v);
       this.updateDebris(v, mesh, dt);
       this.faceCamera(mesh);
       mesh.billboard = () => this.faceCamera(mesh);
@@ -149,6 +194,7 @@ export class SnailLayer {
       this.debris.forget(id);
     }
     this.debris.advance(dt);
+    this.syncFlowers(views);
     this.declutter();
   }
 
@@ -162,6 +208,7 @@ export class SnailLayer {
         this.meshes.get(e.snailId)?.animator.landed(Math.min(1, e.impactSpeed / 10));
         continue;
       }
+      if (e.type === 'snailDrowned') this.meshes.get(e.snailId)?.markDrowned();
       if (e.type === 'snailDamaged') this.shedOnHit(e.snailId, e.amount);
       for (const r of reactionsForEvent(e)) {
         if (r.snailId) this.meshes.get(r.snailId)?.react(r.kind, r.strength);
@@ -253,6 +300,7 @@ export class SnailLayer {
     for (const mesh of this.meshes.values()) mesh.dispose();
     this.meshes.clear();
     this.debris.dispose();
+    this.flowerAssets.dispose();
     this.assets.dispose();
     this.group.removeFromParent();
   }
