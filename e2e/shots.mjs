@@ -91,9 +91,10 @@ async function displayShots(browser, base, errors) {
     const page = await ctx.newPage();
     watch(page, name, errors);
     await page.setViewportSize(viewport);
-    await page.goto(
-      `${base}/display/harness.html?shot=1&cam=${cam}&seed=7&quality=high${extra}${shotsExtra}`,
-    );
+    // Later params win (SHOTS_EXTRA='&seed=3' overrides the default seed).
+    const query = new URLSearchParams(`shot=1&cam=${cam}&seed=7&quality=high${extra}`);
+    for (const [k, v] of new URLSearchParams(shotsExtra)) query.set(k, v);
+    await page.goto(`${base}/display/harness.html?${query}`);
     await page.waitForFunction(() => window.__shotReady === true, null, { timeout: 900000 });
     await page.screenshot({ path: join(out, `${name}.png`), timeout: SHOT_TIMEOUT });
     captions.push({ file: `${name}.png`, caption });
