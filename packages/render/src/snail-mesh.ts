@@ -14,7 +14,8 @@ import {
   type ExpressionPose,
 } from './snail/snail-expression.js';
 import { hashShellSeed } from './snail/shell-geometry.js';
-import { DAMAGE_STEPS } from './snail/shell-material.js';
+import { damageForRatio, easeDamage } from './snail/crack-damage.js';
+import { shellDamageUniform } from './snail/shell-material.js';
 import { shellPatternForTeam } from './snail/shell-pattern.js';
 import { ShellExtras } from './research/shell-extras.js';
 import { lookKey, type ShellMaterialKind } from './research/shell-look.js';
@@ -74,7 +75,9 @@ export class SnailMesh {
   private elapsed = 0;
   private healthFrac = 1;
   private shellRoughness = 0.5;
-  private damageStep = 0;
+  private damage = 0;
+  private damageTarget = 0;
+  private ownShell: THREE.MeshToonMaterial | null = null;
   private pattern: number;
   private materialKind: ShellMaterialKind | null = null;
   private extras: ShellExtras | null = null;
@@ -181,12 +184,15 @@ export class SnailMesh {
   }
 
   private shellMaterialNow(): THREE.MeshToonMaterial {
-    return this.assets.shellMaterial(
+    const old = this.ownShell;
+    this.ownShell = this.assets.ownedShellMaterial(
       this.baseColour,
       this.pattern,
-      this.damageStep,
       this.materialKind,
+      this.damage,
     );
+    if (old) old.dispose();
+    return this.ownShell;
   }
 
   private refreshShellMaterial(): void {
@@ -255,12 +261,21 @@ export class SnailMesh {
     return this.baseColour;
   }
 
-  /** Darkens the shell as damage (0 = intact, 1 = destroyed) in shared, quantised steps. */
-  setShellDamage(damage: number): void {
+  /**
+   * Sets the target shell damage (0 = intact, 1 = destroyed). Cracks ease toward it over ~0.5 s
+   * in {@link animate}; the first call snaps nothing, pass `snap` to jump immediately.
+   */
+  setShellDamage(damage: number, snap = false): void {
     const d = Math.min(1, Math.max(0, damage));
     this.shellRoughness = 0.5 + d * 0.5;
-    this.damageStep = Math.round(d * DAMAGE_STEPS);
-    this.refreshShellMaterial();
+    this.damageTarget = d;
+    if (snap) this.writeDamage(d);
+  }
+
+  private writeDamage(d: number): void {
+    this.damage = d;
+    const m = this.rig.shell.material;
+    if (m instanceof THREE.Material) shellDamageUniform(m).value = d;
   }
 
   /** Current shell roughness (exposed for tests). */
@@ -299,6 +314,10 @@ export class SnailMesh {
       retreating: v.retreating === true,
     });
     this.healthFrac = v.maxHealth > 0 ? v.health / v.maxHealth : 1;
+    this.setShellDamage(damageForRatio(this.healthFrac));
+    if (this.damage !== this.damageTarget) {
+      this.writeDamage(easeDamage(this.damage, this.damageTarget, dt));
+    }
     const worry = Math.max(0, 1 - this.healthFrac / 0.3);
     this.poseRig(pose, this.expression.update(dt, v.alive ? worry : 0));
   }
@@ -391,6 +410,7 @@ export class SnailMesh {
   /** Frees per-snail resources; shared assets are freed by their owner. */
   dispose(): void {
     this.nameMaterial.dispose();
+    this.ownShell?.dispose();
     this.extras?.dispose();
     this.labelTexture?.dispose();
     this.labelTexture = null;
