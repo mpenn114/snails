@@ -208,6 +208,7 @@ export class MatchRenderer {
     terrain.markAllDirty();
     view.roots.terrain.add(terrain.group);
     const snails = this.makeSnails(view);
+    snails.setWaterLevel(waterLevel);
     const projectiles = new ProjectileLayer({ shadows: q.shadows, quality: q.particleScale });
     const areas = new AreaLayer();
     const strands = this.makeStrands(q.particleScale);

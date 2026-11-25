@@ -107,6 +107,31 @@ export class ShellDebris {
     }
   }
 
+  /** Emits a quick puff of pale smoke where a snail's body slid out of its shell. */
+  spawnPuff(at: THREE.Vector3): void {
+    const r = this.random;
+    for (let i = 0; i < 4; i++) {
+      emitChunk(this.smoke.pool, {
+        x: at.x + (r() - 0.5) * 0.3,
+        y: at.y + 0.3 + r() * 0.2,
+        z: at.z + (r() - 0.5) * 0.3,
+        vx: (r() - 0.5) * 0.8,
+        vy: 0.6,
+        vz: (r() - 0.5) * 0.8,
+        rx: 0,
+        ry: 0,
+        rz: 0,
+        sx: 0,
+        sy: 0,
+        sz: 0,
+        size: 0.3,
+        colour: 0xe8e4dc,
+        life: 0.9,
+        floorY: 0,
+      });
+    }
+  }
+
   /** Emits intermittent smoke wisps for a critical snail; call each frame while it is critical. */
   tickSmoke(id: string, at: THREE.Vector3, dt: number): void {
     const left = (this.timers.get(id) ?? this.random() * SMOKE_INTERVAL) - dt;

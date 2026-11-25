@@ -75,7 +75,8 @@ Implementation:
 - **Shell left behind:** the snail leaves an empty shell, the body gone ("slid away" with a
   quick puff). The shell becomes a physics prop and **gravestone**: team colour and decal intact,
   cracked.
-- Empty shells block movement and projectiles (small static colliders in the sim) and can be
+- (Shell colliders are deferred: the render layer only shows the shell; no sim colliders yet.)
+- Planned: empty shells block movement and projectiles (small static colliders in the sim) and can be
   destroyed like terrain. They are a mild strategic element (cover) and give the arena a visible
   history.
 - Drowned snails leave a floating shell that drifts.
