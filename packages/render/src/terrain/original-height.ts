@@ -31,6 +31,37 @@ export function buildOriginalHeightMap(grid: SdfGrid): OriginalHeightMap {
 }
 
 /**
+ * Like {@link buildOriginalHeightMap}, but for the water: where the column's top is dry land
+ * yet the ground at the waterline is open (a tunnel or cave mouth under a roof), the height is the
+ * floor of that opening, so flooded passages read as water instead of as land with foam.
+ */
+export function buildWaterHeightMap(grid: SdfGrid, level: number): OriginalHeightMap {
+  const map = buildOriginalHeightMap(grid);
+  const max = grid.worldSize();
+  const probe = level + 0.6;
+  const step = grid.cellSize * 0.5;
+  for (let k = 0; k < map.depth; k++) {
+    for (let i = 0; i < map.width; i++) {
+      const idx = k * map.width + i;
+      if ((map.heights[idx] as number) <= probe) continue;
+      const x = Math.min(i * grid.cellSize, max.x - 1e-4);
+      const z = Math.min(k * grid.cellSize, max.z - 1e-4);
+      let prev = grid.sampleLinear({ x, y: probe, z });
+      if (prev < 0) continue;
+      for (let y = probe - step; y >= 0; y -= step) {
+        const v = grid.sampleLinear({ x, y, z });
+        if (v < 0) {
+          map.heights[idx] = y + (step * v) / (v - prev);
+          break;
+        }
+        prev = v;
+      }
+    }
+  }
+  return map;
+}
+
+/**
  * Half-float single-channel texture of the original surface heights (bilinear filtered), for the
  * terrain shader to tell carved ground (craters, tunnels) from the untouched top surface.
  */
@@ -43,4 +74,26 @@ export function createOriginalHeightTexture(map: OriginalHeightMap): DataTexture
   tex.generateMipmaps = false;
   tex.needsUpdate = true;
   return tex;
+}
+
+/** Value of `snowStart` that disables snow caps. */
+export const NO_SNOW = 1000;
+
+/**
+ * World height (m) above which snow caps may form, from a column height map: only narrow, real
+ * peaks qualify (max at least 16 m and under 3% of the land within 2.5 m of it). Broad mesas and
+ * low or gently rolling maps get {@link NO_SNOW}; otherwise snow starts 3.2 m below the summit.
+ */
+export function snowStartFor(heights: Float32Array): number {
+  let max = -Infinity;
+  let land = 0;
+  for (const h of heights) {
+    if (h <= NO_SURFACE_HEIGHT + 1) continue;
+    land++;
+    if (h > max) max = h;
+  }
+  if (land === 0 || max < 16) return NO_SNOW;
+  let top = 0;
+  for (const h of heights) if (h > max - 2.5) top++;
+  return top / land < 0.03 ? max - 3.2 : NO_SNOW;
 }

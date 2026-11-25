@@ -77,6 +77,17 @@ sequenceDiagram
 - Frustum culling per chunk; empty/full uniform chunks produce no mesh.
 - Budget: a typical blast re-meshes 4-12 chunks; worker time < 4 ms per chunk, so the new geometry appears within 1-3 frames.
 
+### Terrain surface look (M9-09)
+
+The terrain shader (`terrain-shader.ts`) colours by the per-cell core material first and by slope second. `materialWeights` (`terrain-mesh-manager.ts`) writes a one-hot `aMatW` vertex attribute (sand, clay, rock; all zero for soil) from the cell just inside each vertex, on the main thread, so the worker transport is unchanged and LOD chunks get it too.
+
+- Rock cells are grey stone, clay is reddish banded earth, sand is pale; all three get horizontal strata bands by world height. Soil turns to stone on steep faces. Grass needs soil, an upward normal and uncarved ground, so it never appears on walls, overhang undersides, sand, clay or rock.
+- Snow caps need a narrow, genuinely high summit: `snowStartFor` (original-height.ts) enables them only when the map peaks at 16 m or more and under 3% of the land is within 2.5 m of the top (highlands yes; caverns mesas, canyon and islands no). Snow needs an upward normal and stops at the carved ground.
+- Pale beach on gentle ground just above the waterline, and a darker wet band at it (`waterLevel` option).
+- Caves and tunnels are darkened: a face whose open side (2 m along its normal) is still below the original surface height has a roof over it. Downward faces are darkened too. Both tiers use the same code.
+- Normals are NaN-safe: the fragment shader never normalises a zero interpolated normal, and the mesher replaces gradient normals that disagree with the faces (one-cell slabs) with face normals (`fixThinNormals`).
+- The water height map (`buildWaterHeightMap`) uses the floor of an opening at the waterline instead of the roof above it. Before this, flooded ravines and tunnels under thin rock were drawn as white foam polygons (the "white slivers") because the water thought it was over dry land.
+
 ## Water
 
 A single large plane at the map's water level: Fresnel-blended reflection from the environment probe (planar reflection only on High), animated normal maps for ripples, depth-based colour/foam using the depth buffer, and splash particle + sound on events. Snails or projectiles that cross the plane emit `snailDrowned`/splash events from core; the view only reacts.

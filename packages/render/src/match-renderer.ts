@@ -195,6 +195,7 @@ export class MatchRenderer {
     const transport = this.deps.makeTransport?.() ?? createWorkerPool(2);
     const material = createTerrainMaterialForTier(view.tier, {
       originalGrid: source,
+      waterLevel,
       ...(this.deps.terrainTextures ? { textures: this.deps.terrainTextures } : {}),
     });
     const terrain = new TerrainMeshManager({

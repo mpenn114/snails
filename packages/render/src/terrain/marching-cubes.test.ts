@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { DEFAULT_TERRAIN_CONFIG, generateTerrain, Rng, SdfGrid } from '@snails/core';
 import {
   extractChunkInput,
+  fixThinNormals,
   meshChunk,
   type ChunkMesh,
   type ChunkMeshInput,
@@ -135,5 +136,21 @@ describe('meshChunk normals on steep saturated walls', () => {
       }
     }
     expect(bad).toBe(0);
+  });
+});
+
+describe('fixThinNormals', () => {
+  const tri = (normal: V3): ChunkMesh => ({
+    positions: new Float32Array([0, 0, 0, 1, 0, 0, 0, 0, 1]),
+    normals: new Float32Array([...normal, ...normal, ...normal]),
+    indices: new Uint32Array([0, 2, 1]),
+  });
+  it('replaces a gradient normal that disagrees with the faces', () => {
+    const fixed = fixThinNormals(tri([0, -1, 0]));
+    expect(fixed.normals[1]).toBeCloseTo(1);
+  });
+  it('keeps agreeing normals untouched', () => {
+    const mesh = tri([0, 1, 0]);
+    expect(fixThinNormals(mesh)).toBe(mesh);
   });
 });
