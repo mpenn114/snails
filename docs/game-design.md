@@ -95,6 +95,20 @@ shapes; some add material.
   side-on 2.5D view; vertical depth matters through tunnels and burrows.
 - **Camera:** Display-side concern; follows action, never decides rules.
 
+## Map styles
+
+Procedural maps pick a terrain style (`TerrainStyle`, `terrain/styles/`); each keeps the shared
+invariants (water along all four edges, room for 12 snails 4 m apart, deterministic from the seed).
+
+### Archipelago
+
+Four or five islands (one large, the rest small) in open water, separated by channels roughly
+3 to 8 m wide that can be crossed with weapons or ropes. Shores vary: wide sandy beaches with a
+gentle slope into the water, and rocky headlands with cliffs (rock material). Shallow sandbars lie
+just under the surface along some channels, a few sea stacks (tall rock pillars) stand in the
+water, and one natural rock arch spans the shallows beside the big island. Islands have gentle
+hills. Shapes scale with the grid size. Implemented in `styles/archipelago.ts` and `styles/coast.ts`.
+
 ## Wind
 
 - Wind is a 2D vector, redrawn every turn, shown as an arrow and leaf particles.
