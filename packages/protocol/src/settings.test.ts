@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { DEFAULT_MATCH_SETTINGS } from '@snails/core';
-import { MatchSettings } from './common.js';
+import { DEFAULT_MATCH_SETTINGS, DEFAULT_TERRAIN_CONFIG } from '@snails/core';
+import { MatchSettings, TerrainParams } from './common.js';
 import { parseClientMessage } from './client.js';
 import { decodeSnapshot, encodeSnapshot, type DecodedSnapshot } from './snapshot.js';
 import { SimEventData } from './events.js';
@@ -12,6 +12,14 @@ describe('wire MatchSettings', () => {
       seed: 1,
       controlMode: 'perPlayer',
     });
+  });
+
+  it('carries the map size and larger terrain dimensions', () => {
+    expect(MatchSettings.parse({}).mapSize).toBe('auto');
+    expect(MatchSettings.parse({ mapSize: 'huge' }).mapSize).toBe('huge');
+    expect(() => MatchSettings.parse({ mapSize: 'gigantic' })).toThrow();
+    const t = { ...DEFAULT_TERRAIN_CONFIG, nx: 192, nz: 192 };
+    expect(TerrainParams.parse(t)).toMatchObject({ nx: 192, nz: 192 });
   });
 
   it('accepts a legacy start message and fills the new fields', () => {

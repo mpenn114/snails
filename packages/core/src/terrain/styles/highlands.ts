@@ -3,7 +3,7 @@ import type { Rng } from '../../rng.js';
 import type { ValueNoise } from '../noise.js';
 import { buildTunnel, tunnelCarve, wobblyPath, type Tunnel } from './features.js';
 import { SEA_DEPTH, caveCarve } from './island.js';
-import { smoothstep as smooth } from './shared.js';
+import { extraFeatures, smoothstep as smooth } from './shared.js';
 import type { StyleConfig, StyleField, TerrainStyleImpl } from './types.js';
 
 /** Metres kept free below the grid ceiling. */
@@ -30,7 +30,7 @@ function makePeaks(c: StyleConfig, rng: Rng): Peak[] {
   const a = rng.range(0, Math.PI * 2);
   const h1 = rng.range(12.5, 13.5);
   const d = half * rng.range(0.42, 0.52);
-  return [
+  const peaks: Peak[] = [
     {
       x: cx - Math.cos(a) * d * 0.45,
       z: cz - Math.sin(a) * d * 0.45,
@@ -44,6 +44,18 @@ function makePeaks(c: StyleConfig, rng: Rng): Peak[] {
       h: h1 * rng.range(0.7, 0.8),
     },
   ];
+  // Bigger maps get more, lower peaks on a ring around the centre.
+  for (let i = 0, n = extraFeatures(c.nx, c.nz, 3); i < n; i++) {
+    const b = a + Math.PI * 0.6 + (i * Math.PI * 2) / Math.max(1, n) + rng.range(-0.3, 0.3);
+    const dist = half * rng.range(0.5, 0.58);
+    peaks.push({
+      x: cx + Math.cos(b) * dist,
+      z: cz + Math.sin(b) * dist,
+      r: half * rng.range(0.26, 0.34),
+      h: h1 * rng.range(0.55, 0.7),
+    });
+  }
+  return peaks;
 }
 
 /** Soft staircase of the elevation e (m above water): flat shelves joined by steep risers. */

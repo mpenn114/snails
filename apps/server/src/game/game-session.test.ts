@@ -54,6 +54,17 @@ describe('GameSession', () => {
     expect(random.matchStartedMessage().settings.mapStyle).toBe('random');
   });
 
+  it('sizes the terrain from the map size setting, Auto by snail count', () => {
+    const dims = (mapSize: 'auto' | 'huge'): [number, number] => {
+      const t = make({ settings: { ...settings, mapSize } }).matchStartedMessage().terrain;
+      return [t.nx, t.nz];
+    };
+    expect(dims('huge')).toEqual([192, 192]);
+    const small = dims('auto');
+    expect(small[0]).toBe(small[1]);
+    expect(small[0]).toBeGreaterThanOrEqual(96);
+  });
+
   it('is deterministic for equal seed and intents', () => {
     const run = (): unknown => {
       const s = make();

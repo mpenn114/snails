@@ -1,9 +1,11 @@
 import {
   FIXED_DT,
+  MAP_SIZE_CELLS,
   createMatch,
   createScriptedBot,
   type GameSnapshot,
   type MatchOptions,
+  type MapSize,
   type SdfGrid,
   type SimEvent,
   type Simulation,
@@ -40,12 +42,15 @@ export interface HarnessMatchOptions {
   snailsPerTeam?: number;
   /** Terrain style (`?style=` in the harness URL); omitted means `island`. */
   style?: TerrainStyle;
+  /** Map size (`?size=` in the harness URL); omitted keeps the harness's 160 cell arena. */
+  size?: MapSize;
 }
 
 /** Builds match options for `teams` x `snailsPerTeam` snails on a large seeded island. */
 export function harnessMatchOptions(o: HarnessMatchOptions): MatchOptions {
   const teams = Math.max(2, o.teams ?? 4);
   const per = Math.max(1, o.snailsPerTeam ?? 4);
+  const cells = o.size ? MAP_SIZE_CELLS[o.size] : 160;
   return {
     seed: o.seed,
     teams: Array.from({ length: teams }, (_, t) => ({
@@ -54,7 +59,7 @@ export function harnessMatchOptions(o: HarnessMatchOptions): MatchOptions {
       colour: TEAM_COLOURS[t % TEAM_COLOURS.length] as string,
       snailNames: Array.from({ length: per }, (_, i) => snailName(t * per + i)),
     })),
-    terrain: { nx: 160, ny: 48, nz: 160, caveDensity: 0.1, style: o.style },
+    terrain: { nx: cells, ny: 48, nz: cells, caveDensity: 0.1, style: o.style },
     turn: { introDuration: 0.5, retreatDuration: 1, maxTurns: 200 },
     weapons: [HARNESS_WEAPON],
   };

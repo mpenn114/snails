@@ -305,6 +305,12 @@ must keep. `pnpm shots` has a `display-style-<name>` overview per style.
 | M9-10 | Docs, CPU gate and screenshots for every style; balance check that no style breaks AI or spawns | docs | M9-02..M9-09 | ✅ |
 | M9-11 | Snail polish: decal, shell pattern centre, body surface and front read | render | M9-07 | ✅ |
 
+## M10: Playability
+
+| ID | Task | Area | Depends on | Status |
+|---|---|---|---|---|
+| M10-02 | Map size setting: `mapSize` Auto/Small/Medium/Large/Huge (96 to 192 cells), styles scale their features | core | M9 | ✅ |
+
 ## Later
 
 | ID | Task | Area | Depends on | Status |

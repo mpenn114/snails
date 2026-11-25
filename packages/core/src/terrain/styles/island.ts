@@ -1,6 +1,6 @@
 import type { Rng } from '../../rng.js';
 import type { ValueNoise } from '../noise.js';
-import { smoothstep as smooth } from './shared.js';
+import { extraFeatures, smoothstep as smooth } from './shared.js';
 import type { StyleConfig, StyleField, TerrainStyleImpl } from './types.js';
 
 /** Metres of solid rock kept above any cave ceiling. */
@@ -27,6 +27,17 @@ function makeLobes(c: StyleConfig, rng: Rng): Lobe[] {
       x: (c.nx - 1) / 2 + Math.cos(a) * dist,
       z: (c.nz - 1) / 2 + Math.sin(a) * dist,
       r: half * rng.range(0.28, 0.36),
+    });
+  }
+  // Bigger maps get satellite islets around the main landmass.
+  const extra = extraFeatures(c.nx, c.nz, 4);
+  for (let i = 0; i < extra; i++) {
+    const a = rng.range(0, Math.PI * 2);
+    const dist = half * rng.range(0.62, 0.8);
+    lobes.push({
+      x: (c.nx - 1) / 2 + Math.cos(a) * dist,
+      z: (c.nz - 1) / 2 + Math.sin(a) * dist,
+      r: half * rng.range(0.1, 0.17),
     });
   }
   return lobes;

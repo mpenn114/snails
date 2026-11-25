@@ -2,7 +2,7 @@ import type { Rng } from '../../rng.js';
 import { MATERIAL_ROCK, MATERIAL_SAND } from '../materials.js';
 import type { ValueNoise } from '../noise.js';
 import { archDistance, nearRock, stackDistance, type Arch, type Stack } from './coast.js';
-import { smoothstep as smooth } from './shared.js';
+import { extraFeatures, smoothstep as smooth } from './shared.js';
 import type { StyleConfig, StyleField, TerrainStyleImpl } from './types.js';
 
 /** Metres the sea floor lies below the water surface. */
@@ -42,6 +42,17 @@ function makeIslands(c: StyleConfig, rng: Rng): Island[] {
       bias,
     });
   }
+  // Bigger maps get more islands, scattered with a margin so the sea ring stays at the edges.
+  for (let i = 0, n = extraFeatures(c.nx, c.nz, 5); i < n; i++) {
+    const r = w * rng.range(0.06, 0.1);
+    out.push({
+      x: rng.range(0.1, 0.9) * c.nx,
+      z: rng.range(0.1, 0.9) * c.nz,
+      r,
+      rise: rng.range(4, 7),
+      bias: rng.range(-0.9, 0.7),
+    });
+  }
   return out;
 }
 
@@ -56,7 +67,8 @@ function segDist(px: number, pz: number, a: Island, b: Island): number {
 /** Tall rock pillars: some alone, some clustered next to a taller sibling. */
 function makeStacks(c: StyleConfig, isl: Island[], rng: Rng): Stack[] {
   const out: Stack[] = [];
-  const w = Math.min(c.nx, c.nz);
+  // Pillar sizes stay those of the original 96 cell map: bigger maps get more, not fatter, pillars.
+  const w = 96;
   const add = (x: number, z: number, rf: number, height: number): void => {
     const top = c.waterLevel + height;
     out.push({

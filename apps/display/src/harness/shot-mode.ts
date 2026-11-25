@@ -3,6 +3,7 @@ import {
   createMatch,
   createScriptedBot,
   predictTrajectory,
+  MAP_SIZES,
   TERRAIN_STYLES,
   type MatchOptions,
   type SimEvent,
@@ -306,17 +307,18 @@ async function applyReact(
 }
 
 /** Runs one deterministic screenshot scene. */
-/** Match options of a shot: a small review line-up or three teams of three, on `?style=`. */
+/** Match options of a shot: a small review line-up or three teams of three, on `?style=` and `?size=`. */
 function shotMatchOptions(
   params: URLSearchParams,
   seed: number,
   review: ReturnType<typeof reviewKind>,
 ): MatchOptions {
   const style = TERRAIN_STYLES.find((s) => s === params.get('style'));
+  const size = MAP_SIZES.find((s) => s === params.get('size'));
   return harnessMatchOptions(
     review
-      ? { seed, teams: reviewTeamCount(review), snailsPerTeam: 1, style }
-      : { seed, teams: 3, snailsPerTeam: 3, style },
+      ? { seed, teams: reviewTeamCount(review), snailsPerTeam: 1, style, size }
+      : { seed, teams: 3, snailsPerTeam: 3, style, size },
   );
 }
 

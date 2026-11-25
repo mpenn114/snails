@@ -107,6 +107,7 @@ export function settingsChips(s: MatchSettingsInput): [label: string, value: str
   return [
     ['Mode', MODE_LABEL[m.mode]],
     ['Map', m.demo ? 'Weapons demo' : cap(m.mapStyle)],
+    ['Size', m.demo ? 'Arena' : cap(m.mapSize)],
     ['Turn', `${m.turnTimeSeconds} s${m.lazyStart ? ' (lazy start)' : ''}`],
     ['Snails', `${m.snailsPerTeam} per team`],
     ['Health', String(m.startingHealth)],

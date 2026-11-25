@@ -3,7 +3,7 @@ import type { Rng } from '../../rng.js';
 import type { ValueNoise } from '../noise.js';
 import { buildTunnel, tunnelCarve, wobblyPath, type Pt, type Tunnel } from './features.js';
 import { SEA_DEPTH } from './island.js';
-import { smoothstep as smooth } from './shared.js';
+import { extraFeatures, smoothstep as smooth } from './shared.js';
 import type { StyleConfig, StyleField, TerrainStyleImpl } from './types.js';
 
 /** Height of the mesa top above the water (m). */
@@ -60,7 +60,7 @@ interface Mesa {
 }
 
 /** Rocky knolls and shallow hollows on top, kept clear of the chambers' roofs. */
-function makeBumps(lay: Layout, chambers: Chamber[], rng: Rng): Bump[] {
+function makeBumps(nx: number, nz: number, lay: Layout, chambers: Chamber[], rng: Rng): Bump[] {
   const out: Bump[] = [];
   const place = (n: number, r0: number, r1: number, h0: number, h1: number, far: boolean): void => {
     for (let tries = 0, got = 0; got < n && tries < 40; tries++) {
@@ -75,8 +75,9 @@ function makeBumps(lay: Layout, chambers: Chamber[], rng: Rng): Bump[] {
       got++;
     }
   };
-  place(3, 3, 5, 1.6, 2.4, false);
-  place(2, 3, 4.5, -1, -0.7, true);
+  const more = extraFeatures(nx, nz, 3);
+  place(3 + more, 3, 5, 1.6, 2.4, false);
+  place(2 + more, 3, 4.5, -1, -0.7, true);
   return out;
 }
 
@@ -128,7 +129,7 @@ function mesaSdf(c: StyleConfig, m: Mesa, i: number, y: number): number {
 
 /** 2-3 domed chambers with flat floors on a ring around the mesa centre. */
 function makeChambers(c: StyleConfig, lay: Layout, rng: Rng): Chamber[] {
-  const n = 2 + rng.int(0, 1);
+  const n = 2 + rng.int(0, 1) + extraFeatures(c.nx, c.nz, 3);
   // The first chamber faces +z so one mouth shows from the default wide camera.
   const a0 = Math.PI / 2 + rng.range(-0.4, 0.4);
   const out: Chamber[] = [];
@@ -271,7 +272,7 @@ export const cavernsStyle: TerrainStyleImpl = {
       cliff: (Math.min(c.nx, c.nz) / 2) * cs * 0.6,
     };
     const chambers = makeChambers(c, lay, rng);
-    const bumps = makeBumps(lay, chambers, rng);
+    const bumps = makeBumps(c.nx, c.nz, lay, chambers, rng);
     const M = buildMesa(c, noise, lay, bumps, rng.range(0, Math.PI * 2));
     const tunnels = [
       ...chambers.map((ch) => entranceTunnel(c, M, lay, ch, rng)),

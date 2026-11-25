@@ -2,7 +2,7 @@ import { MATERIAL_CLAY, MATERIAL_ROCK, MATERIAL_SAND, MATERIAL_SOIL } from '../m
 import type { Rng } from '../../rng.js';
 import type { ValueNoise } from '../noise.js';
 import { segmentDistance, wobblyPath, type Pt } from './features.js';
-import { smoothstep as smooth } from './shared.js';
+import { extraFeatures, smoothstep as smooth } from './shared.js';
 import type { StyleConfig, StyleField, TerrainStyleImpl } from './types.js';
 
 /** Metres the sea floor lies below the water surface. */
@@ -70,7 +70,20 @@ function makeGorges(c: StyleConfig, noise: ValueNoise, rng: Rng): Pt[][] {
     sideways: 3,
     vertical: 0,
   });
-  return [main, trib];
+  const out = [main, trib];
+  // Bigger maps get more tributaries, each joining the main gorge.
+  for (let i = 0, n = extraFeatures(c.nx, c.nz, 3); i < n; i++) {
+    const s = rng.range(0, 1) < 0.5 ? 1 : -1;
+    const jn = main[rng.int(2, 8)] as Pt;
+    out.push(
+      wobblyPath(rng, end(a0 + s * rng.range(0.8, 2.4)), jn, {
+        segments: 8,
+        sideways: 3,
+        vertical: 0,
+      }),
+    );
+  }
+  return out;
 }
 
 /** Bridges: one over each gorge, on a stretch away from the junction. */
