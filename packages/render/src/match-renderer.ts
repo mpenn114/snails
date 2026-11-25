@@ -212,7 +212,7 @@ export class MatchRenderer {
     const [scheduled, crates] = [new ScheduledLayer(), new CrateLayer()];
     const explosions = this.makeExplosions(q.particleScale, q.maxDynamicLights);
     const props = this.makeProps(grid, waterLevel, q.propCount, q.shadows);
-    view.roots.entities.add(snails.group, ...(props ? [props.group] : []));
+    view.roots.entities.add(snails.group, snails.debrisGroup, ...(props ? [props.group] : []));
     const splashes = this.makeSplashes(view, source, waterLevel);
     const wind = this.makeWind(grid, q.particleScale);
     const unlock = this.makeUnlock(view, snails);

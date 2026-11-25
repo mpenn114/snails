@@ -13,6 +13,8 @@ import type { QualityTier } from './quality.js';
 import type { ResearchVisuals } from './research/research-visuals.js';
 import { SnailMesh } from './snail-mesh.js';
 import { reactionsForEvent, scareStrength } from './snail/snail-expression.js';
+import { ShellDebris, crossingFragmentCount, hitFragmentCount } from './snail/shell-debris.js';
+import { crackStateFor } from './snail/crack-damage.js';
 import { snailViewsFromSnapshot, type SnailView } from './snail-view.js';
 
 /** Camera distance (m) at which labels have their base size. */
@@ -49,10 +51,15 @@ export class SnailLayer {
   readonly group = new THREE.Group();
   /** Loop-compatible updater: syncs from the render state each frame. */
   readonly updater: FrameUpdater;
+  /** Shell fragments and critical smoke; attach next to `group` (kept separate from snail meshes). */
+  readonly debrisGroup: THREE.Group;
   private readonly meshes = new Map<string, SnailMesh>();
   private readonly assets: SnailAssets;
   private readonly labelFactory: LabelTextureFactory;
   private camera: THREE.Camera | null;
+  private readonly debris: ShellDebris;
+  private readonly ratios = new Map<string, number>();
+  private readonly maxHealths = new Map<string, number>();
 
   /** Creates an empty layer. */
   private shadows: boolean;
@@ -63,6 +70,8 @@ export class SnailLayer {
     this.camera = opts.camera ?? null;
     this.shadows = opts.shadows ?? false;
     this.group.name = 'snails';
+    this.debris = new ShellDebris(opts.tier ?? 'high');
+    this.debrisGroup = this.debris.group;
     const select = opts.selectViews ?? ((s: RenderState) => snailViewsFromSnapshot(s.snapshot));
     const research = opts.research;
     this.updater = (dt, state) => {
@@ -127,6 +136,7 @@ export class SnailLayer {
       }
       mesh.apply(v);
       if (v.alive) mesh.animate(dt, v);
+      this.updateDebris(v, mesh, dt);
       this.faceCamera(mesh);
       mesh.billboard = () => this.faceCamera(mesh);
     }
@@ -134,7 +144,11 @@ export class SnailLayer {
       if (seen.has(id)) continue;
       mesh.dispose();
       this.meshes.delete(id);
+      this.ratios.delete(id);
+      this.maxHealths.delete(id);
+      this.debris.forget(id);
     }
+    this.debris.advance(dt);
     this.declutter();
   }
 
@@ -148,6 +162,7 @@ export class SnailLayer {
         this.meshes.get(e.snailId)?.animator.landed(Math.min(1, e.impactSpeed / 10));
         continue;
       }
+      if (e.type === 'snailDamaged') this.shedOnHit(e.snailId, e.amount);
       for (const r of reactionsForEvent(e)) {
         if (r.snailId) this.meshes.get(r.snailId)?.react(r.kind, r.strength);
         for (const mesh of this.meshes.values()) {
@@ -160,6 +175,27 @@ export class SnailLayer {
         }
       }
     }
+  }
+
+  /** Spawns crossing fragments and critical smoke for one snail view. */
+  private updateDebris(v: SnailView, mesh: SnailMesh, dt: number): void {
+    const ratio = v.maxHealth > 0 ? v.health / v.maxHealth : 1;
+    const prev = this.ratios.get(v.id) ?? ratio;
+    this.ratios.set(v.id, ratio);
+    this.maxHealths.set(v.id, v.maxHealth);
+    const n = crossingFragmentCount(prev, ratio);
+    if (n > 0) this.debris.spawnFragments(mesh.group.position, v.colour, n);
+    if (v.alive && crackStateFor(ratio) === 'critical') {
+      this.debris.tickSmoke(v.id, mesh.group.position, dt);
+    }
+  }
+
+  /** Sheds a few fragments from a hit snail's shell. */
+  private shedOnHit(id: string, amount: number): void {
+    const mesh = this.meshes.get(id);
+    if (!mesh) return;
+    const n = hitFragmentCount(amount, this.maxHealths.get(id) ?? 0);
+    this.debris.spawnFragments(mesh.group.position, mesh.colour, n);
   }
 
   /** Orients the bar towards the camera and sizes labels for its current distance. */
@@ -216,6 +252,7 @@ export class SnailLayer {
   dispose(): void {
     for (const mesh of this.meshes.values()) mesh.dispose();
     this.meshes.clear();
+    this.debris.dispose();
     this.assets.dispose();
     this.group.removeFromParent();
   }
