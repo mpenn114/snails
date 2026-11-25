@@ -13,13 +13,15 @@ describe.each(TERRAIN_STYLES)('spawn capacity on %s', (style) => {
       const { grid, descriptor } = generateTerrain(C, new Rng(seed));
       const pts = findSpawnPoints(grid, descriptor, MAX_SNAILS, new Rng(seed + 1000), 4);
       expect(pts, `seed ${seed}`).toHaveLength(MAX_SNAILS);
+      let closest = Infinity;
       for (let i = 0; i < pts.length; i++) {
         for (let j = i + 1; j < pts.length; j++) {
           const a = pts[i]!;
           const b = pts[j]!;
-          expect(Math.hypot(a.x - b.x, a.z - b.z)).toBeGreaterThanOrEqual(1.1 - 1e-9);
+          closest = Math.min(closest, Math.hypot(a.x - b.x, a.z - b.z));
         }
       }
+      expect(closest, `seed ${seed}`).toBeGreaterThanOrEqual(1.1 - 1e-9);
       if (seed === 1) {
         const again = findSpawnPoints(grid, descriptor, MAX_SNAILS, new Rng(seed + 1000), 4);
         expect(again).toEqual(pts);

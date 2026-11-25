@@ -15,6 +15,8 @@ export interface Tunnel {
   points: readonly Pt[];
   /** Per segment: minX, minY, minZ, maxX, maxY, maxZ (already grown by the radius). */
   boxes: Float64Array;
+  /** Whole tunnel: minX, minY, minZ, maxX, maxY, maxZ (the union of {@link boxes}). */
+  bounds: Float64Array;
 }
 
 /** Options for {@link wobblyPath}. */
@@ -45,7 +47,13 @@ export function buildTunnel(points: readonly Pt[], radius: number): Tunnel {
       i * 6,
     );
   }
-  return { radius, points, boxes };
+  const bounds = new Float64Array([Infinity, Infinity, Infinity, -Infinity, -Infinity, -Infinity]);
+  for (let i = 0; i < boxes.length; i++) {
+    const k = i % 6;
+    const v = boxes[i] as number;
+    bounds[k] = k < 3 ? Math.min(bounds[k] as number, v) : Math.max(bounds[k] as number, v);
+  }
+  return { radius, points, boxes, bounds };
 }
 
 /** Distance (m) from point p to the segment a-b. */
@@ -67,6 +75,9 @@ export function segmentDistance(a: Pt, b: Pt, px: number, py: number, pz: number
  * bounding box (cheap early-out for the vast majority of cells).
  */
 export function tunnelCarve(t: Tunnel, x: number, y: number, z: number): number {
+  const u = t.bounds;
+  if (x < (u[0] as number) || y < (u[1] as number) || z < (u[2] as number)) return -Infinity;
+  if (x > (u[3] as number) || y > (u[4] as number) || z > (u[5] as number)) return -Infinity;
   const b = t.boxes;
   let best = -Infinity;
   for (let i = 0, n = b.length; i < n; i += 6) {

@@ -154,6 +154,55 @@ function chamberCarve(ch: Chamber, x: number, y: number, z: number): number {
   return Math.min((1 - n) * Math.min(ch.rx, ch.rz), y - ch.floor);
 }
 
+/** A shaft dropping from the sky into a chamber (metres). */
+type Shaft = { x: number; z: number; floor: number };
+
+/**
+ * The cave carve function: chambers, tunnels and skylight shafts. Values at or below `-band`
+ * (the generator's SDF clamp, 4 cells) never change the grid, so each feature skips points
+ * outside its box padded by enough to guarantee that; the result is identical to evaluating
+ * every feature everywhere, just much faster.
+ */
+function caveCarver(
+  cs: number,
+  chambers: Chamber[],
+  tunnels: Tunnel[],
+  shafts: Shaft[],
+): (x: number, y: number, z: number) => number {
+  const band = 4 * cs;
+  const boxes = chambers.map((ch) => {
+    const pad = (band * Math.max(ch.rx, ch.ry, ch.rz)) / Math.min(ch.rx, ch.rz, ch.ry) + cs;
+    return {
+      ch,
+      x0: ch.x - ch.rx - pad,
+      x1: ch.x + ch.rx + pad,
+      z0: ch.z - ch.rz - pad,
+      z1: ch.z + ch.rz + pad,
+      y0: ch.floor - band - cs,
+      y1: ch.floor + ch.ry + pad,
+    };
+  });
+  const reach = SHAFT_RADIUS + band + cs;
+  return (x, y, z) => {
+    const mx = x * cs;
+    const my = y * cs;
+    const mz = z * cs;
+    let v = -Infinity;
+    for (const b of boxes) {
+      if (mx < b.x0 || mx > b.x1 || mz < b.z0 || mz > b.z1 || my < b.y0 || my > b.y1) continue;
+      v = Math.max(v, chamberCarve(b.ch, mx, my, mz));
+    }
+    for (const t of tunnels) v = Math.max(v, tunnelCarve(t, mx, my, mz));
+    for (const sh of shafts) {
+      if (Math.abs(mx - sh.x) > reach || Math.abs(mz - sh.z) > reach || my < sh.floor - reach) {
+        continue;
+      }
+      v = Math.max(v, Math.min(SHAFT_RADIUS - Math.hypot(mx - sh.x, mz - sh.z), my - sh.floor));
+    }
+    return v;
+  };
+}
+
 /** Outline distance (m) of the mesa at a position in metres, clamped to the grid. */
 function outline(c: StyleConfig, M: Mesa, x: number, z: number): number {
   const ix = Math.min(c.nx - 1, Math.max(0, Math.round(x / c.cellSize)));
@@ -200,7 +249,7 @@ function linkTunnels(chambers: Chamber[], rng: Rng): Tunnel[] {
 }
 
 /** Vertical skylight shaft centres (m): the first two chambers get one each. */
-function makeShafts(chambers: Chamber[], rng: Rng): { x: number; z: number; floor: number }[] {
+function makeShafts(chambers: Chamber[], rng: Rng): Shaft[] {
   return chambers.slice(0, 2).map((ch) => ({
     x: ch.x + rng.range(-0.4, 0.4) * ch.rx,
     z: ch.z + rng.range(-0.4, 0.4) * ch.rz,
@@ -232,16 +281,7 @@ export const cavernsStyle: TerrainStyleImpl = {
     return {
       surface: (x, z) => M.low[z * c.nx + x] as number,
       add: (x, y, z) => mesaSdf(c, M, z * c.nx + x, y),
-      carve: (x, y, z) => {
-        const [mx, my, mz] = [x * cs, y * cs, z * cs];
-        let v = -Infinity;
-        for (const ch of chambers) v = Math.max(v, chamberCarve(ch, mx, my, mz));
-        for (const t of tunnels) v = Math.max(v, tunnelCarve(t, mx, my, mz));
-        for (const s of shafts) {
-          v = Math.max(v, Math.min(SHAFT_RADIUS - Math.hypot(mx - s.x, mz - s.z), my - s.floor));
-        }
-        return v;
-      },
+      carve: caveCarver(cs, chambers, tunnels, shafts),
       material: (x, y, z) => {
         const i = z * c.nx + x;
         if ((M.D[i] as number) > 1.2) return undefined;
