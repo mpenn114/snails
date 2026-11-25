@@ -88,6 +88,8 @@ export class Room {
   phase: 'lobby' | 'playing' = 'lobby';
   /** Plug-in point for the game session; no-op by default. */
   onMatchStart: MatchStartHook = () => {};
+  /** Called whenever the lobby settings change (host edit or match start); used to remember them. */
+  onSettingsChange: (settings: MatchSettings) => void = () => {};
   /** The running match while `phase === 'playing'`. */
   match: ActiveMatch | null = null;
   /** Optional hook called when a match ends (latency summary). */
@@ -236,6 +238,7 @@ export class Room {
     const parsed = MatchSettings.safeParse(raw);
     if (!parsed.success) return ['invalid_settings', 'Invalid match settings'];
     this.settings = parsed.data;
+    this.onSettingsChange(parsed.data);
     return undefined;
   }
 
@@ -284,6 +287,7 @@ export class Room {
     const blocked = startBlocker([...players, ...cpuPlayers], parsed.data.controlMode);
     if (blocked) return ['not_ready', blocked];
     this.settings = parsed.data;
+    this.onSettingsChange(parsed.data);
     this.phase = 'playing';
     this.broadcastLobby();
     this.onMatchStart(parsed.data, [...this.members.values()]);

@@ -13,6 +13,7 @@ One file per significant decision, numbered `NNNN-kebab-title.md`. ADRs are immu
 | [0007](0007-electron-desktop-distribution.md) | Electron desktop distribution | Accepted |
 | [0008](0008-phone-renders-game-view.md) | Phones render the 3D game view | Accepted |
 | [0009](0009-stylised-low-poly-art-direction.md) | Stylised low-poly art direction | Accepted |
+| [0010](0010-code-signing.md) | Code signing | Accepted |
 
 ## Template
 

@@ -74,7 +74,14 @@ describe('display lobby logic', () => {
       ok: true,
       json: async () => ({ joinUrl: 'http://h:1/', primaryIp: 'h', port: 1 }),
     });
-    expect(await fetchInfo(ok)).toEqual({ joinUrl: 'http://h:1/', primaryIp: 'h', port: 1 });
+    expect(await fetchInfo(ok)).toEqual({
+      joinUrl: 'http://h:1/',
+      primaryIp: 'h',
+      port: 1,
+      lanFound: true,
+      platform: 'unknown',
+      lanIps: ['h'],
+    });
     expect(await fetchInfo(async () => ({ ok: false, json: async () => ({}) }))).toBeUndefined();
     expect(await fetchInfo(async () => ({ ok: true, json: async () => ({}) }))).toBeUndefined();
     expect(await fetchInfo(async () => Promise.reject(new Error('x')))).toBeUndefined();

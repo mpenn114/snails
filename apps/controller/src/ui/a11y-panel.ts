@@ -9,6 +9,7 @@ import {
   type A11ySettings,
   type TextSize,
 } from './a11y-settings';
+import { saveTutorialSeen } from './tutorial-steps';
 
 const CSS = `
 .a11y-btn{position:fixed;left:calc(env(safe-area-inset-left) + 8px);bottom:calc(env(safe-area-inset-bottom) + 8px);z-index:60;
@@ -34,6 +35,7 @@ function build(doc: Document): HTMLElement {
     <div class="a11y-panel" role="dialog" aria-label="Accessibility settings"><h2>Accessibility</h2>
       <div class="row" role="group" aria-label="Text size">${sizes}</div>
       <label><input type="checkbox" class="rm" /> Reduce motion</label>
+      <div class="row"><button type="button" class="tut-again">Show tutorial again</button></div>
       <label><input type="checkbox" class="snd-mute" /> Mute sound</label>
       <label>Volume <input type="range" class="snd-vol" min="0" max="100" step="5" aria-label="Volume" /></label></div>`;
   return root;
@@ -76,6 +78,11 @@ export function mountA11yPanel(
     b.addEventListener('click', () => set({ ...s, textSize: b.dataset.size as TextSize }));
   }
   rm.addEventListener('change', () => set({ ...s, reducedMotion: rm.checked }));
+  el.querySelector('.tut-again')?.addEventListener('click', () => {
+    saveTutorialSeen(storage, false);
+    panel.classList.remove('on');
+    btn.setAttribute('aria-expanded', 'false');
+  });
   paint();
   mountAudioControls(el, storage);
 }

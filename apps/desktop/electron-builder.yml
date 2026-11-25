@@ -4,15 +4,23 @@ directories:
   output: release
 files:
   - dist/**
+  - '!dist/**/*.test.*'
+  - '!dist/**/*.map'
   - package.json
 extraResources:
   - from: ../display/dist
     to: display
   - from: ../controller/dist
     to: controller
+artifactName: ${productName}-${version}.${ext}
 linux:
   target: AppImage
+  executableName: snails
 win:
   target: nsis
 mac:
   target: dmg
+publish:
+  provider: github
+  owner: mpenn114
+  repo: snails

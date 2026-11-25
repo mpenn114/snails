@@ -6,17 +6,24 @@ and play their turns from the phone. Shells matter: upgrades change a snail's sh
 told apart by shell colour, and cracks show as health drops. A research layer unlocks new
 weapons, armour and mobility. CPU players can fill empty seats.
 
-## Quick start
+## Quickstart (players)
+
+1. Download the installer for your OS from the [GitHub Releases](https://github.com/mpenn114/snails/releases) page: `.exe` (Windows), `.dmg` (macOS) or `.AppImage` (Linux).
+2. Install and launch it. The builds are unsigned, so Windows SmartScreen and macOS Gatekeeper warn on first launch; see [docs/troubleshooting.md](docs/troubleshooting.md#installing-an-unsigned-build) for the workarounds and for help if something goes wrong. Allow network access when the firewall asks.
+3. Put the host window on the TV. Each player scans the QR code with their phone camera (phones on the same Wi-Fi as the host, no app needed).
+4. Pick a name and team, tap Ready, and play.
+
+## Development
 
 ```sh
 pnpm install
-pnpm dev
+pnpm dev     # server + display + controller
+pnpm test    # also: pnpm lint, pnpm typecheck, pnpm build, pnpm ci
 ```
 
-`pnpm dev` starts the server, the display (big screen) and the controller (phone UI). The server
-prints a join URL such as `http://192.168.1.20:3000/?room=ABCD` and the TV view for the host PC,
-`http://localhost:3000/display/?room=ABCD` (with `pnpm dev` use `http://localhost:5173/` for the
-display). Open the TV view in a desktop browser at any time, even mid-match, to watch the game.
+`pnpm dev` prints a join URL such as `http://192.168.1.20:3000/?room=ABCD`; with `pnpm dev` the
+TV view is `http://localhost:5173/`. Releases are described in
+[docs/development/release-process.md](docs/development/release-process.md).
 
 ## How phones join
 
@@ -34,7 +41,5 @@ open the printed URL), enter a name and the room code, and you are in.
 - `packages/content-base` - base content pack
 - `packages/ai` - CPU player strategies
 - `scripts` - repo tooling
-
-Useful commands: `pnpm lint`, `pnpm typecheck`, `pnpm test`, `pnpm build`, `pnpm ci`.
 
 See [docs/README.md](docs/README.md) for the full documentation.

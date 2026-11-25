@@ -9,6 +9,7 @@ import {
   audioContextFactory,
   createSynth,
   loadAudioSettings,
+  saveAudioSettings,
   muteFromQuery,
 } from '@snails/render';
 import type { AudioWindow } from '@snails/render';
@@ -19,6 +20,7 @@ import type { QualityTier } from '@snails/render';
 injectTheme(document);
 import { DisplayClient, relativeWsUrl } from './net/client';
 import { fetchInfo, buildJoinUrl } from './lobby/lobby-logic';
+import { mountHelpPanel } from './lobby/help-panel';
 import { mountLobbyScreen } from './lobby/lobby-view';
 import type { LobbyModel } from './lobby/lobby-view';
 import { MatchAdapter } from './match/match-adapter';
@@ -66,6 +68,7 @@ const aimHint = createAimHint({
 renderer.addLayer(aimHint.layer);
 const hud = mountHud(document.getElementById('lobby-root') as HTMLElement);
 const lobby = mountLobbyScreen(document.getElementById('lobby-root') as HTMLElement);
+const help = mountHelpPanel(document.getElementById('lobby-root') as HTMLElement);
 const banner = mountBanner(document.getElementById('lobby-root') as HTMLElement);
 const techs = new Map(technologies.map((t) => [t.id, t]));
 renderer.setTechVisuals((id) => techs.get(id)?.visual);
@@ -99,9 +102,11 @@ client.onMessage = (m) => {
         settings: m.settings,
       };
       lobby.update(model);
+      help.update(i, m.roomCode);
     });
   } else if (m.type === 'matchStarted') {
     lobby.hide();
+    help.hide();
   }
 };
 client.connect();
@@ -122,6 +127,22 @@ const synth = createSynth({
   volume: audioSettings.volume,
 });
 const displayAudio = createDisplayAudio(synth);
+// Host shortcuts, remembered between launches: M toggles mute, [ and ] change the volume.
+let displayMuted = audioSettings.muted;
+window.addEventListener('keydown', (e) => {
+  const step = e.key === ']' ? 0.1 : e.key === '[' ? -0.1 : 0;
+  if (e.key.toLowerCase() !== 'm' && step === 0) return;
+  if (step !== 0) synth.setVolume(Math.min(1, Math.max(0, synth.getVolume() + step)));
+  else {
+    displayMuted = !displayMuted;
+    synth.setMuted(displayMuted);
+  }
+  try {
+    saveAudioSettings(window.localStorage, { muted: displayMuted, volume: synth.getVolume() });
+  } catch {
+    // Storage is a convenience only.
+  }
+});
 for (const g of ['pointerdown', 'keydown', 'click'] as const) {
   window.addEventListener(g, () => synth.unlock(), { once: false, capture: true });
 }

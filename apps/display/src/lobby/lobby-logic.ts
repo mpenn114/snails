@@ -5,6 +5,12 @@ export interface InfoLike {
   joinUrl: string;
   primaryIp: string;
   port: number;
+  /** Whether a real LAN address was found (false = loopback fallback). */
+  lanFound: boolean;
+  /** Server `process.platform`. */
+  platform: string;
+  /** All LAN candidates, best first. */
+  lanIps: string[];
 }
 
 /** Players sharing a team (or `null` for those without one). */
@@ -37,7 +43,17 @@ export async function fetchInfo(
     if (!res.ok) return undefined;
     const body = (await res.json()) as Partial<InfoLike>;
     if (typeof body.joinUrl !== 'string' || typeof body.primaryIp !== 'string') return undefined;
-    return { joinUrl: body.joinUrl, primaryIp: body.primaryIp, port: Number(body.port) };
+    const lanIps = Array.isArray(body.lanIps)
+      ? body.lanIps.filter((x): x is string => typeof x === 'string')
+      : [body.primaryIp];
+    return {
+      joinUrl: body.joinUrl,
+      primaryIp: body.primaryIp,
+      port: Number(body.port),
+      lanFound: body.lanFound ?? !/^(127\.|localhost)/.test(body.primaryIp),
+      platform: typeof body.platform === 'string' ? body.platform : 'unknown',
+      lanIps,
+    };
   } catch {
     return undefined;
   }

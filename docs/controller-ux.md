@@ -237,3 +237,10 @@ timer extension remain open.
   host, so it resumes when the host returns if the snapshot is saved.
 - Version mismatch: a polite "Reload to update" screen
   ([networking.md](networking.md) covers protocol versions).
+
+## 11. Tutorial
+
+- First time a player's turn starts, a skippable 5-step coach-mark card (move, aim, power, weapon,
+  fire) appears; "tutorial seen" is stored in localStorage (`snails.tutorialSeen`). Re-run it from
+  the Aa settings panel ("Show tutorial again"). Skipped under automation (`navigator.webdriver`)
+  or `?tutorial=0`; `?tutorial=1` forces it. The TV lobby shows a one-line "How to play" hint.
