@@ -1,4 +1,5 @@
 import { buildServer } from './app.js';
+import { defaultDataDir, loadLobbySettings, saveLobbySettings } from './settings-store.js';
 import { RoomManager } from './rooms/room-manager.js';
 import { detectLanIPv4, displayUrl, joinUrl, primaryLanIp } from './net/lan.js';
 
@@ -16,14 +17,22 @@ export interface RunningServer {
  * @param port TCP port to listen on
  * @param staticDir optional controller bundle directory override
  * @param displayDir optional display bundle directory override
+ * @param dataDir where lobby settings are remembered between launches; defaults to
+ *   `SNAILS_DATA_DIR` or the OS app-data directory, `false` disables persistence
  * @returns the room code, join URL and a close function
  */
 export async function startServer(
   port: number,
   staticDir?: string,
   displayDir?: string,
+  dataDir: string | false = defaultDataDir(),
 ): Promise<RunningServer> {
-  const rooms = new RoomManager();
+  const rooms = dataDir
+    ? new RoomManager({
+        initialSettings: loadLobbySettings(dataDir),
+        onSettingsChange: (s) => saveLobbySettings(dataDir, s),
+      })
+    : new RoomManager();
   const room = rooms.createRoom();
   rooms.setDefaultRoom(room.code);
   const app = await buildServer({

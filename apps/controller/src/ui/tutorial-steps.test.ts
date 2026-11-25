@@ -1,6 +1,6 @@
+import { PREFS_KEY } from './prefs-store';
 import { describe, expect, it } from 'vitest';
 import {
-  TUTORIAL_KEY,
   TUTORIAL_STEPS,
   loadTutorialSeen,
   saveTutorialSeen,
@@ -40,7 +40,7 @@ describe('seen flag', () => {
     const st = mem();
     expect(loadTutorialSeen(st)).toBe(false);
     saveTutorialSeen(st, true);
-    expect(st.getItem(TUTORIAL_KEY)).toBe('1');
+    expect(st.getItem(PREFS_KEY)).toContain('"tutorialSeen":true');
     expect(loadTutorialSeen(st)).toBe(true);
     saveTutorialSeen(st, false);
     expect(loadTutorialSeen(st)).toBe(false);

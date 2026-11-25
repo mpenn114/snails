@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest';
 import {
-  A11Y_KEY,
   DEFAULT_A11Y,
   effectiveReducedMotion,
   loadA11y,
@@ -8,6 +7,7 @@ import {
   saveA11y,
   textScaleVars,
 } from './a11y-settings';
+import { PREFS_KEY } from './prefs-store';
 
 describe('a11y settings', () => {
   it('parses valid and invalid input', () => {
@@ -27,7 +27,7 @@ describe('a11y settings', () => {
       setItem: (k: string, v: string) => void m.set(k, v),
     };
     saveA11y(st, { textSize: 'small', reducedMotion: true });
-    expect(m.has(A11Y_KEY)).toBe(true);
+    expect(m.has(PREFS_KEY)).toBe(true);
     expect(loadA11y(st)).toEqual({ textSize: 'small', reducedMotion: true });
     const bad = {
       getItem: (): string => {

@@ -1,3 +1,6 @@
+import { LEGACY_KEYS, loadPrefsStrict, updatePrefs } from './prefs-store';
+import type { PrefsStorage } from './prefs-store';
+
 /** One coach-mark step. */
 export interface TutorialStep {
   id: 'move' | 'aim' | 'power' | 'weapon' | 'fire';
@@ -18,8 +21,8 @@ export const TUTORIAL_STEPS: readonly TutorialStep[] = [
   { id: 'fire', title: 'Fire', body: 'Fire ends your turn. Take cover before the timer runs out.' },
 ];
 
-/** localStorage key for the "tutorial seen" flag. */
-export const TUTORIAL_KEY = 'snails.tutorialSeen';
+/** Legacy localStorage key for the "tutorial seen" flag (migrated into the prefs record). */
+export const TUTORIAL_KEY = LEGACY_KEYS.tutorialSeen;
 
 /** Tutorial progress; `index` is -1 once finished or skipped. */
 export interface TutorialState {
@@ -49,9 +52,9 @@ export const tutorialSkip = (): TutorialState => ({ index: -1 });
  * Whether the tutorial was already seen; storage failures count as seen to avoid nagging.
  * @param storage storage or undefined
  */
-export function loadTutorialSeen(storage: Pick<Storage, 'getItem'> | undefined): boolean {
+export function loadTutorialSeen(storage: PrefsStorage | undefined): boolean {
   try {
-    return storage?.getItem(TUTORIAL_KEY) === '1';
+    return loadPrefsStrict(storage).tutorialSeen;
   } catch {
     return true;
   }
@@ -62,16 +65,8 @@ export function loadTutorialSeen(storage: Pick<Storage, 'getItem'> | undefined):
  * @param storage storage or undefined
  * @param seen new value
  */
-export function saveTutorialSeen(
-  storage: Pick<Storage, 'setItem' | 'removeItem'> | undefined,
-  seen: boolean,
-): void {
-  try {
-    if (seen) storage?.setItem(TUTORIAL_KEY, '1');
-    else storage?.removeItem(TUTORIAL_KEY);
-  } catch {
-    // Storage is a convenience only.
-  }
+export function saveTutorialSeen(storage: PrefsStorage | undefined, seen: boolean): void {
+  updatePrefs(storage, { tutorialSeen: seen });
 }
 
 /**
