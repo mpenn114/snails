@@ -216,6 +216,15 @@ The phone renders at a mobile quality tier ([graphics.md](graphics.md)):
   left/right arrows).
 - Screen reader labels for lobby and research screens (the scene is not described).
 
+M7-16 status: team colours now carry a per-team shape glyph (`TEAM_GLYPHS` in
+`packages/render/src/style/team-glyphs.ts`, same index as the shell pattern) in the controller
+lobby roster, colour picker and spectate banner, and in the display lobby and HUD. The phone has an
+"Aa" settings button (text size small/normal/large scaling the `--snl-text-*` tokens, reduce-motion
+toggle, both persisted in localStorage). The display honours `prefers-reduced-motion` and
+`?reducedMotion=1` (`resolveReducedMotion`/`motionConfig`): no shake (shake scale 0, there is no
+shake effect yet) and camera smoothing 2.5x slower. High-contrast HUD, aim assist options and
+timer extension remain open.
+
 ## 10. Disconnected and rejoin
 
 - Connection indicator (small dot in the HUD). On drop: overlay "Reconnecting..." with the scene

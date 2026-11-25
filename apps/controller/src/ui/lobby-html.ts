@@ -1,4 +1,5 @@
 import type { LobbyPlayer, ServerMessage } from '@snails/protocol';
+import { teamGlyphForColour } from '@snails/render';
 import { playerTeams } from './lobby-logic';
 import { cpuSummary } from './cpu-controls';
 
@@ -37,7 +38,7 @@ export function rosterHtml(
         p.ready ? 'ready' : '',
         p.connected ? '' : 'offline',
       ].filter(Boolean);
-      const dot = `<span style="color:${safeColour(p.colour)}">&#9679;</span>`;
+      const dot = `<span style="color:${safeColour(p.colour)}">&#9679;</span><span class="team-glyph" aria-hidden="true">${teamGlyphForColour(p.colour)}</span>`;
       const tag = badges.length ? ` (${badges.join(', ')})` : '';
       if (p.cpu) {
         const rm = canRemoveCpu
@@ -73,7 +74,7 @@ export function choiceHtml(
       const style = kind === 'colour' ? ` style="background:${safeColour(v)}"` : '';
       const on = isActive(v, active) ? ' on' : '';
       const off = disabled.has(v.toLowerCase()) ? ' disabled' : '';
-      const label = kind === 'team' ? esc(v) : '';
+      const label = kind === 'team' ? esc(v) : esc(teamGlyphForColour(v));
       return `<button type="button" class="pick${on}" data-v="${esc(v)}"${style}${off}>${label}</button>`;
     })
     .join('');

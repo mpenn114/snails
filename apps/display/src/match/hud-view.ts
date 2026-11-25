@@ -1,3 +1,4 @@
+import { teamMarkerHtml } from '@snails/render';
 import type { HudModel } from './hud-model';
 
 const esc = (s: string): string =>
@@ -8,13 +9,13 @@ const safeColour = (c: string | null): string => (c && /^#[0-9a-f]{3,8}$/i.test(
 /** Renders the HUD model to HTML (pure; unit tested). */
 export function hudHtml(m: HudModel): string {
   const turn = m.turnTeam
-    ? `<div class="turn" style="border-color:${safeColour(m.turnColour)}">${esc(m.turnTeam)}` +
+    ? `<div class="turn" style="border-color:${safeColour(m.turnColour)}">${teamMarkerHtml(m.turnColour)} ${esc(m.turnTeam)}` +
       `${m.turnSnail ? ` - ${esc(m.turnSnail)}` : ''}<span class="timer">${m.timerSeconds}</span></div>`
     : '';
   const bars = m.bars
     .map(
       (b) =>
-        `<div class="bar${b.active ? ' active' : ''}"><span>${esc(b.name)}</span>` +
+        `<div class="bar${b.active ? ' active' : ''}"><span>${teamMarkerHtml(b.colour)} ${esc(b.name)}</span>` +
         `<i style="width:${Math.round(b.fraction * 100)}%;background:${safeColour(b.colour)}"></i></div>`,
     )
     .join('');

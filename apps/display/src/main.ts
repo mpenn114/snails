@@ -3,6 +3,8 @@ import {
   QUALITY_TIERS,
   createAimHint,
   createGameView,
+  motionConfig,
+  resolveReducedMotion,
   pickDefaultTier,
 } from '@snails/render';
 import { injectTheme } from '@snails/render';
@@ -36,10 +38,14 @@ function chooseTier(): QualityTier {
 }
 
 const tier = chooseTier();
+const motion = motionConfig(
+  resolveReducedMotion(location.search, matchMedia('(prefers-reduced-motion: reduce)').matches),
+);
 const renderer = new MatchRenderer({
   now: () => performance.now(),
   modelBaseUrl: `${import.meta.env.BASE_URL}models/`,
   terrainTextures: TERRAIN_TEXTURES,
+  rigOptions: { panSlowdown: motion.panSlowdown },
   makeView: ({ bounds, waterLevel }) =>
     createGameView(canvas, { tier, terrainBounds: bounds, waterLevel, postProcessing: true }),
 });

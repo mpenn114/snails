@@ -23,6 +23,7 @@ export * from './camera/damping.js';
 export * from './camera/camera-pose.js';
 export * from './camera/follow-tracker.js';
 export * from './camera/camera-rig.js';
+export * from './camera/motion.js';
 export * from './camera/camera-input-binding.js';
 export * from './environment/index.js';
 export * from './terrain/terrain-replica.js';

@@ -1,4 +1,5 @@
 import type { ServerMessage } from '@snails/protocol';
+import { teamGlyphForColour } from '@snails/render';
 import type { ControllerClient } from '../net/client';
 import { deriveView, initialSpectate, reduceSpectate } from './spectate-model';
 import { SLOT_LEFT, SLOT_TOP } from '../shell/layers';
@@ -32,7 +33,9 @@ function paint(q: (sel: string) => HTMLElement, v: SpectateView): void {
   const banner = q('.spec-banner');
   banner.style.display = v.kind === 'waiting' || v.kind === 'myTurn' ? '' : 'none';
   banner.style.setProperty('--c', v.colour ?? '#888');
-  q('.spec-title').textContent = v.kind === 'myTurn' ? 'Your turn!' : v.title;
+  const glyph = teamGlyphForColour(v.colour);
+  const title = v.kind === 'myTurn' ? 'Your turn!' : v.title;
+  q('.spec-title').textContent = glyph ? `${glyph} ${title}` : title;
   q('.spec-hint').textContent = v.hint;
   const hp = q('.spec-hp');
   hp.style.display = v.kind === 'hidden' ? 'none' : '';

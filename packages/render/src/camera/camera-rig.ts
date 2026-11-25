@@ -64,6 +64,8 @@ export interface CameraRigOptions {
   heightAt?: (x: number, z: number) => number;
   /** Shot used when entering cinematic mode. */
   shot?: CinematicShot;
+  /** Multiplies every smoothing time (reduced motion slows pans); default 1. */
+  panSlowdown?: number;
 }
 
 const DEFAULT_LIMITS: PoseLimits = {
@@ -204,6 +206,10 @@ export class CameraRig {
   }
 
   private smoothTime(): number {
+    return this.baseSmoothTime() * Math.max(1, this.opts.panSlowdown ?? 1);
+  }
+
+  private baseSmoothTime(): number {
     const o = this.opts;
     if (this.transitionLeft > 0) return o.transitionSmoothTime ?? 0.6;
     if (this.currentMode === 'free') return o.freeSmoothTime ?? 0.12;

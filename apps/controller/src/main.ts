@@ -8,6 +8,7 @@ import { registerServiceWorker } from './pwa/register-sw';
 import { installTouchGuards, safeStorage } from './platform/ios';
 import { createMatchShell } from './shell/match-shell';
 import { bindPageLifecycle } from './net/lifecycle';
+import { mountA11yPanel } from './ui/a11y-panel';
 
 injectTheme(document);
 if (import.meta.env.PROD) void registerServiceWorker(navigator);
@@ -16,6 +17,7 @@ const screen = document.getElementById('screen') as HTMLElement;
 
 installTouchGuards(document);
 const storage = safeStorage();
+mountA11yPanel(document, storage, matchMedia('(prefers-reduced-motion: reduce)'));
 const stored = loadSession(storage);
 const initial = {
   name: stored?.name ?? '',
