@@ -14,6 +14,7 @@ import {
   type QualityTier,
 } from '@snails/render';
 import { HARNESS_WEAPON, harnessMatchOptions } from './fake-server';
+import { reviewKind, reviewTeamCount, setupReview } from './review-scene';
 import { TERRAIN_TEXTURES } from '../terrain-textures';
 
 /** Fixed camera framings for reference screenshots. */
@@ -29,6 +30,8 @@ const AFTER_BLAST_TICKS = 20;
 const MAX_BLAST_TICKS = 4000;
 /** Rendered frames (simulated 60 fps) after the scene is built, before ready. */
 const SETTLE_FRAMES = 20;
+/** Extra frames in review scenes so the 0.8 s shell tier dissolve has finished. */
+const TIER_DISSOLVE_FRAMES = 60;
 /** Frames of explosion effects shown in the crater shot. */
 const EXPLOSION_FRAMES = 14;
 const FRAME_MS = 1000 / 60;
@@ -261,6 +264,19 @@ function applyFakeResearch(
   ]);
 }
 
+/** `?react=hit|fire|scare|cheer|sad` shows an expression on the first snail (`reactFrames` frames). */
+async function applyReact(
+  renderer: MatchRenderer,
+  params: URLSearchParams,
+  snailId: string | undefined,
+  frame: (ms: number) => Promise<void>,
+): Promise<void> {
+  const react = params.get('react');
+  if (!react || !snailId) return;
+  renderer.snailLayer?.get(snailId)?.react(react as 'hit', 1);
+  for (let i = 0; i < num(params.get('reactFrames'), 10); i++) await frame(FRAME_MS);
+}
+
 /** Runs one deterministic screenshot scene. */
 /**
  * Deterministic capture mode (`?shot=1&cam=close|wide|crater|flight|aim&seed=&quality=`). Time is
@@ -277,21 +293,22 @@ export async function runShot(canvas: HTMLCanvasElement, params: URLSearchParams
   renderer.setTier(tier);
   renderer.resize(window.innerWidth, window.innerHeight);
 
-  const options = harnessMatchOptions({ seed, teams: 3, snailsPerTeam: 3 });
+  const review = reviewKind(params);
+  const options = harnessMatchOptions(
+    review
+      ? { seed, teams: reviewTeamCount(review), snailsPerTeam: 1 }
+      : { seed, teams: 3, snailsPerTeam: 3 },
+  );
   const sim = createMatch(options).sim;
   renderer.init({ grid: sim.terrain, waterLevel: sim.state.terrain.waterLevel });
   await Promise.all([renderer.terrainTexturesReady, renderer.view?.postReady]);
   const bots = options.teams.map((t) => createScriptedBot(t.id, HARNESS_WEAPON));
   const fl = cam === 'flight' ? stepFlight(sim, bots) : null;
-  const { events, blast: sceneBlast } = fl
-    ? { events: [], blast: fl.at }
-    : stepScene(sim, cam, bots);
-  const blast = sceneBlast;
+  const { events, blast } = fl ? { events: [], blast: fl.at } : stepScene(sim, cam, bots);
 
   const active = sim.state.teams[0]?.snails[0];
   const snail = active?.position ?? { x: 0, y: 0, z: 0 };
-  const aimInput = { snailId: active?.id ?? '', launch: HARNESS_WEAPON.launch, ...AIM };
-  const pose = poseFor(cam, sim, blast, params);
+  const pose = review ? setupReview(review, sim, renderer) : poseFor(cam, sim, blast, params);
   installShotCamera(renderer, pose);
 
   const propsSettled = (): boolean => renderer.propLayer?.settled ?? true;
@@ -306,7 +323,7 @@ export async function runShot(canvas: HTMLCanvasElement, params: URLSearchParams
       isSolid: (p) => renderer.terrainReplica?.grid.isSolid(p) ?? false,
     });
     renderer.addLayer(hint.layer);
-    hint.set(aimInput);
+    hint.set({ snailId: active?.id ?? '', launch: HARNESS_WEAPON.launch, ...AIM });
   }
   if (params.has('research'))
     applyFakeResearch(renderer, sim, params.get('research') === 'shimmer');
@@ -322,16 +339,14 @@ export async function runShot(canvas: HTMLCanvasElement, params: URLSearchParams
     // Replay the flight into the trail, then render without advancing time so puffs stay fresh.
     for (const ps of fl.flight) renderer.projectileLayer?.sync(ps, FIXED_DT);
     for (let i = 0; i < 3; i++) await frame(0);
-  } else for (let i = 0; i < SETTLE_FRAMES; i++) await frame(FRAME_MS);
-  // ?react=hit|fire|scare|cheer|sad shows an expression on the first snail (frames of 60 fps).
-  const react = params.get('react');
-  if (react && active) {
-    renderer.snailLayer?.get(active.id)?.react(react as 'hit', 1);
-    for (let i = 0; i < num(params.get('reactFrames'), 10); i++) await frame(FRAME_MS);
-  }
+  } else
+    for (let i = 0; i < SETTLE_FRAMES + (review ? TIER_DISSOLVE_FRAMES : 0); i++)
+      await frame(FRAME_MS);
+  await applyReact(renderer, params, active?.id, frame);
   await settle();
   await frame(0);
-  const w = window as unknown as ShotWindow;
-  w.__shotInfo = { cam, tier, seed, blast, snail };
-  w.__shotReady = true;
+  Object.assign(window as unknown as ShotWindow, {
+    __shotInfo: { cam, tier, seed, blast, snail },
+    __shotReady: true,
+  });
 }
