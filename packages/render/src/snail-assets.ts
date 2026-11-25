@@ -103,14 +103,13 @@ export class SnailAssets {
     this.eyeMat = createToonMaterial({ color: 0xffffff, vertexColors: true, tier: this.tier });
   }
 
-  /** Shared shell material for a team colour, pattern id and damage step (cached). */
+  /** Shared shell material for a team colour, pattern id and look (cached; crack damage is per snail, see SnailMesh). */
   shellMaterial(
     colour: number,
     pattern: number,
-    damageStep = 0,
     kind: ShellMaterialKind | null = null,
   ): THREE.MeshToonMaterial {
-    const opts = { colour, pattern, damageStep, kind, tier: this.tier };
+    const opts = { colour, pattern, kind, tier: this.tier };
     const key = shellMaterialKey(opts);
     let m = this.shellMats.get(key);
     if (!m) {
@@ -118,6 +117,19 @@ export class SnailAssets {
       this.shellMats.set(key, m);
     }
     return m;
+  }
+
+  /**
+   * Fresh (uncached) shell material owned by one snail so it can carry its own crack-damage
+   * uniform. All such materials share one shader program (same program cache key).
+   */
+  ownedShellMaterial(
+    colour: number,
+    pattern: number,
+    kind: ShellMaterialKind | null,
+    damage: number,
+  ): THREE.MeshToonMaterial {
+    return createShellMaterial({ colour, pattern, kind, damage, tier: this.tier });
   }
 
   /** Number of distinct shell materials created so far. */
