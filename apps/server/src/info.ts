@@ -15,6 +15,10 @@ export interface ServerInfo {
   lanIps: string[];
   /** Address phones should use (override or best candidate). */
   primaryIp: string;
+  /** True when a real LAN address was found or explicitly configured (not the loopback fallback). */
+  lanFound: boolean;
+  /** Host OS as reported by `process.platform` (e.g. `win32`, `darwin`, `linux`). */
+  platform: string;
   /** Port the server listens on. */
   port: number;
   /** Base URL phones open to reach the controller. */
@@ -67,6 +71,8 @@ export function buildServerInfo(opts: ServerInfoOptions): ServerInfo {
     protocolVersion: PROTOCOL_VERSION,
     lanIps,
     primaryIp,
+    lanFound: detected.length > 0 || Boolean(opts.publicHost?.trim()),
+    platform: process.platform,
     port: opts.port,
     joinUrl: `http://${primaryIp}:${opts.port}/`,
   };

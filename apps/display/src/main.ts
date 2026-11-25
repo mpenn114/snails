@@ -19,6 +19,7 @@ import type { QualityTier } from '@snails/render';
 injectTheme(document);
 import { DisplayClient, relativeWsUrl } from './net/client';
 import { fetchInfo, buildJoinUrl } from './lobby/lobby-logic';
+import { mountHelpPanel } from './lobby/help-panel';
 import { mountLobbyScreen } from './lobby/lobby-view';
 import type { LobbyModel } from './lobby/lobby-view';
 import { MatchAdapter } from './match/match-adapter';
@@ -66,6 +67,7 @@ const aimHint = createAimHint({
 renderer.addLayer(aimHint.layer);
 const hud = mountHud(document.getElementById('lobby-root') as HTMLElement);
 const lobby = mountLobbyScreen(document.getElementById('lobby-root') as HTMLElement);
+const help = mountHelpPanel(document.getElementById('lobby-root') as HTMLElement);
 const banner = mountBanner(document.getElementById('lobby-root') as HTMLElement);
 const techs = new Map(technologies.map((t) => [t.id, t]));
 renderer.setTechVisuals((id) => techs.get(id)?.visual);
@@ -99,9 +101,11 @@ client.onMessage = (m) => {
         settings: m.settings,
       };
       lobby.update(model);
+      help.update(i, m.roomCode);
     });
   } else if (m.type === 'matchStarted') {
     lobby.hide();
+    help.hide();
   }
 };
 client.connect();
