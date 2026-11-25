@@ -9,7 +9,7 @@ weapons, armour and mobility. CPU players can fill empty seats.
 ## Quickstart (players)
 
 1. Download the installer for your OS from the [GitHub Releases](https://github.com/mpenn114/snails/releases) page: `.exe` (Windows), `.dmg` (macOS) or `.AppImage` (Linux).
-2. Install and launch it. The builds are unsigned, so Windows SmartScreen and macOS Gatekeeper warn on first launch; see [docs/install.md](docs/install.md) for the workarounds and [docs/troubleshooting.md](docs/troubleshooting.md) if something goes wrong. Allow network access when the firewall asks.
+2. Install and launch it. The builds are unsigned, so Windows SmartScreen and macOS Gatekeeper warn on first launch; see [docs/troubleshooting.md](docs/troubleshooting.md#installing-an-unsigned-build) for the workarounds and for help if something goes wrong. Allow network access when the firewall asks.
 3. Put the host window on the TV. Each player scans the QR code with their phone camera (phones on the same Wi-Fi as the host, no app needed).
 4. Pick a name and team, tap Ready, and play.
 

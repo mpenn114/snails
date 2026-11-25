@@ -37,4 +37,4 @@ First playable release.
 ### Notes
 
 - Installers are unsigned, so Windows SmartScreen and macOS Gatekeeper warn on first launch. See
-  `docs/install.md`.
+  `docs/troubleshooting.md`.

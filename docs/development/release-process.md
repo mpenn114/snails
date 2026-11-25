@@ -50,7 +50,7 @@ Versions come from the tag; there is nothing to bump in the repo.
 4. Tag the merge commit and push the tag: `git switch main && git pull && git tag vX.Y.Z && git push origin vX.Y.Z`. For a trial use `vX.Y.Z-rc.1` (pre-release).
 5. Watch the Release workflow: three build jobs plus `publish`. A failed smoke test blocks publishing.
 6. Open the GitHub release page and check: installers for Windows (`.exe`), macOS (`.dmg`), Linux (`.AppImage`), `SHA256SUMS.txt`, the changelog section at the top, and the pre-release flag only for `-` tags.
-7. On a real machine, download an installer, verify it (`sha256sum -c SHA256SUMS.txt`), install, launch, and join from a phone on the same Wi-Fi (see [install.md](../install.md)). Ideally cover at least one OS besides the one you develop on.
+7. On a real machine, download an installer, verify it (`sha256sum -c SHA256SUMS.txt`), install, launch, and join from a phone on the same Wi-Fi (see [troubleshooting.md](../troubleshooting.md)). Ideally cover at least one OS besides the one you develop on.
 
 ## Retracting a bad release
 
