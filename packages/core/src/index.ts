@@ -71,6 +71,7 @@ export * from './terrain/demo-map.js';
 export * from './combat/combat.js';
 export * from './rules/hazards.js';
 export * from './rules/win.js';
+export * from './rules/hill.js';
 export * from './rules/match-settings.js';
 export * from './rules/sudden-death.js';
 export * from './sim/match.js';

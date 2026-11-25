@@ -2,9 +2,16 @@ import * as THREE from 'three';
 import { PALETTE } from '../style/palette.js';
 import { createToonMaterial } from '../style/materials.js';
 import type { ShellLook } from './shell-look.js';
+import {
+  ATTACHMENT_REGISTRY,
+  attachmentDef,
+  attachmentGeometry,
+  decalGeometry,
+  decalIndexForTeam,
+} from './shell-attachments.js';
 
 /** Attachment names the renderer can draw; unknown names are ignored. */
-export const KNOWN_ATTACHMENTS: readonly string[] = ['spikes', 'plates'];
+export const KNOWN_ATTACHMENTS: readonly string[] = Object.keys(ATTACHMENT_REGISTRY);
 
 /** Local-space placement of one attachment instance on the shell. */
 export interface AttachmentSpot {
@@ -23,14 +30,19 @@ export function attachmentSpots(count: number, r: number): AttachmentSpot[] {
 
 /**
  * Per-snail research decoration parented to the shell mesh: low-poly attachments and a soft
- * additive shimmer/glow shell. Geometry is tiny and owned per instance.
+ * additive shimmer/glow shell. Piece geometry is shared (see shell-attachments).
  */
 export class ShellExtras {
   /** Attach to the shell mesh. */
   readonly group = new THREE.Group();
   private readonly pieces = new THREE.Group();
-  private readonly spikeGeo = new THREE.ConeGeometry(0.1, 0.34, 5);
-  private readonly plateGeo = new THREE.BoxGeometry(0.34, 0.1, 0.1);
+  private readonly decal = new THREE.Group();
+  private readonly decalMat = new THREE.MeshBasicMaterial({ side: THREE.DoubleSide });
+  private lookNames: string[] = [];
+  private detail = true;
+  private flag = false;
+  private decalKey = '';
+  private zMax = 0;
   private readonly pieceMat = createToonMaterial({ color: PALETTE.rock, flat: true });
   private readonly glowMat = new THREE.MeshBasicMaterial({
     color: PALETTE.uiPaper,
@@ -53,28 +65,79 @@ export class ShellExtras {
     this.glowMesh.visible = false;
     this.glowMesh.name = 'shell-glow';
     this.group.name = 'shell-extras';
-    this.group.add(this.pieces, this.glowMesh);
+    this.group.add(this.pieces, this.decal, this.glowMesh);
     shellGeo.computeBoundingBox();
     const box = shellGeo.boundingBox ?? new THREE.Box3();
     this.radius = Math.max(box.max.y - box.min.y, 0.5) * 0.5;
     box.getCenter(this.centre);
+    this.zMax = box.max.z;
   }
 
   /** Rebuilds attachments and glow for a look. Cheap; call only when the look changed. */
   setLook(look: ShellLook): void {
-    this.pieces.clear();
-    for (const name of look.attachments.filter((a) => KNOWN_ATTACHMENTS.includes(a))) {
-      const spikes = name === 'spikes';
-      for (const s of attachmentSpots(spikes ? 6 : 4, this.radius * (spikes ? 0.95 : 0.8))) {
-        const m = new THREE.Mesh(spikes ? this.spikeGeo : this.plateGeo, this.pieceMat);
-        m.position.set(...s.position).add(this.centre);
-        m.rotation.z = s.tilt + (spikes ? 0 : Math.PI / 2);
-        this.pieces.add(m);
-      }
-    }
+    this.lookNames = look.attachments;
+    this.rebuildPieces();
     this.glowBase = look.glow === null ? 0 : 0.22;
     this.glowMat.color.setHex(look.glow ?? PALETTE.uiPaper);
     this.refresh();
+  }
+
+  /**
+   * Shows the team decal (emblem on the last whorl, lighter tint of the team colour, shape from
+   * {@link decalIndexForTeam}); pass null to hide it. Doubles as a colour-blind cue.
+   */
+  setTeam(teamIndex: number | null, colour: number = PALETTE.uiPaper): void {
+    const key = teamIndex === null ? '' : `${teamIndex}|${colour}`;
+    if (key === this.decalKey) return;
+    this.decalKey = key;
+    this.decal.clear();
+    if (teamIndex === null) return;
+    this.decalMat.color.setHex(colour).lerp(new THREE.Color(0xffffff), 0.5);
+    const m = new THREE.Mesh(decalGeometry(decalIndexForTeam(teamIndex)), this.decalMat);
+    m.position.copy(this.centre).setZ(this.zMax + 0.01);
+    m.scale.setScalar(this.radius * 0.28);
+    this.decal.add(m);
+  }
+
+  /** Shows a small flag on the active snail (state-driven, not a tech attachment). */
+  setFlag(on: boolean): void {
+    if (on === this.flag) return;
+    this.flag = on;
+    this.rebuildPieces();
+  }
+
+  /** Low tiers pass false to cull attachments and the decal (glow stays). */
+  setDetail(on: boolean): void {
+    this.detail = on;
+    this.pieces.visible = on;
+    this.decal.visible = on;
+  }
+
+  /** Whether attachments and decal are drawn. */
+  get detailVisible(): boolean {
+    return this.detail;
+  }
+
+  private rebuildPieces(): void {
+    this.pieces.clear();
+    const names = this.flag ? [...this.lookNames, 'flag'] : this.lookNames;
+    const seen = new Set<string>();
+    for (const name of names) {
+      const def = attachmentDef(name);
+      if (!def || seen.has(def.kind)) continue;
+      seen.add(def.kind);
+      const r = this.radius * def.radius;
+      const spots =
+        def.count === 1
+          ? [{ position: [0, r, 0] as [number, number, number], tilt: 0 }]
+          : attachmentSpots(def.count, r);
+      for (const s of spots) {
+        const m = new THREE.Mesh(attachmentGeometry(def.kind), this.pieceMat);
+        m.position.set(...s.position).add(this.centre);
+        m.rotation.z = s.tilt + def.extraTilt;
+        this.pieces.add(m);
+      }
+    }
   }
 
   /** Turns the "researching" shimmer on or off. */
@@ -111,8 +174,7 @@ export class ShellExtras {
 
   /** Frees the per-snail geometry and materials (the shell geometry is shared and kept). */
   dispose(): void {
-    this.spikeGeo.dispose();
-    this.plateGeo.dispose();
+    this.decalMat.dispose();
     this.pieceMat.dispose();
     this.glowMat.dispose();
     this.group.removeFromParent();

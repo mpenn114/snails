@@ -10,6 +10,7 @@ import {
   evaluateTurnLimit,
   resolveDraw,
 } from '../rules/win.js';
+import { evaluateHill, scoreHill } from '../rules/hill.js';
 
 /** Durations (seconds) and thresholds for the turn state machine. */
 export interface TurnConfig {
@@ -159,9 +160,15 @@ function endMatch(state: GameState, status: MatchStatus, emit: Emit): void {
 
 function endTurn(state: GameState, config: TurnConfig, emit: Emit, wind?: TurnWind): void {
   emit({ type: 'turnEnded', teamId: state.turn.activeTeamId, turnNumber: state.turn.turnNumber });
+  scoreHill(state, state.turn.activeTeamId, emit);
   const elimination = resolveDraw(state, evaluateMatch(state));
+  const hill = evaluateHill(state);
   const outcome =
-    elimination.status === 'playing' ? evaluateTurnLimit(state, config.maxTurns) : elimination;
+    hill.status !== 'playing'
+      ? hill
+      : elimination.status === 'playing'
+        ? evaluateTurnLimit(state, config.maxTurns)
+        : elimination;
   if (outcome.status !== 'playing') {
     endMatch(state, outcome, emit);
     return;

@@ -1,6 +1,6 @@
 import type { ControllerClient } from '../net/client';
 import { safeStorage } from '../platform/ios';
-import { audioContextFactory, createAudioEngine } from './audio';
+import { AUDIO_CHANGED_EVENT, audioContextFactory, createAudioEngine } from './audio';
 import type { AudioWindow } from './audio';
 import { createCuePlanner } from './cues';
 import { BTN_CLASS, SLOT_RIGHT } from '../shell/layers';
@@ -59,8 +59,14 @@ export function mountFeedback(
   });
   label();
   (document.getElementById(SLOT_RIGHT) ?? parent).append(btn);
+  const onAudioChanged = (): void => {
+    audio.syncFromStorage();
+    label();
+  };
+  window.addEventListener(AUDIO_CHANGED_EVENT, onAudioChanged);
 
   return () => {
+    window.removeEventListener(AUDIO_CHANGED_EVENT, onAudioChanged);
     offs.forEach((off) => off());
     GESTURES.forEach((g) => window.removeEventListener(g, unlock, true));
     document.removeEventListener('visibilitychange', onVisible);

@@ -1,5 +1,6 @@
 import type { LobbyPlayer, MatchSettings } from '@snails/protocol';
 import { groupByTeam, readyCount, settingsChips } from './lobby-logic';
+import { teamMarkerHtml } from '@snails/render';
 import { encodeQr, qrToSvg } from './qr';
 
 /** Data the lobby screen renders. */
@@ -27,7 +28,7 @@ function safeColour(c: string | null): string {
 }
 
 function playerRow(p: LobbyPlayer): string {
-  const dot = `<span class="dot" style="background:${safeColour(p.colour)}"></span>`;
+  const dot = `<span class="dot" style="background:${safeColour(p.colour)}"></span>${teamMarkerHtml(p.colour)}`;
   const state = p.connected ? (p.ready ? 'ready' : 'waiting') : 'offline';
   const badge = p.cpu ? ' <span class="badge cpu">CPU</span>' : '';
   return `<li>${dot}${esc(p.name)}${badge} <em>${state}</em></li>`;

@@ -52,7 +52,6 @@ export class SnailAssets {
   /** Torso with tail and head (vertex colours). */
   readonly body: THREE.BufferGeometry;
   readonly ring = new THREE.RingGeometry(0.7, 0.85, 24);
-  readonly grave = new THREE.BoxGeometry(0.4, 0.6, 0.15);
   /** Quad anchored at its left edge (scale.x = fraction). */
   readonly barFill = new THREE.PlaneGeometry(BAR_WIDTH, 0.12).translate(BAR_WIDTH / 2, 0, 0);
   readonly barBack = new THREE.PlaneGeometry(BAR_WIDTH + 0.06, 0.18).translate(
@@ -69,7 +68,6 @@ export class SnailAssets {
     transparent: true,
     opacity: 0.9,
   });
-  readonly graveMat = createToonMaterial({ color: PALETTE.rock, flat: true });
   readonly barBackMat = new THREE.MeshBasicMaterial({
     color: PALETTE.uiInk,
     depthTest: false,
@@ -103,14 +101,13 @@ export class SnailAssets {
     this.eyeMat = createToonMaterial({ color: 0xffffff, vertexColors: true, tier: this.tier });
   }
 
-  /** Shared shell material for a team colour, pattern id and damage step (cached). */
+  /** Shared shell material for a team colour, pattern id and look (cached; crack damage is per snail, see SnailMesh). */
   shellMaterial(
     colour: number,
     pattern: number,
-    damageStep = 0,
     kind: ShellMaterialKind | null = null,
   ): THREE.MeshToonMaterial {
-    const opts = { colour, pattern, damageStep, kind, tier: this.tier };
+    const opts = { colour, pattern, kind, tier: this.tier };
     const key = shellMaterialKey(opts);
     let m = this.shellMats.get(key);
     if (!m) {
@@ -118,6 +115,19 @@ export class SnailAssets {
       this.shellMats.set(key, m);
     }
     return m;
+  }
+
+  /**
+   * Fresh (uncached) shell material owned by one snail so it can carry its own crack-damage
+   * uniform. All such materials share one shader program (same program cache key).
+   */
+  ownedShellMaterial(
+    colour: number,
+    pattern: number,
+    kind: ShellMaterialKind | null,
+    damage: number,
+  ): THREE.MeshToonMaterial {
+    return createShellMaterial({ colour, pattern, kind, damage, tier: this.tier });
   }
 
   /** Number of distinct shell materials created so far. */
@@ -137,17 +147,10 @@ export class SnailAssets {
 
   /** Frees all shared GPU resources. */
   dispose(): void {
-    const geos = [
-      this.body,
-      this.ring,
-      this.grave,
-      ...this.parts.stalks,
-      this.parts.pupil,
-      this.parts.lid,
-    ];
+    const geos = [this.body, this.ring, ...this.parts.stalks, this.parts.pupil, this.parts.lid];
     for (const g of [...geos, ...this.shells.values(), this.barFill, this.barBack]) g.dispose();
     this.shells.clear();
-    const mats = [this.bodyMat, this.eyeMat, this.ringMat, this.graveMat];
+    const mats = [this.bodyMat, this.eyeMat, this.ringMat];
     for (const m of [...mats, ...this.shellMats.values()]) m.dispose();
     this.barBackMat.dispose();
     this.barFillMat.dispose();

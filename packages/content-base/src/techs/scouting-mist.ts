@@ -16,5 +16,5 @@ export const scoutingMist: TechnologyDefinition = {
       flag: 'seeOpponentResearch',
     },
   ],
-  visual: { glow: 'eye-glow' },
+  visual: { glow: 'eye-glow', attachments: ['antenna'] },
 };

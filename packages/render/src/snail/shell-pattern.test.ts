@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { describe, expect, it } from 'vitest';
 import { TEAM_COLORS } from '../style/palette.js';
-import { createShellMaterial, shellMaterialKey } from './shell-material.js';
+import { createShellMaterial, shellDamageUniform, shellMaterialKey } from './shell-material.js';
 import {
   SHELL_PATTERNS,
   lipColour,
@@ -41,15 +41,22 @@ describe('shell patterns', () => {
     expect(lipColour(dark).getHex()).not.toBe(dark.getHex());
   });
 
-  it('keys materials by colour, pattern and damage', () => {
-    const k = (colour: number, pattern: number, damageStep = 0): string =>
-      shellMaterialKey({ colour, pattern, damageStep });
+  it('keys materials by colour and pattern, not damage; damage is a uniform', () => {
+    const k = (colour: number, pattern: number, damage = 0): string =>
+      shellMaterialKey({ colour, pattern, damage });
     expect(k(1, 0)).toBe(k(1, 8));
     expect(k(1, 0)).not.toBe(k(1, 1));
     expect(k(1, 0)).not.toBe(k(2, 0));
-    expect(k(1, 0)).not.toBe(k(1, 0, 2));
-    const m = createShellMaterial({ colour: 0xff0000, pattern: 2, damageStep: 4 });
-    expect(m.color.r).toBeLessThan(1);
+    expect(k(1, 0)).toBe(k(1, 0, 1));
+    const m = createShellMaterial({ colour: 0xff0000, pattern: 2, damage: 1 });
+    expect(shellDamageUniform(m).value).toBe(1);
     m.dispose();
+  });
+  it('uses the cheap shell shader on the low and mobile tiers', () => {
+    const key = (tier: 'high' | 'medium' | 'low' | 'mobile') =>
+      createShellMaterial({ colour: 0xff0000, pattern: 0, tier }).customProgramCacheKey();
+    expect(key('mobile')).toMatch(/^shell-lo-/);
+    expect(key('low')).toMatch(/^shell-lo-/);
+    expect(key('medium')).toMatch(/^shell-hi-/);
   });
 });

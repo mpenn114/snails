@@ -37,6 +37,7 @@ const SUDDEN_TYPE: readonly Option[] = [
 const MODE: readonly Option[] = [
   ['elimination', 'Elimination'],
   ['researchRace', 'Research race'],
+  ['kingOfTheHill', 'King of the Hill'],
 ];
 const FALL: readonly Option[] = [
   ['off', 'Off'],

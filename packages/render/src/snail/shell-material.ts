@@ -2,6 +2,15 @@ import * as THREE from 'three';
 import type { QualityTier } from '../quality.js';
 import { createToonMaterial } from '../style/materials.js';
 import type { ShellMaterialKind } from '../research/shell-look.js';
+import { CRACK_COLOR, CRACK_EMISSIVE, crackDecl } from './crack-shader.js';
+import {
+  TIER_COLOR,
+  TIER_EMISSIVE,
+  makeTierUniforms,
+  tierDecl,
+  tierOfKind,
+  type TierUniforms,
+} from './shell-tier.js';
 import { LIP_START, lipColour, patternTint, shellPatternForTeam } from './shell-pattern.js';
 
 const VERTEX_DECL = /* glsl */ `
@@ -58,11 +67,31 @@ const FRAGMENT_COLOR = /* glsl */ `
   diffuseColor.rgb = mix(diffuseColor.rgb, uPatternColor, m);
   float lip = edge(vSpiral, ${LIP_START.toFixed(3)});
   diffuseColor.rgb = mix(diffuseColor.rgb, uLipColor, lip);
+  ${TIER_COLOR}
+  ${CRACK_COLOR}
 }
 `;
 
-/** Quantised damage step (0..DAMAGE_STEPS) used to share darkened materials between snails. */
-export const DAMAGE_STEPS = 4;
+/** Exposed-flesh emissive tint under the broken section at critical damage. */
+const FLESH_COLOR = 0xd9534f;
+
+/** Shell materials expose their live damage uniform here (`material.userData`). */
+export interface ShellMaterialData {
+  /** Displayed damage 0..1; write `.value` each frame, no recompile needed. */
+  damageUniform: { value: number };
+  /** Tier / dissolve uniforms (see shell-tier). */
+  tier: TierUniforms;
+}
+
+/** The tier uniforms of a material made by {@link createShellMaterial}. */
+export function shellTierUniforms(m: THREE.Material): TierUniforms {
+  return (m.userData as ShellMaterialData).tier;
+}
+
+/** The damage uniform of a material made by {@link createShellMaterial}. */
+export function shellDamageUniform(m: THREE.Material): { value: number } {
+  return (m.userData as ShellMaterialData).damageUniform;
+}
 
 /** Tint, blend amount and emissive of each research shell material (palette-derived). */
 export const MATERIAL_LOOKS: Record<
@@ -81,8 +110,8 @@ export interface ShellMaterialOptions {
   colour: number;
   /** Pattern id (see SHELL_PATTERNS); wrapped into range. */
   pattern: number;
-  /** Damage step 0..{@link DAMAGE_STEPS}; darkens the shell. */
-  damageStep?: number;
+  /** Initial displayed damage 0..1 (cracks; changed later through the damage uniform). */
+  damage?: number;
   /** Research material variant (absent = plain team shell). */
   kind?: ShellMaterialKind | null;
   /** Quality tier (default high). */
@@ -91,13 +120,7 @@ export interface ShellMaterialOptions {
 
 /** Cache key identifying a shell material, so snails of equal look share one instance. */
 export function shellMaterialKey(o: ShellMaterialOptions): string {
-  return [
-    o.colour,
-    shellPatternForTeam(o.pattern),
-    o.damageStep ?? 0,
-    o.kind ?? '-',
-    o.tier ?? 'high',
-  ].join('|');
+  return [o.colour, shellPatternForTeam(o.pattern), o.kind ?? '-', o.tier ?? 'high'].join('|');
 }
 
 /**
@@ -107,7 +130,9 @@ export function shellMaterialKey(o: ShellMaterialOptions): string {
  */
 export function createShellMaterial(o: ShellMaterialOptions): THREE.MeshToonMaterial {
   const base = new THREE.Color(o.colour);
-  const dim = 1 - 0.5 * ((o.damageStep ?? 0) / DAMAGE_STEPS);
+  const damageUniform = { value: o.damage ?? 0 };
+  // Phones (`mobile`) and Low share the cheap shader: no noise warp, no hairlines, no facets.
+  const cheap = o.tier === 'low' || o.tier === 'mobile';
   const pattern = shellPatternForTeam(o.pattern);
   const material = createToonMaterial({
     color: o.colour,
@@ -115,21 +140,21 @@ export function createShellMaterial(o: ShellMaterialOptions): THREE.MeshToonMate
     rim: 0.3,
     ...(o.tier ? { tier: o.tier } : {}),
   });
-  const look = o.kind ? MATERIAL_LOOKS[o.kind] : null;
-  if (look) {
-    material.color.lerp(new THREE.Color(look.tint), look.mix);
-    material.emissive.set(look.emissive);
-    material.emissiveIntensity = look.emissiveIntensity;
-  }
-  material.color.multiplyScalar(dim);
-  const patternColor = patternTint(look ? material.color : base).multiplyScalar(look ? 1 : dim);
-  const lipColor = lipColour(base).multiplyScalar(0.5 + 0.5 * dim);
+  const tier = makeTierUniforms(tierOfKind(o.kind));
+  material.userData = { damageUniform, tier } satisfies ShellMaterialData;
+  const patternColor = patternTint(base);
+  const lipColor = lipColour(base);
   const rimPatch = material.onBeforeCompile;
   material.onBeforeCompile = (shader, renderer) => {
     rimPatch(shader, renderer);
     shader.uniforms.uPattern = { value: pattern };
     shader.uniforms.uPatternColor = { value: patternColor };
     shader.uniforms.uLipColor = { value: lipColor };
+    shader.uniforms.uDamage = damageUniform;
+    shader.uniforms.uTierFrom = tier.from;
+    shader.uniforms.uTierTo = tier.to;
+    shader.uniforms.uTierProg = tier.progress;
+    shader.uniforms.uFleshColor = { value: new THREE.Color(FLESH_COLOR) };
     shader.vertexShader = shader.vertexShader
       .replace('#include <common>', `#include <common>\n${VERTEX_DECL}`)
       .replace(
@@ -137,10 +162,14 @@ export function createShellMaterial(o: ShellMaterialOptions): THREE.MeshToonMate
         '#include <begin_vertex>\nvSpiral = aSpiral;\nvAround = aAround;',
       );
     shader.fragmentShader = shader.fragmentShader
-      .replace('#include <common>', `#include <common>\n${FRAGMENT_DECL}`)
-      .replace('#include <color_fragment>', FRAGMENT_COLOR);
+      .replace(
+        '#include <common>',
+        `#include <common>\n${FRAGMENT_DECL}${crackDecl(cheap)}${tierDecl(cheap)}`,
+      )
+      .replace('#include <color_fragment>', FRAGMENT_COLOR)
+      .replace('#include <emissivemap_fragment>', CRACK_EMISSIVE + TIER_EMISSIVE);
   };
   const rimKey = material.customProgramCacheKey.bind(material);
-  material.customProgramCacheKey = () => `shell-${rimKey()}`;
+  material.customProgramCacheKey = () => `shell-${cheap ? 'lo' : 'hi'}-${rimKey()}`;
   return material;
 }

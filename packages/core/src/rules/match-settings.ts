@@ -12,8 +12,8 @@ export const WIND_SETTINGS = ['off', 'low', 'normal', 'storm'] as const;
 export const CRATE_SETTINGS = ['off', 'rare', 'normal', 'frequent'] as const;
 /** Sudden-death types: rising water, health drain, or both (the game-design default). */
 export const SUDDEN_DEATH_TYPES = ['water', 'drain', 'both'] as const;
-/** Game modes: last team standing, or the first capstone technology wins. */
-export const GAME_MODES = ['elimination', 'researchRace'] as const;
+/** Game modes: last team standing, first capstone technology, or hold the zone. */
+export const GAME_MODES = ['elimination', 'researchRace', 'kingOfTheHill'] as const;
 /** Fall damage presets. */
 export const FALL_DAMAGE_SETTINGS = ['off', 'on', 'high'] as const;
 

@@ -10,6 +10,7 @@ import { SplashEffects } from './effects/splash-effects.js';
 import { createWindParticles, type WindParticles } from './environment/wind-particles.js';
 import { ScheduledLayer } from './effects/scheduled-layer.js';
 import { AreaLayer } from './effects/area-layer.js';
+import { HillLayer } from './effects/hill-layer.js';
 import { StrandEffects } from './effects/strand-effects.js';
 import { CrateLayer } from './effects/crate-layer.js';
 import { ProjectileLayer } from './effects/projectile-layer.js';
@@ -107,6 +108,7 @@ interface Built {
   snails: SnailLayer;
   projectiles: ProjectileLayer;
   areas: AreaLayer;
+  hill: HillLayer;
   strands: StrandEffects;
   scheduled: ScheduledLayer;
   crates: CrateLayer;
@@ -206,20 +208,22 @@ export class MatchRenderer {
     terrain.markAllDirty();
     view.roots.terrain.add(terrain.group);
     const snails = this.makeSnails(view);
+    snails.setWaterLevel(waterLevel);
     const projectiles = new ProjectileLayer({ shadows: q.shadows, quality: q.particleScale });
     const areas = new AreaLayer();
     const strands = this.makeStrands(q.particleScale);
     const [scheduled, crates] = [new ScheduledLayer(), new CrateLayer()];
+    const hill = new HillLayer();
     const explosions = this.makeExplosions(q.particleScale, q.maxDynamicLights);
     const props = this.makeProps(grid, waterLevel, q.propCount, q.shadows);
-    view.roots.entities.add(snails.group, ...(props ? [props.group] : []));
+    view.roots.entities.add(snails.group, snails.debrisGroup, ...(props ? [props.group] : []));
     const splashes = this.makeSplashes(view, source, waterLevel);
     const wind = this.makeWind(grid, q.particleScale);
     const unlock = this.makeUnlock(view, snails);
     const effects = [projectiles, areas, scheduled, explosions, splashes, strands, crates].map(
       (l) => l.group,
     );
-    view.roots.effects.add(...effects, wind.object);
+    view.roots.effects.add(...effects, hill.group, wind.object);
     const rig = createRig(view.camera, grid, this.deps.rigOptions);
     const built: Built = {
       view,
@@ -228,6 +232,7 @@ export class MatchRenderer {
       snails,
       projectiles,
       areas,
+      hill,
       strands,
       scheduled,
       crates,
@@ -312,6 +317,7 @@ export class MatchRenderer {
     if (b.props) add(b.props.updater);
     add(b.projectiles.updater);
     add(b.areas.updater);
+    add(b.hill.updater);
     add(b.strands.updater);
     add(b.scheduled.updater);
     add(b.crates.updater);
@@ -416,6 +422,7 @@ export class MatchRenderer {
     b.props?.dispose();
     b.projectiles.dispose();
     b.areas.dispose();
+    b.hill.dispose();
     b.strands.dispose();
     b.scheduled.dispose();
     b.crates.dispose();

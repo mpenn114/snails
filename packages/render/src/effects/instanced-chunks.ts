@@ -15,6 +15,8 @@ export interface ChunkStyle {
   colour?: (t: number, out: Float32Array) => void;
   /** Optional per-instance opacity over age (needs a material patched with {@link withInstanceAlpha}). */
   alpha?: (t: number) => number;
+  /** When true the dynamic `colour` is multiplied by the spawn colour (per-weapon tint). */
+  tint?: boolean;
 }
 
 /** Name of the per-instance opacity attribute. */
