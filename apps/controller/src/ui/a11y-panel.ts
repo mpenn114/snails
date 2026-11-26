@@ -16,6 +16,8 @@ const CSS = `
   min-width:44px;min-height:44px;border:0;border-radius:var(--snl-radius);font:inherit;font-weight:800;
   background:rgba(var(--snl-ink-rgb),.7);color:var(--snl-paper);opacity:.7;touch-action:manipulation}
 .a11y-help{left:calc(env(safe-area-inset-left) + 60px)}
+.a11y-tools{display:flex;gap:6px;pointer-events:auto}
+.a11y-tools .a11y-btn{position:static;opacity:.85}
 .a11y-panel{position:fixed;inset:auto 8px 60px 8px;z-index:60;max-width:420px;padding:12px;border-radius:var(--snl-radius);
   background:rgba(var(--snl-ink-rgb),.96);color:var(--snl-paper);font-family:var(--snl-font);font-size:var(--snl-text-m);display:none;
   touch-action:manipulation}
@@ -91,6 +93,27 @@ export function mountA11yPanel(
   );
   paint();
   mountAudioControls(el, storage);
+}
+
+/**
+ * Moves the "Aa" and "?" buttons out of their fixed bottom-left corner (where they sit on top of the
+ * joystick and the lobby's Ready button) into a row inside `slot`, the shell's top-right button
+ * column. Returns a function that puts them back in the corner.
+ * @param doc the document
+ * @param slot the container to adopt the buttons into (null: leave them in the corner)
+ */
+export function adoptA11yButtons(doc: Document, slot: HTMLElement | null): () => void {
+  if (!slot) return () => undefined;
+  const btns = [...doc.querySelectorAll<HTMLElement>('.a11y-btn')];
+  const homes = btns.map((b) => ({ b, parent: b.parentElement, next: b.nextSibling }));
+  const row = doc.createElement('div');
+  row.className = 'a11y-tools';
+  row.append(...btns);
+  slot.append(row);
+  return () => {
+    for (const { b, parent, next } of homes) parent?.insertBefore(b, next);
+    row.remove();
+  };
 }
 
 /** Wires the mute checkbox and volume slider to storage and notifies the feedback engine. */

@@ -16,9 +16,10 @@ export const CONTROLS_CSS = `
 .ctl-aim{position:absolute;right:0;top:20%;bottom:0;width:50%}
 .ctl-aimvis{position:absolute;width:10px;height:10px;margin:-5px;border-radius:50%;background:var(--snl-foam);display:none}
 .ctl-btn{position:absolute;min-width:76px;min-height:76px;border-radius:50%;font-size:var(--snl-text-m);font-weight:800;color:var(--snl-paper);background:var(--snl-water);box-shadow:var(--snl-shadow)}
-.ctl-jump{left:calc(190px + env(safe-area-inset-left));bottom:calc(28px + env(safe-area-inset-bottom))}
+.ctl-jump{left:calc(min(190px,100vw - 194px) + env(safe-area-inset-left));bottom:calc(28px + env(safe-area-inset-bottom))}
 .ctl-fire{right:calc(16px + env(safe-area-inset-right));bottom:calc(16px + env(safe-area-inset-bottom));min-width:96px;min-height:96px;background:var(--snl-accent);color:var(--snl-ink)}
 .ctl-aimbtn{right:calc(124px + env(safe-area-inset-right));bottom:calc(20px + env(safe-area-inset-bottom));width:84px;height:84px;padding:0;line-height:1.1;background:rgba(var(--snl-ink-rgb),.85);border:var(--snl-outline) solid var(--snl-accent)}
+@media (max-width:380px){.ctl-stick{width:140px;height:140px}}
 @media (max-width:560px){.ctl-aimbtn{right:calc(20px + env(safe-area-inset-right));bottom:calc(206px + env(safe-area-inset-bottom))}}
 .ctl-aimbtn.on{background:var(--snl-accent);color:var(--snl-ink)}
 .ctl-aimbtn.hint{animation:ctl-pulse 1.6s ease-out infinite}

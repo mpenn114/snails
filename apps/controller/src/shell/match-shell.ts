@@ -20,6 +20,7 @@ import { mountPassPhone, shouldPassPhone } from '../ui/pass-phone';
 import { lobbyErrorText, playerTeams } from '../ui/lobby-logic';
 import { mountLobbyView } from '../ui/lobby-view';
 import { mountResearch } from '../research/mount-research';
+import { adoptA11yButtons } from '../ui/a11y-panel';
 import { mountPhoneView } from '../view/mount-phone-view';
 import { SHELL_CSS, SLOT_LEFT, SLOT_RIGHT, SLOT_TOP, Z } from './layers';
 import type { LayerName } from './layers';
@@ -113,6 +114,7 @@ function mountSession(client: ControllerClient, screen: HTMLElement, playerId: s
     lobby = showLobby();
   });
   const disposeFeedback = mountFeedback(banners, client, playerId);
+  const releaseA11y = adoptA11yButtons(document, document.getElementById(SLOT_RIGHT));
   let lobby = showLobby();
   const pass = mountPassPhone(modal);
   const tutorial = mountTutorialHelp(modal);
@@ -146,6 +148,7 @@ function mountSession(client: ControllerClient, screen: HTMLElement, playerId: s
     tutorial.destroy();
     disposeResearch();
     disposeFeedback();
+    releaseA11y();
     disposeSpectate();
     disposeControls();
     facing.dispose();

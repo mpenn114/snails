@@ -8,7 +8,7 @@ export const CONTROLLER_MENU_CSS = `
   touch-action:manipulation;overflow:auto;-webkit-overflow-scrolling:touch}
 .join>*{width:100%;max-width:460px;margin-left:auto;margin-right:auto;box-sizing:border-box;flex-shrink:0}
 .join h1{margin:0}
-.join.lobby{justify-content:flex-start;padding-bottom:max(40px,env(safe-area-inset-bottom))}
+.join.lobby{justify-content:flex-start;padding-top:calc(env(safe-area-inset-top) + 64px);padding-bottom:max(40px,env(safe-area-inset-bottom))}
 .join button{font-family:inherit;font-weight:800;font-size:var(--snl-text-m);min-height:48px;padding:10px 20px;border:0;border-radius:999px;color:var(--snl-paper);cursor:pointer;
   background:linear-gradient(180deg,rgba(var(--snl-paper-rgb),.2),rgba(var(--snl-paper-rgb),.1));box-shadow:0 3px 0 rgba(0,0,0,.3),inset 0 1px 0 rgba(255,255,255,.18);transition:transform .08s,filter .15s,box-shadow .08s}
 .join button:hover{filter:brightness(1.12)}
