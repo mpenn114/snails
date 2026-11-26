@@ -13,11 +13,18 @@ import {
   type PoseLimits,
   type WorldBounds,
 } from './camera-pose.js';
+import {
+  eyePose,
+  pullOutOfRock,
+  resolveOcclusion,
+  type OcclusionOptions,
+  type SdfSampler,
+} from './camera-occlusion.js';
 import { clamp, dampStep, unwrapAngle, type DampState } from './damping.js';
-import { FollowTracker } from './follow-tracker.js';
+import { FollowTracker, type FollowFocus } from './follow-tracker.js';
 
 /** Camera behaviour. */
-export type CameraMode = 'follow' | 'free' | 'cinematic';
+export type CameraMode = 'follow' | 'free' | 'cinematic' | 'eye';
 
 /** Scripted shot for cinematic mode. */
 export type CinematicShot =
@@ -62,6 +69,13 @@ export interface CameraRigOptions {
   groundClearance?: number;
   /** Optional ground height query (x, z) -> y; keeps the camera above terrain. */
   heightAt?: (x: number, z: number) => number;
+  /**
+   * Terrain signed distance (negative = rock). Enables occlusion avoidance: the follow camera
+   * raises its pitch and pulls in when rock is between it and the snail (tunnels, overhangs),
+   * and no mode leaves the camera inside rock.
+   */
+  sdf?: SdfSampler;
+  occlusion?: OcclusionOptions;
   /** Shot used when entering cinematic mode. */
   shot?: CinematicShot;
   /** Multiplies every smoothing time (reduced motion slows pans); default 1. */
@@ -74,6 +88,9 @@ const DEFAULT_LIMITS: PoseLimits = {
   minDistance: 3,
   maxDistance: 400,
 };
+
+/** Pose limits used for the final camera placement: loose enough for the close/eye views. */
+const PLACEMENT_LIMITS: Partial<PoseLimits> = { minPitch: -0.5, minDistance: 0.4 };
 
 type Axis = 'tx' | 'ty' | 'tz' | 'yaw' | 'pitch' | 'dist';
 const AXES: readonly Axis[] = ['tx', 'ty', 'tz', 'yaw', 'pitch', 'dist'];
@@ -102,6 +119,7 @@ export class CameraRig {
   private transitionLeft = 0;
   private needsSnap = true;
   private lastSnapshot: GameSnapshot | null = null;
+  private enclosedFlag = false;
 
   constructor(
     readonly camera: THREE.PerspectiveCamera,
@@ -121,6 +139,11 @@ export class CameraRig {
   /** Current mode. */
   get mode(): CameraMode {
     return this.currentMode;
+  }
+
+  /** True when the follow camera had to pull in because the snail sits in a tight space. */
+  get enclosed(): boolean {
+    return this.enclosedFlag;
   }
 
   /** Switches mode; the camera blends smoothly from where it is. */
@@ -199,7 +222,9 @@ export class CameraRig {
     this.lastSnapshot = snapshot;
     if (snapshot && !this.bounds) this.bounds = boundsFromTerrain(snapshot.terrain, 20);
     const desired = this.desiredPose(dt, snapshot);
-    clampPose(desired, this.limits);
+    // Follow/eye poses are already limited (occlusion may legitimately go closer than the minimum).
+    const close = this.currentMode === 'follow' || this.currentMode === 'eye';
+    clampPose(desired, close ? { ...this.limits, ...PLACEMENT_LIMITS } : this.limits);
     this.advanceSprings(desired, dt);
     this.transitionLeft = Math.max(0, this.transitionLeft - dt);
     this.applyToCamera();
@@ -220,23 +245,51 @@ export class CameraRig {
   private desiredPose(dt: number, snapshot: GameSnapshot | null): CameraPose {
     if (this.currentMode === 'free') return clonePose(this.freePose);
     if (this.currentMode === 'cinematic') return this.cinematicPose(dt);
+    if (this.currentMode === 'eye') return this.eyeModePose(dt, snapshot);
     return this.followPose(dt, snapshot);
   }
 
   private followPose(dt: number, snapshot: GameSnapshot | null): CameraPose {
+    return this.followPoseFor(this.tracker.update(dt, snapshot));
+  }
+
+  private followPoseFor(focus: FollowFocus | null): CameraPose {
     const cur = this.pose();
-    const focus = this.tracker.update(dt, snapshot);
     const target = this.manualTarget ?? focus?.point ?? cur.target;
     const yaw =
       !this.manualTarget && focus?.facing != null
         ? yawBehindFacing(focus.facing) + (this.opts.followYawOffset ?? 0)
         : cur.yaw;
-    return {
+    const pose = {
       target: { ...target },
       yaw,
       pitch: this.opts.followPitch ?? 0.45,
       distance: this.opts.followDistance ?? 9,
     };
+    return this.avoidRock(pose);
+  }
+
+  /** Raises/pulls in a pose so the camera is not behind rock; records whether it was enclosed. */
+  private avoidRock(pose: CameraPose): CameraPose {
+    const sdf = this.opts.sdf;
+    if (!sdf) return pose;
+    clampPose(pose, this.limits);
+    const r = resolveOcclusion(pose, sdf, {
+      maxPitch: this.limits.maxPitch,
+      ...this.opts.occlusion,
+    });
+    this.enclosedFlag = r.enclosed;
+    return r.pose;
+  }
+
+  /** Snail-eye view: from just ahead of the active snail's eyes; other focuses use follow. */
+  private eyeModePose(dt: number, snapshot: GameSnapshot | null): CameraPose {
+    const focus = this.tracker.update(dt, snapshot);
+    if (this.manualTarget || !focus || focus.kind !== 'snail' || focus.facing == null) {
+      return this.followPoseFor(focus);
+    }
+    this.enclosedFlag = false;
+    return eyePose(focus.point, yawBehindFacing(focus.facing));
   }
 
   private cinematicPose(dt: number): CameraPose {
@@ -283,10 +336,11 @@ export class CameraRig {
 
   private applyToCamera(): void {
     const pose = this.pose();
-    clampPose(pose, this.limits);
-    const pos = poseToPosition(pose);
+    clampPose(pose, { ...this.limits, ...PLACEMENT_LIMITS });
+    let pos = poseToPosition(pose);
     if (this.bounds) clampPoint(pos, this.bounds);
-    const { heightAt, groundClearance } = this.opts;
+    const { heightAt, groundClearance, sdf } = this.opts;
+    if (sdf && this.currentMode !== 'cinematic') pos = pullOutOfRock(pose.target, pos, sdf);
     if (heightAt) pos.y = Math.max(pos.y, heightAt(pos.x, pos.z) + (groundClearance ?? 1));
     this.camera.position.set(pos.x, pos.y, pos.z);
     this.camera.lookAt(pose.target.x, pose.target.y, pose.target.z);
