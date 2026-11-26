@@ -7,7 +7,12 @@ import { mountDebugOverlay } from '../debug/debug-overlay';
 import { mountFeedback } from '../feedback/mount-feedback';
 import type { ControllerClient } from '../net/client';
 import { mountSpectate } from '../spectate/spectate-view';
-import { loadTutorialSeen, shouldShowTutorial } from '../ui/tutorial-steps';
+import {
+  TUTORIAL_EVENT,
+  loadTutorialSeen,
+  shouldShowTutorial,
+  tutorialAutoStart,
+} from '../ui/tutorial-steps';
 import { mountTutorial } from '../ui/tutorial-overlay';
 import { safeStorage } from '../platform/ios';
 import { mountPassPhone, shouldPassPhone } from '../ui/pass-phone';
@@ -48,23 +53,33 @@ function mountLayers(): Record<'style' | 'hud' | 'controls' | 'banners' | 'modal
   return { style, hud, controls, banners, modal };
 }
 
-/** Mounts the tutorial; `onTurn(mine)` starts it once, on the first turn of one of our teams. */
-function mountFirstTurnTutorial(modal: HTMLElement): {
+/**
+ * Mounts the tutorial. It opens by itself once while another team is playing (never during one of
+ * my turns, so it costs no turn time), is hidden when my turn starts, and can be opened on demand
+ * (help button, settings panel) at any time.
+ */
+function mountTutorialHelp(modal: HTMLElement): {
   onTurn: (mine: boolean) => void;
   destroy: () => void;
 } {
   const storage = safeStorage();
   const overlay = mountTutorial(modal, storage);
-  let done = false;
+  let started = false;
   const wanted = (): boolean =>
     shouldShowTutorial(loadTutorialSeen(storage), location.search, navigator.webdriver === true);
+  const onDemand = (): void => overlay.start();
+  window.addEventListener(TUTORIAL_EVENT, onDemand);
   return {
     onTurn: (mine) => {
-      if (done || !mine || !wanted()) return;
-      done = true;
+      if (mine) return overlay.hide();
+      if (!tutorialAutoStart(wanted(), mine, started)) return;
+      started = true;
       overlay.start();
     },
-    destroy: overlay.destroy,
+    destroy: () => {
+      window.removeEventListener(TUTORIAL_EVENT, onDemand);
+      overlay.destroy();
+    },
   };
 }
 
@@ -80,6 +95,7 @@ function mountSession(client: ControllerClient, screen: HTMLElement, playerId: s
     playerId,
     weapons,
     aimStore,
+    techName: (id) => technologies.find((t) => t.id === id)?.name ?? id,
     screenFacing: facing.screenFacing,
     onAimingChange: (a) => phone.handle.setAiming(a),
   });
@@ -91,7 +107,7 @@ function mountSession(client: ControllerClient, screen: HTMLElement, playerId: s
   const disposeFeedback = mountFeedback(banners, client, playerId);
   let lobby = showLobby();
   const pass = mountPassPhone(modal);
-  const tutorial = mountFirstTurnTutorial(modal);
+  const tutorial = mountTutorialHelp(modal);
   const disposeResearch = mountResearch(modal, client, playerId, technologies);
 
   let myTeams: readonly string[] = [];

@@ -152,7 +152,11 @@ export function bindJoystick(
   };
 }
 
-/** Wires the aim zone: drag vector from touch-down becomes a throttled `aim` intent. */
+/**
+ * Wires the aim zone: the drag vector from touch-down sets the aim direction only (a throttled
+ * `aim` intent). Power is not part of the drag: it keeps its current value (`power()`) and is set
+ * by holding Fire.
+ */
 export function bindAim(
   zone: HTMLElement,
   marker: HTMLElement,
@@ -160,6 +164,7 @@ export function bindAim(
   facing: () => ScreenFacing,
   onAiming?: (aiming: boolean) => void,
   onAim?: (aim: { angle: number; power: number }) => void,
+  power: () => number = () => 0.5,
 ): Gestures {
   const throttle = createThrottle<{ angle: number; power: number }>(
     (a) => client.send({ type: 'aim', ...a }),
@@ -177,8 +182,9 @@ export function bindAim(
       onAiming?.(true);
     },
     move(dx, dy) {
-      const a = dragToAim(dx, dy, facing(), AIM_MAX_DRAG);
-      if (a) {
+      const d = dragToAim(dx, dy, facing(), AIM_MAX_DRAG);
+      if (d) {
+        const a = { angle: d.angle, power: power() };
         onAim?.(a);
         throttle.push(a);
       }

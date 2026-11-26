@@ -10,16 +10,43 @@ export interface TutorialStep {
 
 /** The first-turn coach marks, in order. */
 export const TUTORIAL_STEPS: readonly TutorialStep[] = [
-  { id: 'move', title: 'Move', body: 'Drag the left stick to crawl. Tap jump to hop over gaps.' },
+  { id: 'move', title: 'Move', body: 'Drag the left stick to crawl. Tap Jump to hop over gaps.' },
   {
     id: 'aim',
     title: 'Aim',
-    body: 'Drag on the right side to aim. The dotted arc shows your shot.',
+    body: 'Drag on the right side to set your aim direction. The dotted arc shows the shot.',
   },
-  { id: 'power', title: 'Power', body: 'Hold Fire to charge the power bar, then let go to shoot.' },
-  { id: 'weapon', title: 'Weapon', body: 'Tap the weapon button to pick something nastier.' },
+  {
+    id: 'power',
+    title: 'Power',
+    body: 'Press and hold Fire: the power gauge fills up. Let go to shoot. A quick tap does nothing.',
+  },
+  {
+    id: 'weapon',
+    title: 'Weapons and techs',
+    body: 'Tap Arms to pick a weapon. Tap the (i) on any weapon or tech to see what it does.',
+  },
   { id: 'fire', title: 'Fire', body: 'Fire ends your turn. Take cover before the timer runs out.' },
 ];
+
+/** Window event that opens the tutorial on demand (the help button and the settings panel). */
+export const TUTORIAL_EVENT = 'snails:show-tutorial';
+
+/**
+ * Whether the tutorial may start by itself now. It never covers a live turn: it only opens while
+ * another team plays, once, and only when wanted (not seen yet). Opening it on demand is always
+ * possible through {@link TUTORIAL_EVENT}.
+ * @param wanted `shouldShowTutorial` result
+ * @param myTurn it is currently one of my teams' turns
+ * @param alreadyStarted it already started by itself this session
+ */
+export function tutorialAutoStart(
+  wanted: boolean,
+  myTurn: boolean,
+  alreadyStarted: boolean,
+): boolean {
+  return wanted && !myTurn && !alreadyStarted;
+}
 
 /** Legacy localStorage key for the "tutorial seen" flag (migrated into the prefs record). */
 export const TUTORIAL_KEY = LEGACY_KEYS.tutorialSeen;
