@@ -93,6 +93,7 @@ function tryAirJump(ctx: SimContext, snail: Snail, config: MovementConfig): void
   const cfg = techMovementConfig(ctx, snail, config);
   snail.jumpsUsed = (snail.jumpsUsed ?? 1) + 1;
   snail.velocity = jumpVelocity(snail, cfg);
+  ctx.emit({ type: 'snailJumped', snailId: snail.id, air: true });
 }
 
 function stepGrounded(ctx: SimContext, snail: Snail, cfg: MovementConfig): void {
@@ -102,6 +103,7 @@ function stepGrounded(ctx: SimContext, snail: Snail, cfg: MovementConfig): void 
   if (intent?.jumpRequested) {
     intent.jumpRequested = false;
     startAirborne(snail, jumpVelocity(snail, cfg));
+    ctx.emit({ type: 'snailJumped', snailId: snail.id, air: false });
     return;
   }
   const heading = scale(facingVector(snail), dir);

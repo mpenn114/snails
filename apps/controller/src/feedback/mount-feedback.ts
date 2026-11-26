@@ -1,10 +1,42 @@
 import type { ControllerClient } from '../net/client';
 import { safeStorage } from '../platform/ios';
 import { AUDIO_CHANGED_EVENT, audioContextFactory, createAudioEngine } from './audio';
-import type { AudioWindow } from './audio';
+import type { AudioEngine, AudioWindow } from './audio';
 import { createCuePlanner } from './cues';
+import type { CuePlanner } from './cues';
 import { BTN_CLASS, SLOT_RIGHT } from '../shell/layers';
 import { browserHapticsEnv, playHaptic } from './haptics';
+import type { HapticsEnv } from './haptics';
+
+/** Click handler: a soft tick for buttons, a distinct one for weapon tiles (not mute, jump or fire). */
+function bindClickCues(audio: AudioEngine, mute: () => HTMLElement): () => void {
+  const onClick = (ev: Event): void => {
+    const t = ev.target instanceof Element ? ev.target.closest('button') : null;
+    if (!t || t === mute() || t.matches('.ctl-jump, .ctl-fire')) return;
+    audio.play({ kind: t.closest('.ctl-grid') ? 'select' : 'click', own: false });
+  };
+  document.addEventListener('click', onClick, true);
+  return () => document.removeEventListener('click', onClick, true);
+}
+
+/** Feeds server messages through the planner to audio and haptics; returns the unsubscriber. */
+function bindMessages(
+  client: ControllerClient,
+  planner: CuePlanner,
+  audio: AudioEngine,
+  haptics: HapticsEnv,
+): () => void {
+  const onMsg = (msg: Parameters<typeof planner.plan>[0]): void => {
+    for (const cue of planner.plan(msg)) {
+      audio.play(cue);
+      playHaptic(cue, haptics);
+    }
+  };
+  const offs = (
+    ['lobbyState', 'matchStarted', 'snapshot', 'turnStart', 'turnTimer', 'eventBatch'] as const
+  ).map((t) => client.on(t, onMsg));
+  return () => offs.forEach((off) => off());
+}
 
 /**
  * Wires haptic + audio cues to server messages and adds a small mute toggle. Audio unlocks on
@@ -21,17 +53,8 @@ export function mountFeedback(
     safeStorage(),
   );
   const haptics = browserHapticsEnv(navigator, window);
-
-  const onMsg = (msg: Parameters<typeof planner.plan>[0]): void => {
-    for (const cue of planner.plan(msg)) {
-      audio.play(cue);
-      playHaptic(cue, haptics);
-    }
-  };
-  const offs = (
-    ['lobbyState', 'matchStarted', 'snapshot', 'turnStart', 'turnTimer', 'eventBatch'] as const
-  ).map((t) => client.on(t, onMsg));
-
+  const offMsgs = bindMessages(client, planner, audio, haptics);
+  const offClicks = bindClickCues(audio, () => btn);
   // Unlock must run synchronously inside a gesture. iOS only counts touchend/pointerup/click as
   // activation (not pointerdown or touchstart), so listen to all and keep trying until running.
   const GESTURES = ['pointerdown', 'pointerup', 'touchend', 'click'] as const;
@@ -40,7 +63,6 @@ export function mountFeedback(
     if (audio.isUnlocked()) GESTURES.forEach((g) => window.removeEventListener(g, unlock, true));
   };
   GESTURES.forEach((g) => window.addEventListener(g, unlock, true));
-  // Returning from background / bfcache leaves the context suspended or interrupted.
   const onVisible = (): void => {
     if (!document.hidden) audio.unlock();
   };
@@ -67,7 +89,8 @@ export function mountFeedback(
 
   return () => {
     window.removeEventListener(AUDIO_CHANGED_EVENT, onAudioChanged);
-    offs.forEach((off) => off());
+    offClicks();
+    offMsgs();
     GESTURES.forEach((g) => window.removeEventListener(g, unlock, true));
     document.removeEventListener('visibilitychange', onVisible);
     window.removeEventListener('pageshow', onVisible);

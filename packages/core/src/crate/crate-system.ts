@@ -37,6 +37,7 @@ function stepCrate(ctx: SimContext, crate: Crate): void {
   if (ctx.terrain.sampleLinear(crate.position) <= CRATE_RADIUS) {
     crate.grounded = true;
     crate.velocity = { x: 0, y: 0, z: 0 };
+    ctx.emit({ type: 'crateLanded', crateId: crate.id, position: { ...crate.position } });
   }
 }
 
