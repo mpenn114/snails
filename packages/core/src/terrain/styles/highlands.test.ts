@@ -3,7 +3,8 @@ import { Rng } from '../../rng.js';
 import { DEFAULT_TERRAIN_CONFIG, generateTerrain } from '../generator.js';
 import { MATERIAL_ROCK } from '../materials.js';
 
-const C = { ...DEFAULT_TERRAIN_CONFIG, style: 'highlands' as const };
+// The raw style, without the reachability pass that adds ramps (see reachability.test.ts).
+const C = { ...DEFAULT_TERRAIN_CONFIG, style: 'highlands' as const, connect: false };
 
 /** Highest solid cell height (m) of the grid. */
 function peakHeight(seed: number): number {

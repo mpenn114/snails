@@ -4,6 +4,7 @@ import type { Rng } from '../rng.js';
 import type { SimContext } from '../sim/types.js';
 import type { Crate, GameState, Vec3 } from '../state/types.js';
 import { rayCast } from '../terrain/collision.js';
+import { groundIsOpen } from '../terrain/reachability.js';
 import {
   type CrateRules,
   DROP_HEIGHT,
@@ -38,7 +39,7 @@ function horizontal(a: Vec3, b: Vec3): number {
 
 /**
  * Picks a spawn point (in the air above a landing spot) from the `crates` RNG stream: solid,
- * fairly flat ground clear of water, snails and other crates. Returns null after
+ * fairly flat ground clear of water, snails and other crates, that a snail can actually walk to (part of a connected standable region of at least 60 m^2, not an islet or ledge). Returns null after
  * `PLACEMENT_ATTEMPTS` failed tries. Consumes two draws per attempt, so it is deterministic
  * for a given seed and state.
  */
@@ -58,6 +59,7 @@ export function pickDropSite(ctx: SimContext): Vec3 | null {
     if (hit.normal.y < MIN_SURFACE_NORMAL_Y) continue;
     if (snails.some((s) => horizontal(s.position, ground) < MIN_SNAIL_DISTANCE)) continue;
     if (ctx.state.crates.some((c) => horizontal(c.position, ground) < MIN_CRATE_DISTANCE)) continue;
+    if (!groundIsOpen(grid, ctx.state.terrain.waterLevel, ground)) continue;
     return { x, y: Math.min(topY, ground.y + DROP_HEIGHT), z };
   }
   return null;

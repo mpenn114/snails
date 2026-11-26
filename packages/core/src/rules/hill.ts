@@ -6,6 +6,7 @@ import type { SimEvent } from '../sim/events.js';
 import type { SimContext } from '../sim/types.js';
 import type { GameState, HillState, MatchStatus, Vec3 } from '../state/types.js';
 import { rayCast } from '../terrain/collision.js';
+import { groundIsOpen } from '../terrain/reachability.js';
 import type { SdfGrid } from '../terrain/sdf-grid.js';
 
 /** Radius in metres of the Dewdrop Zone. */
@@ -26,7 +27,7 @@ const MIN_NORMAL_Y = 0.7;
 
 type Emit = (e: SimEvent) => void;
 
-/** Picks a dry, fairly flat ground point; prefers one away from `avoid`. Consumes 2 draws per try. */
+/** Picks a dry, fairly flat, walkable ground point (not an islet or ledge); prefers one away from `avoid`. Consumes 2 draws per try. */
 function pickSite(grid: SdfGrid, waterLevel: number, rng: Rng, avoid: Vec3 | null): Vec3 | null {
   const cs = grid.cellSize;
   const topY = (grid.ny - 1) * cs - 0.5;
@@ -37,6 +38,7 @@ function pickSite(grid: SdfGrid, waterLevel: number, rng: Rng, avoid: Vec3 | nul
     const hit = rayCast(grid, { x, y: topY, z }, { x: 0, y: -1, z: 0 }, topY + 1);
     if (!hit || hit.distance <= 0) continue;
     if (hit.point.y < waterLevel + MIN_ABOVE_WATER || hit.normal.y < MIN_NORMAL_Y) continue;
+    if (!groundIsOpen(grid, waterLevel, hit.point)) continue;
     if (avoid && Math.hypot(hit.point.x - avoid.x, hit.point.z - avoid.z) < HILL_RADIUS * 3) {
       near ??= hit.point;
       continue;
