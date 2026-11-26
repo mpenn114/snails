@@ -4,7 +4,8 @@ import { DEFAULT_TERRAIN_CONFIG, generateTerrain } from '../generator.js';
 import type { SdfGrid } from '../sdf-grid.js';
 import { MATERIAL_CLAY, MATERIAL_ROCK } from '../materials.js';
 
-const C = { ...DEFAULT_TERRAIN_CONFIG, style: 'canyon' as const };
+// The raw style, without the reachability pass that adds ramps (see reachability.test.ts).
+const C = { ...DEFAULT_TERRAIN_CONFIG, style: 'canyon' as const, connect: false };
 const SEEDS = [1, 3, 7];
 
 /** Highest solid cell index of column (x, z) (clamped to the grid), or -1. */

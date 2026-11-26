@@ -1,5 +1,7 @@
 import type { Rng } from '../rng.js';
 import type { TerrainDescriptor, Vec3 } from '../state/types.js';
+import { ensureReachable, largestRegion } from './connect.js';
+import { analyzeReachability, nodeNear, type ReachabilityMap } from './reachability.js';
 import { ValueNoise } from './noise.js';
 import { SdfGrid } from './sdf-grid.js';
 import { materialForCell } from './strata.js';
@@ -28,6 +30,11 @@ export interface TerrainGenConfig {
   islandFalloff: boolean;
   /** Map archetype; omitted means `island`. */
   style?: TerrainStyle;
+  /**
+   * Cut ramps, causeways and tunnels so every sizeable standable region is reachable (default
+   * true). `false` keeps the raw style shape, for tests of the style fields themselves.
+   */
+  connect?: boolean;
 }
 
 /** Default config: a 48 m x 24 m x 48 m arena at 0.5 m cells. */
@@ -75,6 +82,7 @@ export function generateTerrain(
       }
     }
   }
+  if (config.connect !== false) ensureReachable(grid, config.waterLevel);
   for (const id of grid.chunkIds()) grid.markDirty(id);
   const descriptor: TerrainDescriptor = { nx, ny, nz, cellSize: cs, waterLevel: config.waterLevel };
   return { grid, descriptor };
@@ -105,12 +113,25 @@ function spawnCandidate(
   descriptor: TerrainDescriptor,
   x: number,
   z: number,
+  ok: SpawnFilter,
   flatness = STRICT_FLATNESS,
 ): Vec3 | null {
   const y = surfaceAt(grid, x, z);
   if (y === null || y < descriptor.waterLevel + 0.5) return null;
   const p = { x: x * grid.cellSize, y, z: z * grid.cellSize };
-  return grid.normal(p).y < flatness ? null : p;
+  return grid.normal(p).y < flatness || !ok(x, z, y) ? null : p;
+}
+
+/** Extra test of a spawn column (cell x, z; surface height y m). */
+type SpawnFilter = (x: number, z: number, y: number) => boolean;
+
+/** Accepts only ground in the biggest connected standable region (everything else is walled off). */
+function mainRegionFilter(map: ReachabilityMap): SpawnFilter {
+  const main = largestRegion(map);
+  return (x, z, y) => {
+    const n = nodeNear(map, x, z, y);
+    return n >= 0 && Math.abs((map.nodeY[n] as number) - y) < 0.6 && map.comp[n] === main;
+  };
 }
 
 const farEnough = (out: readonly Vec3[], p: Vec3, spacing: number): boolean =>
@@ -128,12 +149,13 @@ function topUpSpawnPoints(
   rng: Rng,
   minSpacing: number,
   out: Vec3[],
+  ok: SpawnFilter,
 ): void {
   const candidates: Vec3[] = [];
   const margin = 2;
   for (let z = margin; z <= grid.nz - 1 - margin; z++) {
     for (let x = margin; x <= grid.nx - 1 - margin; x++) {
-      const p = spawnCandidate(grid, descriptor, x, z, FALLBACK_FLATNESS);
+      const p = spawnCandidate(grid, descriptor, x, z, ok, FALLBACK_FLATNESS);
       if (p) candidates.push(p);
     }
   }
@@ -150,11 +172,34 @@ function topUpSpawnPoints(
   }
 }
 
+/** One placement attempt: the normal random pass, then the crowded-lobby fallback. */
+function placeSpawns(
+  grid: SdfGrid,
+  descriptor: TerrainDescriptor,
+  count: number,
+  rng: Rng,
+  minSpacing: number,
+  ok: SpawnFilter,
+): Vec3[] {
+  const out: Vec3[] = [];
+  const margin = 2;
+  for (let i = 0; i < count * 300 && out.length < count; i++) {
+    const x = rng.int(margin, grid.nx - 1 - margin);
+    const z = rng.int(margin, grid.nz - 1 - margin);
+    const p = spawnCandidate(grid, descriptor, x, z, ok);
+    if (p && farEnough(out, p, minSpacing)) out.push(p);
+  }
+  if (out.length < count) topUpSpawnPoints(grid, descriptor, count, rng, minSpacing, out, ok);
+  return out;
+}
+
 /**
  * Picks up to `count` deterministic spawn points on gentle, dry, solid surface (the topmost
  * surface of a column, so the sky above is open), at least `minSpacing` metres apart
- * (horizontally). If the normal random pass cannot place everyone, a fallback pass tightens the
- * spacing down to {@link MIN_FALLBACK_SPACING}. May still return fewer.
+ * (horizontally). Spawns only land in the biggest connected standable region, so no team starts
+ * walled off from the rest. If the normal random pass cannot place everyone, a fallback pass
+ * tightens the spacing down to {@link MIN_FALLBACK_SPACING}, and only if that still falls short
+ * are other regions allowed. May still return fewer.
  */
 export function findSpawnPoints(
   grid: SdfGrid,
@@ -163,14 +208,8 @@ export function findSpawnPoints(
   rng: Rng,
   minSpacing: number,
 ): Vec3[] {
-  const out: Vec3[] = [];
-  const margin = 2;
-  for (let i = 0; i < count * 300 && out.length < count; i++) {
-    const x = rng.int(margin, grid.nx - 1 - margin);
-    const z = rng.int(margin, grid.nz - 1 - margin);
-    const p = spawnCandidate(grid, descriptor, x, z);
-    if (p && farEnough(out, p, minSpacing)) out.push(p);
-  }
-  if (out.length < count) topUpSpawnPoints(grid, descriptor, count, rng, minSpacing, out);
-  return out;
+  const map = analyzeReachability(grid, descriptor.waterLevel);
+  const main = placeSpawns(grid, descriptor, count, rng, minSpacing, mainRegionFilter(map));
+  if (main.length >= count) return main;
+  return placeSpawns(grid, descriptor, count, rng, minSpacing, () => true);
 }

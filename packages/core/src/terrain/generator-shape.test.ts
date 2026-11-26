@@ -37,7 +37,7 @@ function largestComponent(dry: Uint8Array, nx: number): number {
 
 describe('landmass shape', () => {
   it.each([1, 7, 42])('seed %i: one chunky island, no thin ribbons', (seed) => {
-    const { grid } = generateTerrain(C, new Rng(seed));
+    const { grid } = generateTerrain({ ...C, connect: false }, new Rng(seed));
     const dry = new Uint8Array(grid.nx * grid.nz);
     let total = 0;
     for (let z = 0; z < grid.nz; z++) {
@@ -61,7 +61,7 @@ describe('landmass shape', () => {
   });
 
   it('offers plenty of spawnable flat ground and some caves', () => {
-    const { grid, descriptor } = generateTerrain(C, new Rng(7));
+    const { grid, descriptor } = generateTerrain({ ...C, connect: false }, new Rng(7));
     expect(findSpawnPoints(grid, descriptor, 12, new Rng(1), 5)).toHaveLength(12);
     let voids = 0;
     for (let z = 0; z < grid.nz; z++) {
