@@ -71,6 +71,8 @@ const POLICY = 1008;
 const LOBBY_TYPES = new Set([
   'setTeam',
   'toggleTeam',
+  'setTeamName',
+  'setSnailNames',
   'setColour',
   'setReady',
   'setSettings',

@@ -114,7 +114,7 @@ describe('control modes over websockets', () => {
     const { open, code, tv } = await boot();
     const solo = await open();
     await join(solo, 'Solo', code);
-    for (const teamId of ['red', 'blue']) solo.send({ type: 'toggleTeam', teamId });
+    solo.send({ type: 'toggleTeam', teamId: 'B' }); // joined as A; a hot-seat phone adds B
     solo.send({ type: 'setReady', ready: true });
     await tv.next(
       (m) =>
@@ -128,7 +128,7 @@ describe('control modes over websockets', () => {
     const started = await solo.next((m) => m.type === 'matchStarted');
     expect((started['settings'] as { controlMode: string }).controlMode).toBe('hotSeat');
     const first = await solo.next((m) => m.type === 'turnStart');
-    expect(['red', 'blue']).toContain(first['teamId']);
+    expect(['A', 'B']).toContain(first['teamId']);
     await solo.next((m) => m.type === 'turnTimer');
     solo.send({ type: 'move', direction: 'right' });
     solo.send({ type: 'endTurn' });

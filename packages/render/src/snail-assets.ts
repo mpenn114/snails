@@ -35,9 +35,9 @@ export const canvasLabelFactory: LabelTextureFactory = (text) => {
     ctx.textBaseline = 'middle';
     ctx.lineWidth = 6;
     ctx.strokeStyle = 'rgba(0,0,0,0.8)';
-    ctx.strokeText(text, 128, 32);
+    ctx.strokeText(text, 128, 32, 244);
     ctx.fillStyle = '#ffffff';
-    ctx.fillText(text, 128, 32);
+    ctx.fillText(text, 128, 32, 244);
   }
   return new THREE.CanvasTexture(canvas);
 };

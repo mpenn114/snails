@@ -1,10 +1,20 @@
-import { MatchSettings, type MatchSettingsInput } from '@snails/protocol';
+import {
+  MAX_SNAIL_NAMES,
+  MatchSettings,
+  SNAIL_NAME_POOL,
+  TEAM_NAME_POOL,
+  nameOr,
+  pickNames,
+  sanitiseName,
+  type MatchSettingsInput,
+} from '@snails/protocol';
 import { startBlocker } from './start-rules.js';
 import {
   MAX_TEAMS,
   cpuLobbyPlayer,
   cpuName,
   freeColour,
+  freeTeamSlot,
   nextCpuId,
   type CpuTeam,
 } from './cpu-teams.js';
@@ -26,6 +36,8 @@ export type LobbyAction =
   | { type: 'setTeam'; teamId: string }
   | { type: 'toggleTeam'; teamId: string }
   | { type: 'setColour'; colour: string }
+  | { type: 'setTeamName'; name: string }
+  | { type: 'setSnailNames'; names: string[] }
   | { type: 'setReady'; ready: boolean }
   | { type: 'setSettings'; settings: MatchSettingsInput }
   | { type: 'addCpu'; difficulty: CpuDifficulty; personality: CpuPersonality }
@@ -44,6 +56,10 @@ export interface Member {
   /** Every team this phone controls: one in `perPlayer`, possibly several in `hotSeat`. */
   teamIds: string[];
   colour: string | null;
+  /** Team name (cleaned, at most 16 characters); the first team of a phone uses it as is. */
+  teamName?: string;
+  /** Snail names in order (always {@link MAX_SNAIL_NAMES} entries; a match uses the first N). */
+  snailNames?: string[];
   ready: boolean;
   /** False while the socket is gone but the slot is held for a reconnect. */
   connected: boolean;
@@ -94,6 +110,8 @@ export class Room {
   match: ActiveMatch | null = null;
   /** Optional hook called when a match ends (latency summary). */
   onMatchEnd?: () => void;
+  /** Randomness for default names (tests inject a seeded source). */
+  random: () => number = Math.random;
 
   constructor(readonly code: string) {}
 
@@ -154,6 +172,8 @@ export class Room {
       teamId: m.teamId,
       teamIds: [...m.teamIds],
       colour: m.colour,
+      ...(m.teamName ? { teamName: m.teamName } : {}),
+      ...(m.snailNames ? { snailNames: [...m.snailNames] } : {}),
       ready: m.ready,
       connected: m.connected,
     }));
@@ -209,6 +229,12 @@ export class Room {
         return undefined;
       case 'setColour':
         return this.setColour(member, action.colour);
+      case 'setTeamName':
+        member.teamName = nameOr(action.name, this.defaultTeamName());
+        return undefined;
+      case 'setSnailNames':
+        this.setSnailNames(member, action.names);
+        return undefined;
       case 'setSettings':
         return this.setSettings(member, action.settings);
       case 'addCpu':
@@ -220,6 +246,36 @@ export class Room {
         member.ready = action.ready;
         return undefined;
     }
+  }
+
+  /** A default team name nobody in the room uses yet. */
+  defaultTeamName(): string {
+    const taken = new Set<string>(this.cpuTeams.map((c) => c.name));
+    for (const m of this.members.values()) if (m.teamName) taken.add(m.teamName);
+    return pickNames(TEAM_NAME_POOL, 1, taken, this.random)[0] ?? 'Snail Squad';
+  }
+
+  /** Stores cleaned snail names; blank or missing entries get fresh defaults. */
+  private setSnailNames(member: Member, names: readonly string[]): void {
+    const cleaned = Array.from({ length: MAX_SNAIL_NAMES }, (_, i) => sanitiseName(names[i] ?? ''));
+    const kept = new Set(cleaned.filter(Boolean));
+    const fresh = pickNames(SNAIL_NAME_POOL, cleaned.filter((n) => !n).length, kept, this.random);
+    member.snailNames = cleaned.map((n) => n || (fresh.shift() as string));
+  }
+
+  /** Free team slot, default names and unused colour for a newly joined phone; false if no slot. */
+  autoAssign(member: Member): boolean {
+    const ids = this.teamIdSet();
+    const slot = ids.size < MAX_TEAMS ? freeTeamSlot(ids) : undefined;
+    if (!slot) return false;
+    member.teamIds = [slot];
+    member.teamId = slot;
+    member.teamName = this.defaultTeamName();
+    this.setSnailNames(member, []);
+    const claimed = new Set<string>(this.cpuTeams.map((c) => c.colour.toLowerCase()));
+    for (const m of this.members.values()) if (m.colour) claimed.add(m.colour.toLowerCase());
+    member.colour = freeColour(claimed, this.members.size);
+    return true;
   }
 
   private setColour(member: Member, colour: string): Failure {
@@ -243,7 +299,7 @@ export class Room {
   }
 
   /** Ids of every team in the lobby (phones' teams and CPU teams). */
-  private teamIdSet(): Set<string> {
+  teamIdSet(): Set<string> {
     const ids = new Set<string>(this.cpuTeams.map((c) => c.id));
     for (const m of this.members.values()) for (const t of m.teamIds) ids.add(t);
     return ids;

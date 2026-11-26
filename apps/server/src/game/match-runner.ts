@@ -5,6 +5,7 @@ import {
   type WireEvent,
 } from '@snails/protocol';
 import type { IntentMessage } from '../net/connection.js';
+import { sanitiseName } from '@snails/protocol';
 import { createCpuPlayer, type CpuPlayer } from '@snails/ai';
 import type { CpuTeam } from '../rooms/cpu-teams.js';
 import type { ActiveMatch, Member, Room } from '../rooms/room.js';
@@ -68,7 +69,17 @@ export function buildTeams(
             '#888888';
           claimed.add(colour.toLowerCase());
         }
-        t = { id: teamId, name: teamId, colour, playerIds: [] };
+        const own = m.teamIds[0] === teamId;
+        const label = m.teamName || teamId;
+        t = {
+          id: teamId,
+          name: own ? label : sanitiseName(`${label} ${teamId}`),
+          colour,
+          playerIds: [],
+          ...(own && m.snailNames && m.snailNames.length > 0
+            ? { snailNames: [...m.snailNames] }
+            : {}),
+        };
         teams.set(teamId, t);
       }
       t.playerIds.push(m.id);

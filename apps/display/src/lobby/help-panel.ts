@@ -1,5 +1,6 @@
 import { buildHelpContent, shouldAutoOpen } from './help-content';
 import { buildJoinUrl, type InfoLike } from './lobby-logic';
+import { injectDisplayMenuStyles } from './lobby-css';
 import { encodeQr, qrToSvg } from './qr';
 
 const FLAG = 'snails.display.helpSeen';
@@ -53,6 +54,7 @@ export function mountHelpPanel(root: HTMLElement): {
   update: (info: InfoLike | undefined, roomCode: string) => void;
   hide: () => void;
 } {
+  injectDisplayMenuStyles(document);
   const btn = document.createElement('button');
   btn.className = 'help-btn';
   btn.textContent = 'Help connecting';
