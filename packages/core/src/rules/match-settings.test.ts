@@ -71,7 +71,7 @@ describe('map size setting', () => {
 describe('MatchSettings model', () => {
   it('defaults to the Classic ruleset', () => {
     expect(DEFAULT_MATCH_SETTINGS).toMatchObject({
-      turnTimeSeconds: 30,
+      turnTimeSeconds: 45,
       startingHealth: 100,
       snailsPerTeam: 3,
       wind: 'normal',
