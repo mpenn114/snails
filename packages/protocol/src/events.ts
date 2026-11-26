@@ -87,6 +87,7 @@ const plain = [
     impactSpeed: z.number(),
     fallDistance: z.number(),
   }),
+  z.object({ type: z.literal('snailJumped'), snailId: z.string(), air: z.boolean() }),
   z.object({
     type: z.literal('commandRejected'),
     command: z.enum(['move', 'aim', 'steer', 'fire', 'endTurn', 'queueResearch', 'cancelResearch']),
@@ -147,6 +148,7 @@ const plain = [
     defId: z.string(),
     position: V,
   }),
+  z.object({ type: z.literal('crateLanded'), crateId: z.string(), position: V }),
   z.object({
     type: z.literal('crateCollected'),
     crateId: z.string(),

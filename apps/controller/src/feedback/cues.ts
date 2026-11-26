@@ -3,7 +3,7 @@ import type { ServerMessage } from '@snails/protocol';
 
 /** A feedback cue. `own` marks cues that concern this player (haptics fire only for those). */
 export interface Cue {
-  kind: 'turnStart' | 'fire' | 'damage' | 'explosion' | 'tick';
+  kind: 'turnStart' | 'fire' | 'damage' | 'explosion' | 'tick' | 'select' | 'click';
   own: boolean;
 }
 

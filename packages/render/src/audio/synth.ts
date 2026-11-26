@@ -1,6 +1,6 @@
 import { BAR_SECONDS, musicBar } from './music.js';
 import { recipeFor } from './recipes.js';
-import type { CueRequest, Layer } from './recipes.js';
+import type { CueId, CueRequest, Layer } from './recipes.js';
 
 /** Window subset holding the (possibly prefixed) AudioContext constructor. */
 export interface AudioWindow {
@@ -30,6 +30,16 @@ export interface SynthOptions {
   /** Music bed level relative to master (0..1). */
   musicLevel?: number;
 }
+
+/** Minimum ms between plays of the same cue, so frequent cues (crawling, clicks) stay subtle. */
+export const CUE_COOLDOWN_MS: Readonly<Partial<Record<CueId, number>>> = {
+  squelch: 260,
+  land: 90,
+  jump: 80,
+  airJump: 80,
+  uiClick: 40,
+  weaponSelect: 60,
+};
 
 /** Shared audio engine: lazy context, master/music/sfx buses, voice cap. */
 export interface Synth {
@@ -171,6 +181,20 @@ function createMusicLoop(onBar: (bar: number) => void): { start(): void; stop():
   return { start, stop };
 }
 
+/** Returns a predicate that is true when a cue plays again inside its cooldown. */
+function createLimiter(): (id: CueId) => boolean {
+  const lastPlayed = new Map<CueId, number>();
+  return (id) => {
+    const gap = CUE_COOLDOWN_MS[id];
+    if (!gap) return false;
+    const now = Date.now();
+    const prev = lastPlayed.get(id);
+    if (prev !== undefined && now - prev < gap) return true;
+    lastPlayed.set(id, now);
+    return false;
+  };
+}
+
 /**
  * Creates the shared synth engine. Never throws: every Web Audio failure degrades to silence.
  * @param opts engine options
@@ -204,8 +228,9 @@ export function createSynth(opts: SynthOptions): Synth {
   const layers = (ls: readonly Layer[], bus: 'sfx' | 'music'): void => {
     if (ctx && buses) pool.run(ctx, buses[bus], ls);
   };
+  const limited = createLimiter();
   const play = (req: CueRequest): void => {
-    if (muted || !ctx || ctx.state === 'closed') return;
+    if (muted || !ctx || ctx.state === 'closed' || limited(req.id)) return;
     if (!running()) unlock();
     layers(recipeFor(req), 'sfx');
   };

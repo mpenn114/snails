@@ -115,6 +115,9 @@ describe('movement', () => {
     }
     expect(peak).toBeGreaterThan(6 + 1);
     expect(events.filter((e) => e.type === 'snailLanded')).toHaveLength(1);
+    expect(events.filter((e) => e.type === 'snailJumped')).toEqual([
+      { type: 'snailJumped', snailId: 's', air: false },
+    ]);
     const s = snailOf(sim);
     expect(s.grounded).toBe(true);
     expect(s.position.x).toBeGreaterThan(x0 + 1.5);

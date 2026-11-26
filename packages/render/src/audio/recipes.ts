@@ -14,7 +14,16 @@ export type CueId =
   | 'researchComplete'
   | 'hillScored'
   | 'victory'
-  | 'defeat';
+  | 'defeat'
+  | 'jump'
+  | 'airJump'
+  | 'land'
+  | 'squelch'
+  | 'crateLand'
+  | 'cratePickup'
+  | 'weaponSelect'
+  | 'researchStart'
+  | 'uiClick';
 
 /** A request to play a cue; the optional fields parameterise its recipe. */
 export interface CueRequest {
@@ -25,6 +34,8 @@ export interface CueRequest {
   radius?: number;
   /** Damage amount (hurt loudness). */
   amount?: number;
+  /** Impact speed in m/s (landing thud loudness and depth). */
+  impact?: number;
   /** Shell material id (tap pitch). */
   material?: string;
 }
@@ -99,6 +110,16 @@ export function blastScale(radius: number | undefined): { size: number; gain: nu
 }
 
 /**
+ * Landing thud loudness and depth from an impact speed.
+ * @param impact impact speed in m/s; missing or non-finite counts as 0
+ * @returns `k` 0..1 (0 = a hop, 1 = a hard fall)
+ */
+export function landScale(impact: number | undefined): number {
+  const v = impact !== undefined && Number.isFinite(impact) ? impact : 0;
+  return Math.min(1, Math.max(0, v / 14));
+}
+
+/**
  * Heartbeat interval for the active snail, or null when health is not low.
  * @param health current hit points
  * @param threshold below this the heartbeat plays
@@ -159,6 +180,14 @@ function hurtRecipe(amount: number | undefined): Recipe {
   ];
 }
 
+function landRecipe(impact: number | undefined): Recipe {
+  const k = landScale(impact);
+  return [
+    { wave: 'sine', from: 140 - k * 50, to: 45, dur: 0.1 + k * 0.12, gain: 0.12 + k * 0.4 },
+    noise(0.06 + k * 0.1, 0.08 + k * 0.25, { type: 'lowpass', freq: 500 + k * 400, q: 0.7 }),
+  ];
+}
+
 function jingleRecipe(id: CueId): Recipe {
   switch (id) {
     case 'turnStart':
@@ -175,6 +204,49 @@ function jingleRecipe(id: CueId): Recipe {
       return [523, 659, 784, 1047].map((f, i) => note(f, 0.35, 0.25, i * 0.16, 'triangle'));
     default:
       return [392, 330, 262].map((f, i) => note(f, 0.4, 0.22, i * 0.22, 'sawtooth'));
+  }
+}
+
+/** Recipes for movement, pickup and UI cues; undefined for other ids. */
+function effectRecipe(req: CueRequest): Recipe | undefined {
+  switch (req.id) {
+    case 'jump':
+      return [
+        { wave: 'sine', from: 240, to: 520, dur: 0.14, gain: 0.2 },
+        noise(0.05, 0.08, { type: 'bandpass', freq: 1800, q: 0.8 }),
+      ];
+    case 'airJump':
+      return [{ wave: 'triangle', from: 420, to: 880, dur: 0.12, gain: 0.18 }];
+    case 'land':
+      return landRecipe(req.impact);
+    case 'squelch':
+      return [
+        { wave: 'sine', from: 180, to: 110, dur: 0.07, gain: 0.07 },
+        noise(0.06, 0.05, { type: 'bandpass', freq: 600, q: 2 }),
+      ];
+    case 'crateLand':
+      return [
+        { wave: 'sine', from: 120, to: 55, dur: 0.15, gain: 0.3 },
+        noise(0.12, 0.2, { type: 'lowpass', freq: 900 }),
+      ];
+    case 'cratePickup':
+      return [note(784, 0.1, 0.2, 0, 'triangle'), note(1175, 0.2, 0.22, 0.08, 'triangle')];
+    case 'weaponSelect':
+      return [
+        note(900, 0.04, 0.12, 0, 'square'),
+        note(1350, 0.05, 0.1, 0.04, 'square'),
+        noise(0.03, 0.05, { type: 'highpass', freq: 3000 }),
+      ];
+    case 'researchStart':
+      return [
+        note(330, 0.12, 0.2, 0, 'triangle'),
+        note(494, 0.12, 0.2, 0.1, 'triangle'),
+        note(392, 0.25, 0.18, 0.2, 'sine'),
+      ];
+    case 'uiClick':
+      return [note(700, 0.04, 0.1, 0, 'triangle')];
+    default:
+      return undefined;
   }
 }
 
@@ -226,6 +298,6 @@ export function recipeFor(req: CueRequest): Recipe {
     case 'timerWarning':
       return [note(1200, 0.05, 0.12, 0, 'square')];
     default:
-      return jingleRecipe(req.id);
+      return effectRecipe(req) ?? jingleRecipe(req.id);
   }
 }

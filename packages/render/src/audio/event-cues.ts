@@ -5,6 +5,9 @@ import type { CueRequest } from './recipes.js';
 /** Max health assumed when the mapper cannot look a snail up. */
 export const DEFAULT_MAX_HEALTH = 100;
 
+/** Landings slower than this (m/s) make no sound. */
+export const MIN_LAND_SPEED = 3;
+
 /** Options for the event mapper. */
 export interface EventCueOptions {
   /** Shell material of a snail, for tap pitch and crystal chime; unknown yields the default. */
@@ -56,6 +59,19 @@ export function cuesForEvent(e: SimEvent, opts: EventCueOptions = {}): CueReques
       return hit(e, opts);
     case 'snailDamaged':
       return damaged(e, opts);
+    case 'snailJumped':
+      return [{ id: e.air ? 'airJump' : 'jump' }];
+    case 'snailLanded':
+      // Tiny hops stay silent so slope bumps do not thud.
+      return e.impactSpeed >= MIN_LAND_SPEED ? [{ id: 'land', impact: e.impactSpeed }] : [];
+    case 'crateLanded':
+      return [{ id: 'crateLand' }];
+    case 'crateCollected':
+      return [{ id: 'cratePickup' }];
+    case 'crateDestroyed':
+      return e.reason === 'water' ? [{ id: 'splash' }] : [];
+    case 'researchStarted':
+      return [{ id: 'researchStart' }];
     case 'snailDied':
       return [{ id: 'death' }];
     case 'snailDrowned':

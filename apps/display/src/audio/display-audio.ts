@@ -14,6 +14,9 @@ export interface CuePort {
 /** Turn clock warnings start below this many ms remaining. */
 export const WARN_BELOW_MS = 5000;
 
+/** The active snail must move this far (m) horizontally between snapshots to squelch. */
+export const CRAWL_STEP_M = 0.04;
+
 /** Maps server messages to cues, the music bed and the low-health heartbeat. */
 export interface DisplayAudio {
   /** Feed every server message. */
@@ -35,6 +38,7 @@ export function createDisplayAudio(
   let activeHealth = Infinity;
   let lastWarnSec = Infinity;
   let nextBeat = 0;
+  let lastPos: { x: number; z: number } | null = null;
 
   const handle = (msg: ServerMessage): void => {
     switch (msg.type) {
@@ -49,12 +53,20 @@ export function createDisplayAudio(
         return;
       case 'turnStart':
         activeSnail = msg.snailId;
+        lastPos = null;
         lastWarnSec = Infinity;
         return;
-      case 'snapshot':
-        activeHealth =
-          decodeSnapshot(msg).snails.find((s) => s.id === activeSnail)?.health ?? Infinity;
+      case 'snapshot': {
+        const me = decodeSnapshot(msg).snails.find((s) => s.id === activeSnail);
+        activeHealth = me?.health ?? Infinity;
+        const moved =
+          me?.state === 'grounded' &&
+          lastPos !== null &&
+          Math.hypot(me.position.x - lastPos.x, me.position.z - lastPos.z) >= CRAWL_STEP_M;
+        lastPos = me?.state === 'grounded' ? { x: me.position.x, z: me.position.z } : null;
+        if (moved) port.play({ id: 'squelch' });
         return;
+      }
       case 'turnTimer': {
         const sec = Math.ceil(msg.remainingMs / 1000);
         if (msg.remainingMs <= 0 || msg.remainingMs >= WARN_BELOW_MS || sec >= lastWarnSec) return;
