@@ -184,20 +184,36 @@ function caveCarver(
     };
   });
   const reach = SHAFT_RADIUS + band + cs;
+  // The generator walks y innermost, so candidates are filtered once per column.
+  let col = -1;
+  let cBoxes: typeof boxes = [];
+  let cTunnels: Tunnel[] = [];
+  let cShafts: Shaft[] = [];
   return (x, y, z) => {
     const mx = x * cs;
     const my = y * cs;
     const mz = z * cs;
+    const key = z * 65536 + x;
+    if (key !== col) {
+      col = key;
+      cBoxes = boxes.filter((b) => mx >= b.x0 && mx <= b.x1 && mz >= b.z0 && mz <= b.z1);
+      cTunnels = tunnels.filter(
+        (t) =>
+          mx >= (t.bounds[0] as number) &&
+          mx <= (t.bounds[3] as number) &&
+          mz >= (t.bounds[2] as number) &&
+          mz <= (t.bounds[5] as number),
+      );
+      cShafts = shafts.filter((sh) => Math.abs(mx - sh.x) <= reach && Math.abs(mz - sh.z) <= reach);
+    }
     let v = -Infinity;
-    for (const b of boxes) {
-      if (mx < b.x0 || mx > b.x1 || mz < b.z0 || mz > b.z1 || my < b.y0 || my > b.y1) continue;
+    for (const b of cBoxes) {
+      if (my < b.y0 || my > b.y1) continue;
       v = Math.max(v, chamberCarve(b.ch, mx, my, mz));
     }
-    for (const t of tunnels) v = Math.max(v, tunnelCarve(t, mx, my, mz));
-    for (const sh of shafts) {
-      if (Math.abs(mx - sh.x) > reach || Math.abs(mz - sh.z) > reach || my < sh.floor - reach) {
-        continue;
-      }
+    for (const t of cTunnels) v = Math.max(v, tunnelCarve(t, mx, my, mz));
+    for (const sh of cShafts) {
+      if (my < sh.floor - reach) continue;
       v = Math.max(v, Math.min(SHAFT_RADIUS - Math.hypot(mx - sh.x, mz - sh.z), my - sh.floor));
     }
     return v;
