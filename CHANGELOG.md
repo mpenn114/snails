@@ -7,6 +7,35 @@ pushed tag `vX.Y.Z` as the release notes.
 
 ## [Unreleased]
 
+### Changed
+
+- Default turn time is now 45 s.
+- Aiming: drag sets direction only; press and hold Fire to charge power with a large gauge, then
+  release to shoot.
+- The tutorial no longer runs during your own turn; open it any time from the "?" button.
+- Team slots are assigned automatically on join; team and snail names are editable, with fun
+  defaults and a re-roll button.
+- Restyled join, lobby and TV lobby screens with a shared garden theme and logo.
+- Terrain generation links every sizeable standable region with ramps, causeways or tunnels, so
+  all parts of the map can be reached on foot; spawns and crates only land on connected ground.
+
+### Added
+
+- Camera avoids terrain between it and the snail (no more views from inside rock in tunnels) and a
+  new snail-eye camera mode on the phone's camera toggle.
+- Info (i) buttons on weapon tiles and tech cards explaining what each does.
+- Sounds for jumping, landing, crawling, crate landing and pickup, splashes, research, weapon
+  selection and button clicks.
+- Crate pickups show floating text on the TV and a toast on the collecting player's phone.
+
+### Fixed
+
+- Crates granting unlimited-ammo weapons made them limited; crate weapons were unusable until
+  their tech was researched. Crate pickup range is more forgiving, and Supply and Utility crates
+  now give genuinely new items.
+- Phone lobby and match controls no longer overlap the corner buttons; long team names no longer
+  wrap over the wind readout.
+
 ## [0.1.0] - Unreleased
 
 First playable release.

@@ -5,6 +5,7 @@ import { createEventCueMapper, cuesForEvent } from './event-cues.js';
 import {
   blastScale,
   heartbeatIntervalMs,
+  landScale,
   recipeFor,
   shellTapHz,
   FIRE_VOICES,
@@ -92,6 +93,50 @@ describe('recipes', () => {
     expect(musicBar(1)).toEqual(musicBar(1));
     expect(musicBar(0)[0]!.from).toBe(musicBar(4)[0]!.from);
     expect(musicBar(-1).length).toBeGreaterThan(0);
+  });
+});
+
+describe('movement and pickup cues', () => {
+  it('maps jumps, landings, crates, research and water', () => {
+    expect(cuesForEvent(ev({ type: 'snailJumped', air: false }))).toEqual([{ id: 'jump' }]);
+    expect(cuesForEvent(ev({ type: 'snailJumped', air: true }))).toEqual([{ id: 'airJump' }]);
+    expect(cuesForEvent(ev({ type: 'snailLanded', impactSpeed: 1 }))).toEqual([]);
+    expect(cuesForEvent(ev({ type: 'snailLanded', impactSpeed: 9 }))).toEqual([
+      { id: 'land', impact: 9 },
+    ]);
+    expect(cuesForEvent(ev({ type: 'crateLanded' }))).toEqual([{ id: 'crateLand' }]);
+    expect(cuesForEvent(ev({ type: 'crateCollected' }))).toEqual([{ id: 'cratePickup' }]);
+    expect(cuesForEvent(ev({ type: 'crateDestroyed', reason: 'water' }))).toEqual([
+      { id: 'splash' },
+    ]);
+    expect(cuesForEvent(ev({ type: 'crateDestroyed', reason: 'explosion' }))).toEqual([]);
+    expect(cuesForEvent(ev({ type: 'researchStarted' }))).toEqual([{ id: 'researchStart' }]);
+  });
+  it('scales the landing thud with impact', () => {
+    expect(landScale(undefined)).toBe(0);
+    expect(landScale(100)).toBe(1);
+    const peak = (impact: number) =>
+      Math.max(...recipeFor({ id: 'land', impact }).map((l) => l.gain));
+    expect(peak(14)).toBeGreaterThan(peak(4));
+  });
+  it('has a recipe for every new cue, keeping subtle ones quiet', () => {
+    const ids: CueId[] = [
+      'jump',
+      'airJump',
+      'land',
+      'squelch',
+      'crateLand',
+      'cratePickup',
+      'weaponSelect',
+      'researchStart',
+      'uiClick',
+    ];
+    for (const id of ids) {
+      const r = recipeFor({ id });
+      expect(r.length).toBeGreaterThan(0);
+      for (const l of r) expect(l.gain).toBeLessThanOrEqual(0.45);
+    }
+    expect(Math.max(...recipeFor({ id: 'squelch' }).map((l) => l.gain))).toBeLessThan(0.1);
   });
 });
 
@@ -222,6 +267,18 @@ describe('synth', () => {
     expect(() => s.play({ id: 'fire' })).not.toThrow();
     s.dispose();
     vi.useRealTimers();
+  });
+  it('rate-limits frequent cues', () => {
+    const ctx = fakeCtx();
+    ctx.state = 'running';
+    const s = createSynth({ createContext: () => ctx as unknown as AudioContext });
+    s.unlock();
+    s.play({ id: 'squelch' });
+    const n = ctx.createOscillator.mock.calls.length;
+    expect(n).toBeGreaterThan(0);
+    s.play({ id: 'squelch' });
+    expect(ctx.createOscillator.mock.calls.length).toBe(n);
+    s.dispose();
   });
   it('builds a factory from prefixed constructors', () => {
     expect(audioContextFactory({})).toBeUndefined();

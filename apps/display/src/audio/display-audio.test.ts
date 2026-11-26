@@ -28,6 +28,26 @@ describe('display audio', () => {
     }
     expect(port.play).toHaveBeenCalledTimes(2);
   });
+  it('squelches when the active snail crawls on the ground', () => {
+    const { port, a } = setup();
+    a.handle(msg({ type: 'turnStart', snailId: 's' }));
+    const snap = (x: number, state: number) =>
+      msg({
+        type: 'snapshot',
+        tick: 1,
+        wind: [0, 0],
+        projectiles: [],
+        statuses: [],
+        areas: [],
+        turn: [null, null, 0, 0, 0],
+        snails: [['s', x, 0, 0, 0, 0, 0, 0, 100, state, 0, 0]],
+      });
+    a.handle(snap(0, 1));
+    a.handle(snap(0, 1));
+    expect(port.play).not.toHaveBeenCalled();
+    a.handle(snap(100, 1));
+    expect(port.play).toHaveBeenCalledWith({ id: 'squelch' });
+  });
   it('does not beat with unknown health', () => {
     const { port, a } = setup();
     a.tick(1000);

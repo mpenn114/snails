@@ -20,6 +20,7 @@ const SIDE_R = 'calc(env(safe-area-inset-right) + 8px)';
 
 /**
  * Layout stylesheet for the shell: one top bar, a left column below it, one right button column.
+ * While the join/lobby screen is up, the right column becomes a toolbar row above its content.
  * Short (landscape) viewports shrink the minimap and controls and hide the extras.
  */
 export const SHELL_CSS = `
@@ -33,7 +34,10 @@ export const SHELL_CSS = `
 #${SLOT_RIGHT}>*,#${SLOT_LEFT}>*{pointer-events:auto}
 .${BTN_CLASS}{min-height:44px;min-width:44px;padding:6px 12px;border:0;border-radius:var(--snl-radius);font-family:inherit;font-size:var(--snl-text-s);font-weight:700;
   background:rgba(var(--snl-ink-rgb),.85);color:var(--snl-paper);-webkit-touch-callout:none;touch-action:manipulation}
+body:has(.join) #${SLOT_RIGHT}{top:calc(env(safe-area-inset-top) + 8px);left:${SIDE_L};flex-direction:row;flex-wrap:wrap;justify-content:flex-end;align-items:center}
 @media (max-height:480px){
+  body:not(:has(.join)) #${SLOT_RIGHT}{max-height:132px;flex-wrap:wrap-reverse;align-content:flex-start}
+  #${SLOT_RIGHT} .${BTN_CLASS},#${SLOT_RIGHT} .a11y-btn{min-height:36px;min-width:36px;padding-top:2px;padding-bottom:2px}
   #${SLOT_LEFT} canvas{width:88px!important;height:88px!important}
   .spec-hp{display:none!important}
   .ctl-stick{width:120px!important;height:120px!important}

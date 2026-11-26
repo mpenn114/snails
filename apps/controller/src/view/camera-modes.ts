@@ -1,14 +1,15 @@
 /** Camera control modes of the phone view. */
-export type ViewCameraMode = 'follow' | 'aim' | 'free';
+export type ViewCameraMode = 'follow' | 'aim' | 'free' | 'eye';
 
 /** Display order of the manual mode toggle. */
-export const MODE_CYCLE: readonly ViewCameraMode[] = ['follow', 'aim', 'free'];
+export const MODE_CYCLE: readonly ViewCameraMode[] = ['follow', 'aim', 'free', 'eye'];
 
 /**
  * Pure state machine choosing the camera mode. Aim mode is entered by a latch (the Aim button or
  * the start of an aim drag, see `setAimLatched`) and stays until the latch is released, a shot is
- * in flight, a gesture takes over, or a new turn starts. Other auto rules: `turnStart` returns to
- * follow, a projectile in flight switches to follow (the follow rig then lingers on the
+ * in flight, a gesture takes over, or a new turn starts. Eye mode (the snail's point of view) is
+ * a sticky preference chosen with the manual toggle: it survives new turns and shots. Other auto
+ * rules: `turnStart` returns to follow (or eye), a projectile in flight switches to follow (the follow rig then lingers on the
  * explosion). A manual toggle cycles modes.
  */
 export class CameraModeMachine {
@@ -16,6 +17,11 @@ export class CameraModeMachine {
   private aiming = false;
   private latched = false;
   private flying = false;
+  private eyePreferred = false;
+
+  private home(): ViewCameraMode {
+    return this.eyePreferred ? 'eye' : 'follow';
+  }
 
   /** Current mode. */
   get mode(): ViewCameraMode {
@@ -31,7 +37,7 @@ export class CameraModeMachine {
   turnStart(): ViewCameraMode {
     this.flying = false;
     this.latched = false;
-    this.current = this.aiming ? 'aim' : 'follow';
+    this.current = this.aiming ? 'aim' : this.home();
     return this.current;
   }
 
@@ -40,7 +46,7 @@ export class CameraModeMachine {
     const was = this.aiming;
     this.aiming = aiming;
     if (aiming && !was && !this.flying) this.current = 'aim';
-    else if (!aiming && was && this.current === 'aim' && !this.latched) this.current = 'follow';
+    else if (!aiming && was && this.current === 'aim' && !this.latched) this.current = this.home();
     return this.current;
   }
 
@@ -52,14 +58,14 @@ export class CameraModeMachine {
     if (latched && this.flying) return this.current;
     this.latched = latched;
     if (latched) this.current = 'aim';
-    else if (this.current === 'aim' && !this.aiming) this.current = 'follow';
+    else if (this.current === 'aim' && !this.aiming) this.current = this.home();
     return this.current;
   }
 
   /** Whether a projectile is in flight; its appearance forces follow, once per shot. */
   setProjectileInFlight(flying: boolean): ViewCameraMode {
     if (flying && !this.flying) {
-      this.current = 'follow';
+      this.current = this.home();
       this.latched = false;
     }
     this.flying = flying;
@@ -71,6 +77,7 @@ export class CameraModeMachine {
     const i = MODE_CYCLE.indexOf(this.current);
     this.current = MODE_CYCLE[(i + 1) % MODE_CYCLE.length] as ViewCameraMode;
     this.latched = this.current === 'aim';
+    this.eyePreferred = this.current === 'eye';
     return this.current;
   }
 

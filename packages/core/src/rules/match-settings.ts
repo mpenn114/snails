@@ -48,7 +48,7 @@ export const MatchSettingsSchema = z.object({
   /** Map size; `auto` scales with the total snail count (see {@link resolveMapSize}). */
   mapSize: z.enum(MAP_SIZE_SETTINGS).default('auto'),
   /** Seconds of the action phase of a turn. */
-  turnTimeSeconds: z.number().int().min(10).max(120).default(30),
+  turnTimeSeconds: z.number().int().min(10).max(120).default(45),
   /** Seconds of the retreat window after a shot. */
   retreatTimeSeconds: z.number().int().min(0).max(30).default(3),
   /** Health (and max health) every snail starts with. */

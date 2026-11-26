@@ -4,7 +4,8 @@ import { DEFAULT_TERRAIN_CONFIG, generateTerrain } from '../generator.js';
 import { MATERIAL_ROCK, MATERIAL_SAND } from '../materials.js';
 import type { SdfGrid } from '../sdf-grid.js';
 
-const C = { ...DEFAULT_TERRAIN_CONFIG, style: 'archipelago' as const };
+// The raw style, without the reachability pass that adds ramps (see reachability.test.ts).
+const C = { ...DEFAULT_TERRAIN_CONFIG, style: 'archipelago' as const, connect: false };
 
 /** Highest solid y (m) of a column, or 0. */
 const top = (g: SdfGrid, x: number, z: number): number => {

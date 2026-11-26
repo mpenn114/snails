@@ -162,6 +162,13 @@ export interface SnailLandedEvent {
   fallDistance: number;
 }
 
+/** A snail launched itself into a jump (`air` for an extra mid-air jump). */
+export interface SnailJumpedEvent {
+  type: 'snailJumped';
+  snailId: string;
+  air: boolean;
+}
+
 /** A command failed validation. */
 export interface CommandRejectedEvent {
   type: 'commandRejected';
@@ -268,6 +275,13 @@ export interface CrateSpawnedEvent {
   position: Vec3;
 }
 
+/** A parachuting crate touched down on terrain. */
+export interface CrateLandedEvent {
+  type: 'crateLanded';
+  crateId: string;
+  position: Vec3;
+}
+
 /** A snail picked a crate up (contents already applied). */
 export interface CrateCollectedEvent {
   type: 'crateCollected';
@@ -281,6 +295,10 @@ export interface CrateCollectedEvent {
   damage: number;
   /** Weapon stock added to the snail's team inventory. */
   weapons: { weaponId: string; count: number }[];
+  /** Team of the collecting snail. */
+  teamId: string;
+  /** Short display text for toasts and floating text, e.g. "+25 HP". */
+  text: string;
   /** Status applied to the snail, if any. */
   statusId?: string;
 }
@@ -382,6 +400,7 @@ export type SimEvent =
   | SnailDiedEvent
   | SnailDrownedEvent
   | SnailLandedEvent
+  | SnailJumpedEvent
   | CommandRejectedEvent
   | StatusAppliedEvent
   | StatusExpiredEvent
@@ -395,6 +414,7 @@ export type SimEvent =
   | ScheduledCreatedEvent
   | ScheduledFiredEvent
   | CrateSpawnedEvent
+  | CrateLandedEvent
   | CrateCollectedEvent
   | CrateDestroyedEvent
   | SuddenDeathStartedEvent
@@ -426,6 +446,7 @@ export const SIM_EVENT_TYPES: readonly SimEventType[] = [
   'snailDied',
   'snailDrowned',
   'snailLanded',
+  'snailJumped',
   'commandRejected',
   'statusApplied',
   'statusExpired',
@@ -439,6 +460,7 @@ export const SIM_EVENT_TYPES: readonly SimEventType[] = [
   'ropeReleased',
   'meleeStruck',
   'crateSpawned',
+  'crateLanded',
   'crateCollected',
   'crateDestroyed',
   'suddenDeathStarted',

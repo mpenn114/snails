@@ -127,9 +127,9 @@ export class CameraController {
     const mode = this.machine.mode;
     if (mode === this.applied) return;
     this.applied = mode;
-    if (mode === 'follow') {
+    if (mode === 'follow' || mode === 'eye') {
       this.rig.setTarget(null);
-      this.rig.setMode('follow');
+      this.rig.setMode(mode);
       this.mirror = null;
     } else {
       this.rig.setMode('free');

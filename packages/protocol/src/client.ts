@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { MAX_SNAIL_NAMES } from './names.js';
 import { Colour, CpuDifficulty, CpuPersonality, MatchSettings, Role, TeamId } from './common.js';
 
 /**
@@ -22,6 +23,13 @@ export const SetTeam = z.object({ type: z.literal('setTeam'), teamId: TeamId });
 /** Toggles membership of a team without leaving others (hot-seat: one phone, several teams). */
 export const ToggleTeam = z.object({ type: z.literal('toggleTeam'), teamId: TeamId });
 export const SetColour = z.object({ type: z.literal('setColour'), colour: Colour });
+/** Renames the sender's team (cleaned and length-limited by the server; empty = a fresh default). */
+export const SetTeamName = z.object({ type: z.literal('setTeamName'), name: z.string().max(200) });
+/** Renames the sender's snails in order (cleaned by the server; empty entries get defaults). */
+export const SetSnailNames = z.object({
+  type: z.literal('setSnailNames'),
+  names: z.array(z.string().max(200)).max(MAX_SNAIL_NAMES),
+});
 export const SetReady = z.object({ type: z.literal('setReady'), ready: z.boolean() });
 /** Host-only: changes the lobby's match settings (shown live on the display). */
 export const SetSettings = z.object({ type: z.literal('setSettings'), settings: MatchSettings });
@@ -92,6 +100,8 @@ export const ClientMessage = z.discriminatedUnion('type', [
   SetTeam,
   ToggleTeam,
   SetColour,
+  SetTeamName,
+  SetSnailNames,
   SetReady,
   SetSettings,
   AddCpu,

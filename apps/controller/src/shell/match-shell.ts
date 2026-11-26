@@ -4,16 +4,23 @@ import { createAimStore } from '../controls/aim-store';
 import { mountControls } from '../controls/mount-controls';
 import { trackScreenFacing } from '../controls/facing-tracker';
 import { mountDebugOverlay } from '../debug/debug-overlay';
+import { mountCrateToast } from '../crate/crate-toast';
 import { mountFeedback } from '../feedback/mount-feedback';
 import type { ControllerClient } from '../net/client';
 import { mountSpectate } from '../spectate/spectate-view';
-import { loadTutorialSeen, shouldShowTutorial } from '../ui/tutorial-steps';
+import {
+  TUTORIAL_EVENT,
+  loadTutorialSeen,
+  shouldShowTutorial,
+  tutorialAutoStart,
+} from '../ui/tutorial-steps';
 import { mountTutorial } from '../ui/tutorial-overlay';
 import { safeStorage } from '../platform/ios';
 import { mountPassPhone, shouldPassPhone } from '../ui/pass-phone';
 import { lobbyErrorText, playerTeams } from '../ui/lobby-logic';
 import { mountLobbyView } from '../ui/lobby-view';
 import { mountResearch } from '../research/mount-research';
+import { adoptA11yButtons } from '../ui/a11y-panel';
 import { mountPhoneView } from '../view/mount-phone-view';
 import { SHELL_CSS, SLOT_LEFT, SLOT_RIGHT, SLOT_TOP, Z } from './layers';
 import type { LayerName } from './layers';
@@ -48,23 +55,43 @@ function mountLayers(): Record<'style' | 'hud' | 'controls' | 'banners' | 'modal
   return { style, hud, controls, banners, modal };
 }
 
-/** Mounts the tutorial; `onTurn(mine)` starts it once, on the first turn of one of our teams. */
-function mountFirstTurnTutorial(modal: HTMLElement): {
+/**
+ * Mounts the tutorial. It opens by itself once while another team is playing (never during one of
+ * my turns, so it costs no turn time), is hidden when my turn starts, and can be opened on demand
+ * (help button, settings panel) at any time.
+ */
+function mountTutorialHelp(modal: HTMLElement): {
   onTurn: (mine: boolean) => void;
   destroy: () => void;
 } {
   const storage = safeStorage();
   const overlay = mountTutorial(modal, storage);
-  let done = false;
+  let started = false;
   const wanted = (): boolean =>
     shouldShowTutorial(loadTutorialSeen(storage), location.search, navigator.webdriver === true);
+  const onDemand = (): void => overlay.start();
+  window.addEventListener(TUTORIAL_EVENT, onDemand);
   return {
     onTurn: (mine) => {
-      if (done || !mine || !wanted()) return;
-      done = true;
+      if (mine) return overlay.hide();
+      if (!tutorialAutoStart(wanted(), mine, started)) return;
+      started = true;
       overlay.start();
     },
-    destroy: overlay.destroy,
+    destroy: () => {
+      window.removeEventListener(TUTORIAL_EVENT, onDemand);
+      overlay.destroy();
+    },
+  };
+}
+
+/** Static dependencies the controls need beyond the live phone view. */
+function controlDeps(playerId: string, aimStore: ReturnType<typeof createAimStore>) {
+  return {
+    playerId,
+    weapons,
+    aimStore,
+    techName: (id: string) => technologies.find((t) => t.id === id)?.name ?? id,
   };
 }
 
@@ -77,9 +104,7 @@ function mountSession(client: ControllerClient, screen: HTMLElement, playerId: s
   const facing = trackScreenFacing(client, () => phone.handle.cameraYaw());
   // Mounted before lobbyState arrives so the controls learn our team.
   const disposeControls = mountControls(controls, client, {
-    playerId,
-    weapons,
-    aimStore,
+    ...controlDeps(playerId, aimStore),
     screenFacing: facing.screenFacing,
     onAimingChange: (a) => phone.handle.setAiming(a),
   });
@@ -89,15 +114,17 @@ function mountSession(client: ControllerClient, screen: HTMLElement, playerId: s
     lobby = showLobby();
   });
   const disposeFeedback = mountFeedback(banners, client, playerId);
+  const releaseA11y = adoptA11yButtons(document, document.getElementById(SLOT_RIGHT));
   let lobby = showLobby();
   const pass = mountPassPhone(modal);
-  const tutorial = mountFirstTurnTutorial(modal);
+  const tutorial = mountTutorialHelp(modal);
   const disposeResearch = mountResearch(modal, client, playerId, technologies);
 
   let myTeams: readonly string[] = [];
   let mode: ControlMode = 'perPlayer';
   const teams = new Map<string, { name: string; colour: string }>();
   const offs = [
+    mountCrateToast(modal, client, () => myTeams),
     client.on('lobbyState', (s) => {
       const me = s.players.find((p) => p.id === playerId);
       myTeams = me ? playerTeams(me) : [];
@@ -121,6 +148,7 @@ function mountSession(client: ControllerClient, screen: HTMLElement, playerId: s
     tutorial.destroy();
     disposeResearch();
     disposeFeedback();
+    releaseA11y();
     disposeSpectate();
     disposeControls();
     facing.dispose();

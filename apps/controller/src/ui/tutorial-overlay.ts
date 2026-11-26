@@ -9,7 +9,7 @@ import {
 } from './tutorial-steps';
 
 const CSS = `
-.tut{position:absolute;left:8px;right:8px;bottom:calc(env(safe-area-inset-bottom) + 120px);margin:auto;max-width:360px;
+.tut{position:absolute;left:8px;right:8px;top:calc(env(safe-area-inset-top) + 72px);margin:auto;max-width:360px;
   padding:12px;border-radius:var(--snl-radius);background:rgba(var(--snl-ink-rgb),.95);color:var(--snl-paper);
   font-family:var(--snl-font);font-size:var(--snl-text-m);pointer-events:auto;touch-action:manipulation;
   animation:tut-in .25s ease-out}
@@ -24,6 +24,10 @@ const CSS = `
 export interface TutorialOverlay {
   /** Shows the tutorial from the first step. */
   start(): void;
+  /** Hides the overlay without marking it seen (a live turn begins); `start` brings it back. */
+  hide(): void;
+  /** Whether it is showing. */
+  readonly open: boolean;
   /** Removes the overlay. */
   destroy(): void;
 }
@@ -68,6 +72,13 @@ export function mountTutorial(parent: HTMLElement, storage: Storage | undefined)
     start: () => {
       s = tutorialStart();
       paint();
+    },
+    hide: () => {
+      s = tutorialSkip();
+      paint();
+    },
+    get open() {
+      return tutorialActive(s);
     },
     destroy: () => {
       el.remove();

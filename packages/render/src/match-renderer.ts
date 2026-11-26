@@ -92,14 +92,6 @@ function cloneGrid(g: SdfGrid): SdfGrid {
   return c;
 }
 
-function groundHeight(grid: SdfGrid, x: number, z: number): number {
-  const top = grid.worldSize().y;
-  for (let y = top; y > 0; y -= grid.cellSize) {
-    if (grid.isSolid({ x, y, z })) return y;
-  }
-  return 0;
-}
-
 /** Layers and managers that exist only between `init` and teardown. */
 interface Built {
   view: GameView;
@@ -464,7 +456,7 @@ function createRig(
     mode: 'follow',
     shot: { kind: 'overview', rate: 0.05, extent: Math.max(ws.x, ws.z) * 0.8 },
     bounds: { min: { x: -20, y: 0, z: -20 }, max: { x: ws.x + 20, y: ws.y + 40, z: ws.z + 20 } },
-    heightAt: (x, z) => groundHeight(grid, x, z),
+    sdf: (x, y, z) => grid.sampleLinear({ x, y, z }),
     ...extra,
   });
 }

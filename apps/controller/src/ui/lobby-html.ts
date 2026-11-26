@@ -19,8 +19,14 @@ export function safeColour(c: string | null): string {
   return c && /^#[0-9a-f]{3,8}$/i.test(c) ? c : '#888';
 }
 
+/** Round team chip: colour fill, team slot letter and the colour-blind shape glyph. */
+function chipHtml(p: LobbyPlayer): string {
+  const slot = esc(p.teamId ?? '?');
+  return `<span class="m-dot" style="background:${safeColour(p.colour)}">${slot}</span>`;
+}
+
 /**
- * Roster list items for controllers (name, team, colour, ready, connected, host badge).
+ * Roster list items for controllers (team chip, team name, player name, status badges).
  * @param players lobby roster
  * @param hostId host player id
  * @param canRemoveCpu whether to show a remove button on CPU teams (host only)
@@ -33,20 +39,20 @@ export function rosterHtml(
   return players
     .filter((p) => p.role === 'controller')
     .map((p) => {
-      const badges = [
-        p.id === hostId ? 'host' : '',
-        p.ready ? 'ready' : '',
-        p.connected ? '' : 'offline',
-      ].filter(Boolean);
-      const dot = `<span style="color:${safeColour(p.colour)}">&#9679;</span><span class="team-glyph" aria-hidden="true">${teamGlyphForColour(p.colour)}</span>`;
-      const tag = badges.length ? ` (${badges.join(', ')})` : '';
+      const glyph = `<span class="team-glyph" aria-hidden="true">${teamGlyphForColour(p.colour)}</span>`;
       if (p.cpu) {
         const rm = canRemoveCpu
           ? ` <button type="button" class="cpu-remove" data-team="${esc(p.teamId ?? p.id)}" aria-label="Remove ${esc(p.name)}">&#10005;</button>`
           : '';
-        return `<li>${dot} ${esc(p.name)} <span class="badge cpu">CPU</span> ${esc(cpuSummary(p.cpu))}${rm}</li>`;
+        return `<li>${chipHtml(p)}${glyph}<span class="who"><b>${esc(p.name)}</b><small>${esc(cpuSummary(p.cpu))}</small></span><span class="badge m-badge cpu">CPU</span>${rm}</li>`;
       }
-      return `<li>${dot} ${esc(p.name)} [${esc(playerTeams(p).join('+') || '-')}]${tag}</li>`;
+      const badges = [
+        p.id === hostId ? '<span class="m-badge host">host</span>' : '',
+        p.ready ? '<span class="m-badge is-ready">ready</span>' : '',
+        p.connected ? '' : '<span class="m-badge off">offline</span>',
+      ].join('');
+      const extra = playerTeams(p).length > 1 ? ` +${playerTeams(p).length - 1}` : '';
+      return `<li>${chipHtml(p)}${glyph}<span class="who"><b>${esc(p.teamName || p.name)}${extra}</b><small>${esc(p.name)}</small></span>${badges}</li>`;
     })
     .join('');
 }

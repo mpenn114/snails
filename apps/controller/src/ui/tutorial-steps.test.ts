@@ -6,6 +6,7 @@ import {
   saveTutorialSeen,
   shouldShowTutorial,
   tutorialActive,
+  tutorialAutoStart,
   tutorialNext,
   tutorialSkip,
   tutorialStart,
@@ -59,5 +60,18 @@ describe('seen flag', () => {
     expect(shouldShowTutorial(false, '', true)).toBe(false);
     expect(shouldShowTutorial(false, '?tutorial=0', false)).toBe(false);
     expect(shouldShowTutorial(true, '?tutorial=1', true)).toBe(true);
+  });
+});
+
+describe('auto start', () => {
+  it('never opens during my own turn and only once', () => {
+    expect(tutorialAutoStart(true, true, false)).toBe(false);
+    expect(tutorialAutoStart(true, false, false)).toBe(true);
+    expect(tutorialAutoStart(true, false, true)).toBe(false);
+    expect(tutorialAutoStart(false, false, false)).toBe(false);
+  });
+  it('describes the hold-to-charge power', () => {
+    const power = TUTORIAL_STEPS.find((s) => s.id === 'power');
+    expect(power?.body).toMatch(/hold/i);
   });
 });

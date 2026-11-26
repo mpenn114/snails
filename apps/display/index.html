@@ -3,6 +3,12 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Nunito:wght@600;700;800;900&display=swap"
+    />
     <title>Snails - Display</title>
     <style>
       html,
@@ -17,112 +23,12 @@
         height: 100%;
         display: block;
       }
-      .lobby {
-        position: fixed;
-        inset: 0;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        background: var(--snl-ink);
-        color: var(--snl-paper);
-        font-family: var(--snl-font);
-      }
-      .help-btn {
-        position: fixed;
-        right: 12px;
-        bottom: 12px;
-        z-index: 20;
-        opacity: 0.8;
-      }
-      .help-panel {
-        position: fixed;
-        left: 50%;
-        top: 50%;
-        transform: translate(-50%, -50%);
-        z-index: 30;
-        max-width: 560px;
-        padding: 20px 24px;
-        background: #1c2430;
-        color: #fff;
-        border-radius: 12px;
-        box-shadow: 0 8px 40px #000a;
-      }
-      .help-panel[hidden],
-      .help-btn[hidden] {
-        display: none;
-      }
-      .help-panel .qr svg {
-        width: 180px;
-        height: 180px;
-      }
-      .lobby[hidden] {
-        display: none;
-      }
-      .lobby-card {
-        display: flex;
-        gap: 6vw;
-        align-items: center;
-      }
-      .lobby .code {
-        font-size: 12vw;
-        font-weight: 800;
-        letter-spacing: 0.15em;
-      }
-      .lobby .url {
-        font-size: 2vw;
-      }
-      .lobby .qr svg {
-        width: 22vw;
-        height: 22vw;
-      }
-      .lobby .teams {
-        display: flex;
-        gap: 2vw;
-        flex-wrap: wrap;
-        font-size: 2vw;
-      }
-      .lobby ul {
-        list-style: none;
-        padding: 0;
-      }
-      .lobby em {
-        opacity: 0.6;
-        font-size: 0.7em;
-      }
-      .lobby .dot {
-        display: inline-block;
-        width: 1em;
-        height: 1em;
-        border-radius: 50%;
-        margin-right: 0.4em;
-        vertical-align: middle;
-      }
-      .team-glyph {
-        margin-right: 0.3em;
-        font-weight: 900;
-      }
       @media (prefers-reduced-motion: reduce) {
         .hud .banner,
         .hud * {
           animation: none !important;
           transition: none !important;
         }
-      }
-      .lobby .chips {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 0.6vw;
-        margin: 1.5vw 0 0;
-        padding: 0;
-        font-size: 1.4vw;
-      }
-      .lobby .chips li {
-        padding: 0.3vw 1vw;
-        background: rgba(var(--snl-paper-rgb, 255, 255, 255), 0.12);
-        border-radius: 999px;
-      }
-      .lobby .chips span {
-        opacity: 0.6;
       }
       .hud {
         position: fixed;

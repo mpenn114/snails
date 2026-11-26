@@ -104,10 +104,17 @@ export class HudView {
     row.style.cssText = `background:rgba(var(--snl-ink-rgb),.6);border-radius:var(--snl-outline);height:16px;position:relative;${h.active ? 'outline:var(--snl-outline) solid var(--snl-paper);' : ''}`;
     const fill = d.createElement('div');
     fill.style.cssText = `background:${h.colour};height:100%;border-radius:var(--snl-outline);width:${(h.fraction * 100).toFixed(1)}%`;
+    // Name truncates so long team names never wrap onto the wind line; HP stays visible.
     const label = d.createElement('span');
     label.style.cssText =
-      'position:absolute;left:4px;top:-1px;font-size:var(--snl-text-s);font-weight:800';
-    label.textContent = `${h.name} ${h.hp}`;
+      'position:absolute;inset:-1px 4px auto;display:flex;gap:4px;white-space:nowrap;' +
+      'font-size:var(--snl-text-s);font-weight:800';
+    const name = d.createElement('span');
+    name.style.cssText = 'overflow:hidden;text-overflow:ellipsis;flex:1;min-width:0';
+    name.textContent = h.name;
+    const hp = d.createElement('span');
+    hp.textContent = String(h.hp);
+    label.append(name, hp);
     row.append(fill, label);
     return row;
   }

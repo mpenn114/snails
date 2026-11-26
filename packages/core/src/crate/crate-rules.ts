@@ -4,8 +4,8 @@ export const CRATE_RADIUS = 0.4;
 export const CRATE_GRAVITY = 9.8;
 /** Terminal fall speed (m/s) under the leaf parachute: slow and gentle. */
 export const PARACHUTE_SPEED = 2.5;
-/** A snail within this distance (m, centre to centre) of a crate collects it. */
-export const PICKUP_RADIUS = 1;
+/** A snail within this distance (m, centre to centre; snail 0.5 + crate 0.4 + slack) of a crate collects it. */
+export const PICKUP_RADIUS = 1.5;
 /** Crates appear this high (m) above their landing spot, clamped to the world top. */
 export const DROP_HEIGHT = 14;
 /** Landing spots must be at least this far (m) above the water line. */

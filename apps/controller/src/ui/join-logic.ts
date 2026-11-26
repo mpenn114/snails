@@ -33,7 +33,7 @@ export function canJoin(name: string, room: string, busy: boolean): boolean {
 /** User-facing status text for a connection state and last error; empty when nothing to show. */
 export function statusText(state: ConnectionState, error: ErrorCode | undefined): string {
   if (error === 'no_room') return 'Room not found. Check the code.';
-  if (error === 'room_full') return 'That room is full.';
+  if (error === 'room_full' || error === 'teams_full') return 'That room is full.';
   if (error === 'protocol_mismatch' || state === 'mismatch')
     return 'Your app is out of date. Please refresh the page.';
   if (error === 'bad_session') return 'Your session expired. Join again.';

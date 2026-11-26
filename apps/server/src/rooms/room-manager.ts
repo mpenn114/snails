@@ -93,6 +93,7 @@ export class RoomManager {
       ).join('');
     } while (this.rooms.has(code));
     const room = new Room(code);
+    room.random = this.random;
     if (this.initialSettings) room.settings = { ...this.initialSettings };
     if (this.onSettingsChange) room.onSettingsChange = this.onSettingsChange;
     room.onMatchStart = (settings, members) => {
@@ -144,6 +145,7 @@ export class RoomManager {
       send,
       ...(jo.detach ? { detach: jo.detach } : {}),
     };
+    if (role === 'controller' && !room.autoAssign(member)) return { ok: false, code: 'teams_full' };
     room.add(member);
     this.cancelEmpty(room.code);
     return { ok: true, room, member };

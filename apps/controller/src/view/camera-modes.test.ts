@@ -28,10 +28,24 @@ function poseCamera(p: {
 }
 
 describe('CameraModeMachine', () => {
-  it('starts in follow and cycles follow, aim, free', () => {
+  it('starts in follow and cycles follow, aim, free, eye', () => {
     const m = new CameraModeMachine();
     expect(m.mode).toBe('follow');
-    expect([m.cycle(), m.cycle(), m.cycle()]).toEqual(['aim', 'free', 'follow']);
+    expect([m.cycle(), m.cycle(), m.cycle(), m.cycle()]).toEqual(['aim', 'free', 'eye', 'follow']);
+  });
+
+  it('eye mode is sticky across turns and shots until toggled away', () => {
+    const m = new CameraModeMachine();
+    m.cycle();
+    m.cycle();
+    m.cycle();
+    expect(m.mode).toBe('eye');
+    expect(m.turnStart()).toBe('eye');
+    expect(m.setAiming(true)).toBe('aim');
+    expect(m.setAiming(false)).toBe('eye');
+    expect(m.setProjectileInFlight(true)).toBe('eye');
+    m.cycle();
+    expect(m.turnStart()).toBe('follow');
   });
 
   it('turnStart leaves free for follow', () => {
@@ -205,8 +219,8 @@ function fakeRig(): RigLike & { inputs: unknown[]; poses: unknown[]; modes: stri
     inputs: [] as unknown[],
     poses: [] as unknown[],
     modes: [] as string[],
-    mode: 'follow' as 'follow' | 'free' | 'cinematic',
-    setMode(m: 'follow' | 'free' | 'cinematic') {
+    mode: 'follow' as 'follow' | 'free' | 'cinematic' | 'eye',
+    setMode(m: 'follow' | 'free' | 'cinematic' | 'eye') {
       rig.mode = m;
       rig.modes.push(m);
     },

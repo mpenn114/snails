@@ -7,6 +7,13 @@ export interface WeaponLike {
   motion?: { kind: string } | undefined;
   /** Weapon category: melee weapons need no power, utilities (rope) are not attacks. */
   category?: string | undefined;
+  /** Effects, pattern, fuse etc. feed the (i) info popover. */
+  effects?: readonly unknown[] | undefined;
+  pattern?: { count: number } | undefined;
+  fuseSeconds?: number | undefined;
+  perTurn?: number | undefined;
+  melee?: { reach: number } | undefined;
+  requiresTech?: string | undefined;
 }
 
 /** Label of the fire button for a weapon: melee strikes, utilities are used, others fire. */
@@ -14,6 +21,11 @@ export function fireLabel(weapon: Pick<WeaponLike, 'category'> | undefined): str
   if (weapon?.category === 'melee') return 'Bash';
   if (weapon?.category === 'utility') return 'Use';
   return 'Fire';
+}
+
+/** Whether the weapon takes launch power (hold Fire to charge); melee and utilities fire at once. */
+export function needsCharge(weapon: Pick<WeaponLike, 'category'> | undefined): boolean {
+  return weapon !== undefined && weapon.category !== 'melee' && weapon.category !== 'utility';
 }
 
 /** A team's stock and locks as sent by the server's `inventory` message. */

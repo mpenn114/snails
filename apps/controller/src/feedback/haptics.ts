@@ -7,6 +7,8 @@ export const HAPTIC_PATTERNS: Readonly<Record<Cue['kind'], number[]>> = {
   damage: [120, 40, 60],
   explosion: [200],
   tick: [15],
+  select: [8],
+  click: [6],
 };
 
 /** Environment for haptics (injectable). */

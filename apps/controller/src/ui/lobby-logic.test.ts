@@ -8,6 +8,11 @@ import {
   randomSeed,
   settingsError,
   startBlocker,
+  TEAMS,
+  cleanName,
+  mergeSnailNames,
+  snailFieldCount,
+  takenTeams,
   takenColours,
 } from './lobby-logic';
 
@@ -69,9 +74,23 @@ describe('controller lobby logic', () => {
     expect(parseIntField('1.5')).toBeNaN();
     expect(randomSeed(() => 0.5)).toBe(0x80000000);
     expect(lobbyErrorText('not_host', 'x')).toMatch(/host/);
-    expect(lobbyErrorText('teams_full', '')).toMatch(/another team/);
+    expect(lobbyErrorText('teams_full', '')).toMatch(/team slots/);
     expect(lobbyErrorText('invalid_settings', 'Colour already taken')).toBe('Colour already taken');
     expect(lobbyErrorText('not_in_lobby', '')).toMatch(/started/);
     expect(lobbyErrorText('internal', '')).toMatch(/wrong/);
+  });
+
+  it('offers eight auto-assigned team slots and hides slots other phones hold', () => {
+    expect(TEAMS).toHaveLength(8);
+    const t = takenTeams([p('a', 'A', false), { ...p('b', 'B', false), teamIds: ['B', 'C'] }], 'a');
+    expect([...t].sort()).toEqual(['b', 'c']);
+  });
+
+  it('cleans names and sizes the snail fields from the match setting', () => {
+    expect(cleanName('  Slime   Squad of the Garden  ')).toBe('Slime Squad of t');
+    expect(snailFieldCount(3)).toBe(3);
+    expect(snailFieldCount(99)).toBe(8);
+    expect(snailFieldCount(undefined)).toBe(3);
+    expect(mergeSnailNames(['  a ', 'b'], ['x', 'y', 'z'])).toEqual(['a', 'b', 'z']);
   });
 });

@@ -144,7 +144,9 @@ describe('pure helpers', () => {
     expect(isWeaponLocked(t, { requiresTech: 'tech' })).toBe(false);
     expect(isWeaponLocked(t, { requiresTech: 'other' })).toBe(true);
     expect(weaponAvailability(t, { id: 'x:none', ammo: 4 })).toBe('NO_AMMO');
-    expect(weaponAvailability(t, { id: 'x:a', ammo: 1, requiresTech: 'o' })).toBe('WEAPON_LOCKED');
+    // Crate-granted stock bypasses the tech lock; with no stock the weapon stays locked.
+    expect(weaponAvailability(t, { id: 'x:a', ammo: 1, requiresTech: 'o' })).toBe('ok');
+    expect(weaponAvailability(t, { id: 'x:b', ammo: 1, requiresTech: 'o' })).toBe('WEAPON_LOCKED');
     expect(weaponAvailability(t, { id: 'x:a', ammo: 1 })).toBe('ok');
   });
 

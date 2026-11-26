@@ -42,6 +42,8 @@ export const CUE_MAP: Readonly<Record<Cue['kind'], CueRequest>> = {
   damage: { id: 'hurt' },
   explosion: { id: 'explosion' },
   tick: { id: 'timerWarning' },
+  select: { id: 'weaponSelect' },
+  click: { id: 'uiClick' },
 };
 
 function readMuted(storage: MuteStorage | undefined): boolean {

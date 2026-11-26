@@ -42,23 +42,22 @@ describe('CPU teams in the lobby', () => {
     const { room, add, inbox } = setup();
     const host = add('Ann');
     for (let i = 0; i < 8; i++) room.handleLobbyAction(host, addCpu);
-    expect(room.cpuTeams).toHaveLength(8);
+    expect(room.cpuTeams).toHaveLength(7); // the phone already holds one of the 8 slots
     room.handleLobbyAction(host, addCpu);
-    expect(room.cpuTeams).toHaveLength(8);
+    expect(room.cpuTeams).toHaveLength(7);
     expect(inbox.get('Ann')?.some((m) => m.type === 'error' && m.code === 'teams_full')).toBe(true);
   });
 
   it('starts with one phone and a CPU, and keeps the CPU colour exclusive', () => {
     const { room, add, inbox } = setup();
     const host = add('Ann');
-    room.handleLobbyAction(host, { type: 'setTeam', teamId: 'red' });
     room.handleLobbyAction(host, { type: 'setReady', ready: true });
     room.handleLobbyAction(host, addCpu);
     room.handleLobbyAction(host, {
       type: 'setColour',
       colour: room.cpuTeams[0]?.colour ?? '',
     });
-    expect(host.colour).toBeNull();
+    expect(host.colour).not.toBe(room.cpuTeams[0]?.colour);
     expect(inbox.get('Ann')?.some((m) => m.type === 'error')).toBe(true);
     room.handleLobbyAction(host, { type: 'startMatch', settings: {} });
     expect(room.phase).toBe('playing');
