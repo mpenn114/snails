@@ -26,6 +26,7 @@ import {
 } from '@snails/protocol';
 import type { CpuPlayer } from '@snails/ai';
 import { CpuDriver } from './cpu-driver.js';
+import { snailNamesFor } from './snail-names.js';
 import {
   intentToCommand,
   type GameIntent,
@@ -48,6 +49,8 @@ export interface SessionTeam {
   name: string;
   colour: string;
   playerIds: string[];
+  /** Custom snail names in order; missing entries get defaults. */
+  snailNames?: string[];
 }
 
 /** Injectable timer source. */
@@ -163,14 +166,11 @@ export class GameSession {
       areas: content.areas.list(),
       crates: content.crates.list(),
       technologies: content.technologies.list(),
-      teams: opts.teams.map((t) => ({
+      teams: opts.teams.map((t, ti) => ({
         id: t.id,
         name: t.name,
         colour: t.colour,
-        snailNames: Array.from(
-          { length: this.settings.snailsPerTeam },
-          (_, i) => `${t.name} ${i + 1}`,
-        ),
+        snailNames: snailNamesFor(t, ti, this.settings.snailsPerTeam),
       })),
     });
     if (opts.cpuPlayers && opts.cpuPlayers.size > 0)

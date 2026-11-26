@@ -24,8 +24,18 @@ describe('lobby html', () => {
   it('renders roster badges and skips displays', () => {
     const html = rosterHtml([player({}), player({ id: 'd', role: 'display' })], 'a');
     expect(html).toContain('&lt;b&gt;Ann');
-    expect(html).toContain('(host, ready, offline)');
+    expect(html).toContain('m-badge host');
+    expect(html).toContain('m-badge is-ready');
+    expect(html).toContain('m-badge off');
+    expect(html).not.toContain('<b>Ann');
     expect(html.match(/<li>/g)).toHaveLength(1);
+  });
+
+  it('shows the team name first and escapes every name', () => {
+    const html = rosterHtml([player({ teamName: '<img src=x>', name: 'Ann' })], null);
+    expect(html).toContain('<b>&lt;img src=x&gt;</b>');
+    expect(html).toContain('<small>Ann</small>');
+    expect(html).not.toContain('<img');
   });
 
   it('marks active and disabled choices', () => {

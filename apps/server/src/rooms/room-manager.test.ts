@@ -83,6 +83,7 @@ describe('RoomManager', () => {
     expect(inbox.get('b')?.at(-1)).toMatchObject({ type: 'lobbyState' });
     room.handleLobbyAction(b, { type: 'setColour', colour: '#ff0000' });
     expect(inbox.get('b')?.at(-1)).toMatchObject({ type: 'error', code: 'invalid_settings' });
+    room.handleLobbyAction(b, { type: 'toggleTeam', teamId: b.teamId ?? '' });
     room.handleLobbyAction(b, { type: 'setReady', ready: true });
     expect(inbox.get('b')?.at(-1)).toMatchObject({ type: 'error', code: 'not_ready' });
   });
@@ -176,11 +177,10 @@ describe('RoomManager', () => {
     const a = add('a');
     expect(room.lobbyState()).toMatchObject({ phase: 'lobby' });
     const settings = { turnTimeSeconds: 30, snailsPerTeam: 1, seed: 7 };
-    room.handleLobbyAction(a, { type: 'toggleTeam', teamId: 'red' });
-    room.handleLobbyAction(a, { type: 'toggleTeam', teamId: 'blue' });
+    room.handleLobbyAction(a, { type: 'toggleTeam', teamId: 'B' });
     room.handleLobbyAction(a, { type: 'setReady', ready: true });
     expect(room.lobbyState()).toMatchObject({
-      players: [{ teamId: 'red', teamIds: ['red', 'blue'] }],
+      players: [{ teamId: 'A', teamIds: ['A', 'B'] }],
     });
     room.handleLobbyAction(a, {
       type: 'startMatch',

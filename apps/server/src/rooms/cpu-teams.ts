@@ -4,6 +4,14 @@ import { TEAM_COLOUR_PALETTE } from '../game/palette.js';
 /** Most teams (human and CPU together) a match can hold: one per palette colour. */
 export const MAX_TEAMS = TEAM_COLOUR_PALETTE.length;
 
+/** Team ids handed out to phones in join order (one per palette colour). */
+export const TEAM_SLOTS: readonly string[] = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'];
+
+/** First human team slot not in `taken`, or `undefined` when all are used. */
+export function freeTeamSlot(taken: ReadonlySet<string>): string | undefined {
+  return TEAM_SLOTS.find((t) => !taken.has(t));
+}
+
 /** A CPU team in a lobby: no phone, always ready. */
 export interface CpuTeam extends CpuInfo {
   /** Team id (also the lobby entry id). */

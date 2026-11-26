@@ -1,6 +1,8 @@
 import type { ControllerClient } from '../net/client';
 import { loadSession, canAutoResume } from '../net/session-store';
 import { safeStorage } from '../platform/ios';
+import { logoHtml } from '@snails/render';
+import { injectControllerMenuStyles } from './menu-css';
 import { canJoin, normaliseRoom, statusText } from './join-logic';
 
 /** Values entered on the join screen. */
@@ -15,12 +17,15 @@ export function mountJoinView(
   initial: JoinValues,
   onJoin: (v: JoinValues) => void,
 ): { update: (client: ControllerClient) => void; destroy: () => void } {
+  injectControllerMenuStyles(document);
   const form = document.createElement('form');
   form.className = 'join';
-  form.innerHTML = `<h1>Snails</h1>
-    <input id="name" placeholder="Your name" maxlength="32" autocomplete="nickname" />
-    <input id="room" placeholder="ROOM" maxlength="4" autocapitalize="characters" autocomplete="off" />
-    <button class="primary" type="submit">Join</button><p class="status" role="status"></p>`;
+  form.innerHTML = `${logoHtml('Slow, slimy, explosive')}
+    <div class="m-card field">
+    <h2>Join the game</h2>
+    <input id="name" placeholder="Your name" maxlength="32" autocomplete="nickname" aria-label="Your name" />
+    <input id="room" placeholder="ROOM" maxlength="4" autocapitalize="characters" autocomplete="off" aria-label="Room code" />
+    <button class="primary" type="submit">Join</button></div><p class="status" role="status"></p>`;
   root.appendChild(form);
   const name = form.querySelector<HTMLInputElement>('#name')!;
   const room = form.querySelector<HTMLInputElement>('#room')!;

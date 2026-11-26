@@ -1,9 +1,10 @@
 import { TEAM_COLORS, hexToCss } from '@snails/render';
 import { MatchSettings } from '@snails/protocol';
+import { MAX_SNAIL_NAMES, sanitiseName } from '@snails/protocol';
 import type { ControlMode, ErrorCode, LobbyPlayer, MatchSettingsInput } from '@snails/protocol';
 
-/** Selectable team ids. */
-export const TEAMS = ['A', 'B', 'C', 'D'] as const;
+/** Team slots (handed out by the server; hot-seat phones may toggle extra ones). */
+export const TEAMS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'] as const;
 
 /** Selectable colour palette (CSS hex). */
 export const PALETTE: readonly string[] = TEAM_COLORS.map(hexToCss);
@@ -23,6 +24,49 @@ export function takenColours(players: readonly LobbyPlayer[], meId: string): Set
   const out = new Set<string>();
   for (const p of players) if (p.id !== meId && p.colour) out.add(p.colour.toLowerCase());
   return out;
+}
+
+/**
+ * Team slots already used by someone else (lower-cased), so a hot-seat phone cannot toggle them.
+ * @param players lobby roster
+ * @param meId this player's id
+ */
+export function takenTeams(players: readonly LobbyPlayer[], meId: string): Set<string> {
+  const out = new Set<string>();
+  for (const p of players)
+    if (p.id !== meId) for (const t of playerTeams(p)) out.add(t.toLowerCase());
+  return out;
+}
+
+/**
+ * Cleans text typed into a name field (max {@link NAME_MAX} characters).
+ * @param raw field value
+ */
+export function cleanName(raw: string): string {
+  return sanitiseName(raw);
+}
+
+/**
+ * Snail name fields to show: one per snail of the match (setting), capped at the protocol limit.
+ * @param snailsPerTeam match setting
+ */
+export function snailFieldCount(snailsPerTeam: number | undefined): number {
+  const n = Number.isInteger(snailsPerTeam) ? (snailsPerTeam as number) : 3;
+  return Math.max(1, Math.min(MAX_SNAIL_NAMES, n));
+}
+
+/**
+ * Names to send for the snail fields: cleaned entries, with the unseen tail (snails beyond the
+ * visible fields) kept from the server's list so a smaller match does not lose them.
+ * @param typed values of the visible fields
+ * @param known the server's current list
+ */
+export function mergeSnailNames(typed: readonly string[], known: readonly string[]): string[] {
+  const out = [...known];
+  typed.forEach((t, i) => {
+    out[i] = cleanName(t);
+  });
+  return out.slice(0, MAX_SNAIL_NAMES);
 }
 
 /** Every team a player controls (falls back to the primary `teamId`). */
@@ -110,7 +154,7 @@ export function lobbyErrorText(code: ErrorCode, message: string): string {
     case 'not_host':
       return 'Only the host can start the match';
     case 'teams_full':
-      return 'No room for another team';
+      return 'All team slots are taken';
     case 'not_ready':
       return message || 'Everyone must be ready';
     case 'invalid_settings':

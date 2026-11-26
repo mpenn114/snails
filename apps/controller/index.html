@@ -15,6 +15,12 @@
     <link rel="manifest" href="/manifest.webmanifest" />
     <link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192.png" />
     <link rel="apple-touch-icon" sizes="180x180" href="/icons/apple-touch-icon-180.png" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Nunito:wght@600;700;800;900&display=swap"
+    />
     <title>Snails - Controller</title>
     <style>
       html,
@@ -90,93 +96,6 @@
         position: fixed;
         inset: 0;
         pointer-events: none;
-      }
-      .join {
-        pointer-events: auto;
-        position: fixed;
-        inset: 0;
-        display: flex;
-        flex-direction: column;
-        gap: 14px;
-        justify-content: center;
-        padding: max(24px, env(safe-area-inset-top)) max(24px, env(safe-area-inset-right))
-          max(24px, env(safe-area-inset-bottom)) max(24px, env(safe-area-inset-left));
-        background: var(--snl-ink);
-        touch-action: manipulation;
-      }
-      .join h1 {
-        font-size: var(--snl-text-xl);
-        font-weight: 800;
-        text-align: center;
-        margin: 0;
-      }
-      .join input {
-        font-family: inherit;
-        font-size: var(--snl-text-l);
-        min-height: 56px;
-        padding: 0 16px;
-        border-radius: var(--snl-radius);
-        border: var(--snl-outline) solid rgba(var(--snl-paper-rgb), 0.25);
-        background: rgba(var(--snl-paper-rgb), 0.08);
-        color: var(--snl-paper);
-      }
-      .join #room {
-        text-transform: uppercase;
-        letter-spacing: 0.4em;
-        text-align: center;
-      }
-      .join button {
-        min-height: 56px;
-      }
-      .join button:disabled {
-        opacity: 0.4;
-      }
-      .join .status {
-        text-align: center;
-        min-height: 1.4em;
-        margin: 0;
-      }
-      .lobby {
-        justify-content: flex-start;
-        overflow: auto;
-      }
-      .lobby .roster {
-        list-style: none;
-        padding: 0;
-        margin: 0;
-      }
-      .lobby .row {
-        display: flex;
-        gap: 8px;
-        flex-wrap: wrap;
-      }
-      .lobby .pick {
-        min-width: 56px;
-        min-height: 56px;
-        border: 3px solid transparent;
-      }
-      .lobby .pick {
-        color: #000;
-        font-size: 1.4em;
-        text-shadow: 0 0 3px #fff;
-      }
-      .team-glyph {
-        margin-right: 0.3em;
-      }
-      .lobby .pick.on {
-        border-color: var(--snl-paper);
-      }
-      .lobby .pick:disabled {
-        opacity: 0.2;
-      }
-      .lobby .settings label {
-        display: block;
-        margin: 6px 0;
-      }
-      .lobby .settings input {
-        width: 6em;
-        min-height: 40px;
-        font-size: 1rem;
       }
     </style>
   </head>

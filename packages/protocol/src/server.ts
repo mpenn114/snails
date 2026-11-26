@@ -32,6 +32,10 @@ export const LobbyPlayer = z.object({
   /** Every team this player controls (hot-seat may list several); `teamId` is the first. */
   teamIds: z.array(TeamId).default([]),
   colour: Colour.nullable(),
+  /** Team name chosen by the player (absent for CPUs, whose `name` is the team name). */
+  teamName: z.string().optional(),
+  /** The player's snail names in order (absent for CPUs). */
+  snailNames: z.array(z.string()).optional(),
   ready: z.boolean(),
   connected: z.boolean(),
   /** Present for a CPU team's lobby entry (no phone behind it). */
