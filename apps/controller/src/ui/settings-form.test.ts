@@ -20,8 +20,34 @@ describe('lobby settings form', () => {
   it('renders every host-changeable field once', () => {
     const html = settingsFieldsHtml();
     for (const f of SETTING_FIELDS) expect(html).toContain(`data-key="${f.key}"`);
-    expect(html.match(/<select/g)).toHaveLength(7);
+    expect(html.match(/<select/g)).toHaveLength(9);
     expect(html.match(/type="checkbox"/g)).toHaveLength(3);
+  });
+
+  it('offers the Map picker with Random and every style, described', () => {
+    const map = SETTING_FIELDS.find((f) => f.key === 'mapStyle');
+    expect(map?.kind === 'select' && map.options.map((o) => o[0])).toEqual([
+      'random',
+      'island',
+      'archipelago',
+      'highlands',
+      'caverns',
+      'canyon',
+    ]);
+    expect(settingsFieldsHtml()).toContain('Highlands: tall peaks and tunnels');
+    expect(readSettingFields(fakeRoot({ mapStyle: { value: 'canyon' } })).mapStyle).toBe('canyon');
+  });
+
+  it('offers the Size picker with Auto and every size', () => {
+    const f = SETTING_FIELDS.find((x) => x.key === 'mapSize');
+    expect(f?.kind === 'select' && f.options.map((o) => o[0])).toEqual([
+      'auto',
+      'small',
+      'medium',
+      'large',
+      'huge',
+    ]);
+    expect(readSettingFields(fakeRoot({ mapSize: { value: 'large' } })).mapSize).toBe('large');
   });
 
   it('reads values back as typed settings', () => {

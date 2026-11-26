@@ -1,4 +1,4 @@
-import { MatchSettingsSchema } from '@snails/core';
+import { MatchSettingsSchema, TERRAIN_STYLES } from '@snails/core';
 import { z } from 'zod';
 
 /** Machine-readable error codes carried by the server `error` message. */
@@ -63,6 +63,8 @@ export const TerrainParams = z.object({
   caveFrequency: z.number(),
   waterLevel: z.number(),
   islandFalloff: z.boolean(),
+  /** Map archetype (core `TerrainStyle`); omitted means `island`. */
+  style: z.enum(TERRAIN_STYLES).optional(),
 });
 /** Terrain parameter type. */
 export type TerrainParams = z.infer<typeof TerrainParams>;

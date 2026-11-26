@@ -17,20 +17,24 @@ export const SHELL_PATTERNS = [
 export type ShellPatternName = (typeof SHELL_PATTERNS)[number];
 
 /** Spiral position (aSpiral) beyond which the shell shows its pale lip. */
-export const LIP_START = 0.98;
+export const LIP_START = 0.972;
+
+/** Around-the-tube coordinate (aAround) of the suture groove between two whorls. */
+export const SUTURE_AROUND = 0.39;
+
+/** Across-growth patterns stay off the tiny apex whorls (no spoke hub on the spire). */
+export const APEX_CLEAR = 0.42;
 
 const fract = (x: number): number => x - Math.floor(x);
 
-/**
- * Fades spiral-direction patterns out on the outer rim (a = 0), so the whorl faces show the
- * wedges and swirls while the rim stays a clean team colour (no shrimp-like banding edge-on).
- */
-export function faceWeight(a: number): number {
-  const c = Math.cos(a * Math.PI * 2);
-  const t = Math.min(1, Math.max(0, (0.75 - c) / 0.4));
-  return t * t * (3 - 2 * t);
+/** Darkening weight 0..1 of the suture groove at `a` (aAround); mirrored in the shader. */
+export function sutureWeight(a: number): number {
+  const d = Math.min(
+    1,
+    Math.min(Math.abs(a - SUTURE_AROUND), Math.abs(a - (1 - SUTURE_AROUND))) / 0.07,
+  );
+  return 1 - d * d * (3 - 2 * d);
 }
-const onFace = (v: number, a: number): number => (v * faceWeight(a) > 0.5 ? 1 : 0);
 
 /**
  * Pattern id for a team slot: every slot below {@link SHELL_PATTERNS}.length gets a different
@@ -49,25 +53,29 @@ export function shellPatternForTeam(teamIndex: number): number {
 export function patternMask(pattern: number, s: number, a: number): number {
   switch (SHELL_PATTERNS[shellPatternForTeam(pattern)]) {
     case 'ribs':
-      return onFace(fract(s * 16) < 0.4 ? 1 : 0, a);
+      // Narrow ribs across the growth direction (they fan out as the whorls widen).
+      return s > APEX_CLEAR && fract(s * 20) < 0.32 ? 1 : 0;
     case 'lines':
-      return fract(a * 3 + 0.12) < 0.34 ? 1 : 0;
+      // Stripes along the growth direction, following the spiral.
+      return fract(a * 4 + 0.1) < 0.3 ? 1 : 0;
     case 'spots': {
+      // Cells scale with the whorl because both coordinates grow with the tube.
       const row = Math.floor(a * 4);
-      const cx = fract(s * 12 + (row % 2) * 0.5) - 0.5;
+      const cx = fract(s * 30 + (row % 2) * 0.5) - 0.5;
       const cy = fract(a * 4) - 0.5;
-      return Math.hypot(cx * 1.4, cy) < 0.3 ? 1 : 0;
+      return Math.hypot(cx, cy) < 0.32 ? 1 : 0;
     }
     case 'bands':
-      return onFace(fract(s * 4.5) < 0.5 ? 1 : 0, a);
+      // Two thin spiral bands near the shoulder, like a banded garden snail.
+      return Math.abs(a - 0.17) < 0.045 || Math.abs(a - 0.83) < 0.045 ? 1 : 0;
     case 'zigzag':
-      return onFace(fract(s * 12 + Math.abs(fract(a * 3) - 0.5) * 1.6) < 0.45 ? 1 : 0, a);
+      return s > APEX_CLEAR && fract(s * 26 + Math.abs(fract(a * 3) - 0.5) * 1.4) < 0.4 ? 1 : 0;
     case 'checker':
-      return onFace((Math.floor(s * 12) + Math.floor(a * 4)) % 2 === 0 ? 1 : 0, a);
+      return s > APEX_CLEAR && (Math.floor(s * 28) + Math.floor(a * 4)) % 2 === 0 ? 1 : 0;
     case 'tip':
-      return s < 0.34 ? 1 : 0;
+      return s < 0.3 ? 1 : 0;
     default:
-      return onFace(fract(s * 10 + a * 2) < 0.42 ? 1 : 0, a);
+      return s > APEX_CLEAR && fract(s * 22 + a * 2) < 0.4 ? 1 : 0;
   }
 }
 

@@ -152,7 +152,13 @@ Time-slicing keeps the worker under a per-turn CPU limit (default 200 ms) even o
 - **Solver tests:** known set-ups (flat ground, wall, wind) assert the AI hits within a tolerance
   at Veteran and above.
 - **Regression gates in CI:** no match exceeds a turn cap (stalemate), no infinite loops, think time
-  p99 under budget, and Mastermind beats Rookie in at least 90% of matches.
+  p99 under budget, and Mastermind beats Rookie in at least 90% of matches (legacy island arena).
+  `pnpm sim:ai:run --gate` also sweeps every terrain style (island, archipelago, highlands, caverns,
+  canyon; 6 matches each on the server's real terrain config) and requires no errors or stalemates
+  and a Mastermind win rate of at least 75% there (new styles hide targets behind cliffs, so the bar is
+  lower). Use `--style <name|all>` to run any batch on a style (sim-ai and balance CLIs); the per-style
+  table reports completion, turns, draws, turn limits, drownings (and unprovoked ones) and idle turns.
+  Spawning falls back to tighter spacing so a full 8 x 8 lobby fits every style.
 - **Balance reports:** the same runs feed the tech balance targets in
   [technology-research.md](technology-research.md).
 - **Fuzzing:** random weapons, maps and settings catch crashes in `planTurn`.

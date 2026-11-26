@@ -16,6 +16,8 @@ export interface ToonMaterialOptions {
   tier?: QualityTier;
   /** Per-vertex colours multiply the base colour. */
   vertexColors?: boolean;
+  /** Smooth wrap ramp instead of hard bands (organic skin; no faceted banding). */
+  soft?: boolean;
 }
 
 /** Tier-dependent toon features. */
@@ -70,6 +72,29 @@ export function getToonGradient(bands: 2 | 3): THREE.DataTexture {
   return tex;
 }
 
+/** Shared linear-filtered smooth ramp: a gentle wrap curve between the darkest and brightest band. */
+export function getSoftToonGradient(): THREE.DataTexture {
+  const hit = gradients.get(0);
+  if (hit) return hit;
+  const lv = bandLevels(3);
+  const hi = lv[0] ?? 1;
+  const lo = lv[2] ?? 0.58;
+  const data = new Uint8Array(GRADIENT_SIZE * 4);
+  for (let i = 0; i < GRADIENT_SIZE; i++) {
+    const k = Math.min(1, (i + 0.5) / GRADIENT_SIZE / 0.8);
+    const sm = k * k * (3 - 2 * k);
+    const v = Math.round((lo + (hi - lo) * (0.35 * sm + 0.65 * k)) * 255);
+    data.set([v, v, v, 255], i * 4);
+  }
+  const tex = new THREE.DataTexture(data, GRADIENT_SIZE, 1, THREE.RGBAFormat);
+  tex.minFilter = THREE.LinearFilter;
+  tex.magFilter = THREE.LinearFilter;
+  tex.generateMipmaps = false;
+  tex.needsUpdate = true;
+  gradients.set(0, tex);
+  return tex;
+}
+
 const RIM_CHUNK = /* glsl */ `
 {
   float rimF = pow(1.0 - saturate(dot(normalize(normal), normalize(vViewPosition))), 3.0);
@@ -93,7 +118,7 @@ export function createToonMaterial(opts: ToonMaterialOptions): THREE.MeshToonMat
   const bands = opts.bands ?? variant.bands;
   const material = new THREE.MeshToonMaterial({
     color: opts.color,
-    gradientMap: getToonGradient(bands),
+    gradientMap: opts.soft ? getSoftToonGradient() : getToonGradient(bands),
     vertexColors: opts.vertexColors ?? false,
   });
   // MeshToonMaterial's typings omit flatShading, but the renderer honours it (FLAT_SHADED).
@@ -108,7 +133,14 @@ const cache = new Map<string, THREE.MeshToonMaterial>();
 function cacheKey(o: ToonMaterialOptions): string {
   const v = toonTierVariant(o.tier ?? 'high');
   const rim = v.rim ? (o.rim ?? 0) : 0;
-  return [o.color, o.bands ?? v.bands, o.flat ? 1 : 0, rim, o.vertexColors ? 1 : 0].join('|');
+  return [
+    o.color,
+    o.bands ?? v.bands,
+    o.flat ? 1 : 0,
+    rim,
+    o.vertexColors ? 1 : 0,
+    o.soft ? 1 : 0,
+  ].join('|');
 }
 
 /**

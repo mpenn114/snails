@@ -3,6 +3,9 @@ import {
   createMatch,
   createScriptedBot,
   predictTrajectory,
+  MAP_SIZES,
+  TERRAIN_STYLES,
+  type MatchOptions,
   type SimEvent,
   type Vec3,
 } from '@snails/core';
@@ -218,7 +221,7 @@ function poseFor(
     const wind = sim.snapshot().wind;
     return aimPose(predictTrajectory(snail, active.facing, AIM, HARNESS_WEAPON.launch, wind, 28));
   }
-  return shotPose(
+  const pose = shotPose(
     cam,
     snail,
     blast,
@@ -227,6 +230,32 @@ function poseFor(
     num(params.get('az'), 0.8),
     num(params.get('dist'), 3.4),
   );
+  return cam === 'wide'
+    ? orbitWide(pose, num(params.get('wideAz'), 0), num(params.get('wideEl'), 0))
+    : pose;
+}
+
+/**
+ * Orbits the wide camera around its look-at point: `?wideAz=` turns it (radians) and `?wideEl=`
+ * lowers it (radians of elevation to remove; 0 keeps the default high view).
+ */
+function orbitWide(pose: ShotPose, az: number, el: number): ShotPose {
+  if (az === 0 && el === 0) return pose;
+  const dx = pose.eye.x - pose.look.x;
+  const dy = pose.eye.y - pose.look.y;
+  const dz = pose.eye.z - pose.look.z;
+  const horiz = Math.hypot(dx, dz);
+  const pitch = Math.max(0.05, Math.atan2(dy, horiz) - el);
+  const len = Math.hypot(horiz, dy);
+  const yaw = Math.atan2(dz, dx) + az;
+  return {
+    look: pose.look,
+    eye: {
+      x: pose.look.x + Math.cos(yaw) * Math.cos(pitch) * len,
+      y: pose.look.y + Math.sin(pitch) * len,
+      z: pose.look.z + Math.sin(yaw) * Math.cos(pitch) * len,
+    },
+  };
 }
 
 /** Pins the camera to `pose` every frame. */
@@ -278,6 +307,21 @@ async function applyReact(
 }
 
 /** Runs one deterministic screenshot scene. */
+/** Match options of a shot: a small review line-up or three teams of three, on `?style=` and `?size=`. */
+function shotMatchOptions(
+  params: URLSearchParams,
+  seed: number,
+  review: ReturnType<typeof reviewKind>,
+): MatchOptions {
+  const style = TERRAIN_STYLES.find((s) => s === params.get('style'));
+  const size = MAP_SIZES.find((s) => s === params.get('size'));
+  return harnessMatchOptions(
+    review
+      ? { seed, teams: reviewTeamCount(review), snailsPerTeam: 1, style, size }
+      : { seed, teams: 3, snailsPerTeam: 3, style, size },
+  );
+}
+
 /**
  * Deterministic capture mode (`?shot=1&cam=close|wide|crater|flight|aim&seed=&quality=`). Time is
  * simulated (fixed dt per frame, manual scheduler), randomness is seeded, so repeated loads
@@ -294,11 +338,7 @@ export async function runShot(canvas: HTMLCanvasElement, params: URLSearchParams
   renderer.resize(window.innerWidth, window.innerHeight);
 
   const review = reviewKind(params);
-  const options = harnessMatchOptions(
-    review
-      ? { seed, teams: reviewTeamCount(review), snailsPerTeam: 1 }
-      : { seed, teams: 3, snailsPerTeam: 3 },
-  );
+  const options = shotMatchOptions(params, seed, review);
   const sim = createMatch(options).sim;
   renderer.init({ grid: sim.terrain, waterLevel: sim.state.terrain.waterLevel });
   await Promise.all([renderer.terrainTexturesReady, renderer.view?.postReady]);

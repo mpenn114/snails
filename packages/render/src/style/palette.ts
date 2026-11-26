@@ -22,7 +22,9 @@ export const PALETTE = {
   waterShallow: 0x62c7c9,
   waterDeep: 0x2a7f9e,
   waterFoam: 0xf4fbf6,
-  snailSkin: 0xf0c9a0,
+  snailSkin: 0xb3a98a,
+  snailBack: 0x8c8a68,
+  snailRim: 0xe2dac0,
   uiInk: 0x2b2438,
   uiPaper: 0xfff6e4,
   uiAccent: 0xff8a3d,
@@ -105,8 +107,8 @@ export const TOON = {
 
 /** Triangle budgets per object class (per instance, at LOD0). */
 export const TRIANGLE_BUDGETS = {
-  snail: 1500,
-  shell: 700,
+  snail: 2800,
+  shell: 1300,
   prop: 200,
   projectile: 120,
   particle: 40,

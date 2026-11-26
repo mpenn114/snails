@@ -55,7 +55,9 @@ describe('gateTeams / runAiGate', () => {
   it('runs a tiny gate end to end', () => {
     const r = runAiGate({
       matches: 1,
+      styleMatches: 1,
       smokeMatches: 1,
+      styleMinWinRate: 0,
       snailsPerTeam: 1,
       turnCap: 6,
       minWinRate: 0,
@@ -63,5 +65,16 @@ describe('gateTeams / runAiGate', () => {
     });
     expect(r.report).toContain('AI gate:');
     expect(r.report).toContain('smoke');
+    expect(r.report).toContain('caverns');
+  }, 60_000);
+  it('can skip the style sweep', () => {
+    const r = runAiGate({
+      matches: 1,
+      smokeMatches: 0,
+      styleMatches: 0,
+      snailsPerTeam: 1,
+      turnCap: 3,
+    });
+    expect(r.report).not.toContain('By terrain style');
   }, 30_000);
 });

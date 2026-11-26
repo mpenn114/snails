@@ -3,12 +3,16 @@ import type { WindDefinition } from '../content/types.js';
 import { damageAround } from '../physics/explosion.js';
 import { createMatch } from '../sim/match.js';
 import { PEBBLE, testMatchOptions } from '../sim/test-match.js';
+import { TERRAIN_STYLES } from '../terrain/styles/types.js';
 import { computeFallDamage } from './hazards.js';
 import {
   DEFAULT_MATCH_SETTINGS,
   crateRulesFromSettings,
   hazardConfigFromSettings,
   parseMatchSettings,
+  MAP_SIZE_CELLS,
+  resolveMapSize,
+  resolveMapStyle,
   windConfigFromSettings,
 } from './match-settings.js';
 
@@ -21,6 +25,48 @@ const WINDS: WindDefinition[] = [
 function ctxOf(sim: ReturnType<typeof createMatch>['sim']) {
   return { state: sim.state, terrain: sim.terrain, rng: sim.rng, dt: 1 / 60, emit: () => {} };
 }
+
+describe('map style setting', () => {
+  it('defaults to random and rejects unknown styles', () => {
+    expect(DEFAULT_MATCH_SETTINGS.mapStyle).toBe('random');
+    expect(parseMatchSettings({ mapStyle: 'canyon' }).mapStyle).toBe('canyon');
+    expect(() => parseMatchSettings({ mapStyle: 'moon' as never })).toThrow();
+  });
+
+  it('passes a concrete style through and resolves random deterministically', () => {
+    expect(resolveMapStyle('highlands', 5)).toBe('highlands');
+    expect(resolveMapStyle('random', 1234)).toBe(resolveMapStyle('random', 1234));
+  });
+
+  it('random covers every style roughly uniformly', () => {
+    const counts = new Map<string, number>();
+    for (let seed = 0; seed < 2000; seed++) {
+      const s = resolveMapStyle('random', seed);
+      counts.set(s, (counts.get(s) ?? 0) + 1);
+    }
+    for (const style of TERRAIN_STYLES) expect(counts.get(style) ?? 0).toBeGreaterThan(300);
+  });
+});
+
+describe('map size setting', () => {
+  it('defaults to auto and rejects unknown sizes', () => {
+    expect(DEFAULT_MATCH_SETTINGS.mapSize).toBe('auto');
+    expect(parseMatchSettings({ mapSize: 'huge' }).mapSize).toBe('huge');
+    expect(() => parseMatchSettings({ mapSize: 'tiny' as never })).toThrow();
+  });
+
+  it('passes a concrete size through and auto grows with the snail count', () => {
+    expect(resolveMapSize('large', 2)).toBe('large');
+    const auto = [2, 6, 7, 12, 13, 24, 25, 64].map((n) => resolveMapSize('auto', n));
+    expect(auto).toEqual(['small', 'small', 'medium', 'medium', 'large', 'large', 'huge', 'huge']);
+  });
+
+  it('small keeps the original 96 cell arena and sizes strictly grow', () => {
+    expect(MAP_SIZE_CELLS.small).toBe(96);
+    const cells = Object.values(MAP_SIZE_CELLS);
+    expect([...cells].sort((a, b) => a - b)).toEqual(cells);
+  });
+});
 
 describe('MatchSettings model', () => {
   it('defaults to the Classic ruleset', () => {

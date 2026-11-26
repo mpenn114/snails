@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { SdfGrid } from '@snails/core';
+import { DEFAULT_TERRAIN_CONFIG, generateTerrain, Rng, SdfGrid } from '@snails/core';
 import {
   extractChunkInput,
+  fixThinNormals,
   meshChunk,
   type ChunkMesh,
   type ChunkMeshInput,
@@ -115,5 +116,41 @@ describe('extractChunkInput', () => {
     const total = inputs.reduce((s, i) => s + meshChunk(i).indices.length, 0);
     expect(total).toBeGreaterThan(0);
     expect(() => extractChunkInput(grid, 5, 0, 0)).toThrow(RangeError);
+  });
+});
+
+describe('meshChunk normals on steep saturated walls', () => {
+  it.each([2, 4])('every normal is a unit vector at LOD step %i', (step) => {
+    const { grid } = generateTerrain(
+      { ...DEFAULT_TERRAIN_CONFIG, style: 'archipelago' },
+      new Rng(7),
+    );
+    let bad = 0;
+    for (let cz = 0; cz < grid.chunksZ; cz++) {
+      for (let cx = 0; cx < grid.chunksX; cx++) {
+        const m = meshChunk(extractChunkInput(grid, cx, 0, cz, step));
+        for (let i = 0; i < m.normals.length; i += 3) {
+          const len = Math.hypot(m.normals[i] ?? 0, m.normals[i + 1] ?? 0, m.normals[i + 2] ?? 0);
+          if (!(len > 0.5)) bad++;
+        }
+      }
+    }
+    expect(bad).toBe(0);
+  });
+});
+
+describe('fixThinNormals', () => {
+  const tri = (normal: V3): ChunkMesh => ({
+    positions: new Float32Array([0, 0, 0, 1, 0, 0, 0, 0, 1]),
+    normals: new Float32Array([...normal, ...normal, ...normal]),
+    indices: new Uint32Array([0, 2, 1]),
+  });
+  it('replaces a gradient normal that disagrees with the faces', () => {
+    const fixed = fixThinNormals(tri([0, -1, 0]));
+    expect(fixed.normals[1]).toBeCloseTo(1);
+  });
+  it('keeps agreeing normals untouched', () => {
+    const mesh = tri([0, 1, 0]);
+    expect(fixThinNormals(mesh)).toBe(mesh);
   });
 });

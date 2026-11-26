@@ -1,16 +1,27 @@
-import { loadContentPacks, type ContentRegistries } from '@snails/core';
+import {
+  loadContentPacks,
+  TERRAIN_STYLES,
+  type ContentRegistries,
+  type TerrainStyle,
+} from '@snails/core';
 import { basePack } from '@snails/content-base';
 import { PERSONALITIES } from '../cpu/types.js';
 import { runAiMatch } from './run-match.js';
-import { formatSummary, runAiMatches, summarize } from './summary.js';
+import { formatStyleTable, formatSummary, runAiMatches, summarize } from './summary.js';
 import { thinkTimeStats } from './think-time.js';
 import type { AiMatchRecord, AiTeamSpec } from './types.js';
 
 /** Thresholds and sizes of the AI regression gate. */
 export interface AiGateOptions {
   registries?: ContentRegistries;
-  /** Mastermind vs Rookie matches (default 30). */
+  /** Mastermind vs Rookie matches on the legacy arena (default 30). */
   matches?: number;
+  /** Terrain styles of the style sweep (default: every style; 0 `styleMatches` skips it). */
+  styles?: readonly TerrainStyle[];
+  /** Matches per style in the sweep (default 6; the server's real terrain config). */
+  styleMatches?: number;
+  /** Minimum Mastermind win rate over the sweep (default 0.75: new styles are harder to read). */
+  styleMinWinRate?: number;
   startSeed?: number;
   snailsPerTeam?: number;
   turnCap?: number;
@@ -116,6 +127,30 @@ function smoke(o: AiGateOptions, registries: ContentRegistries, failures: string
   return `smoke (4 teams): ${n} matches, ${bad.length} with errors`;
 }
 
+/** Default minimum Mastermind win rate in the terrain-style sweep. */
+const STYLE_MIN_WIN_RATE = 0.75;
+
+/** Mastermind-vs-Rookie matches on the server's terrain config, `styleMatches` per style. */
+function styleSweep(
+  o: AiGateOptions,
+  registries: ContentRegistries,
+  start: number,
+): AiMatchRecord[] {
+  const per = o.styleMatches ?? 6;
+  return (o.styles ?? TERRAIN_STYLES).flatMap((style) =>
+    Array.from({ length: per }, (_, i) =>
+      runAiMatch({
+        registries,
+        seed: start + i,
+        style,
+        teams: gateTeams(start + i),
+        snailsPerTeam: o.snailsPerTeam ?? 2,
+        turnCap: o.turnCap ?? 60,
+      }),
+    ),
+  );
+}
+
 /**
  * Plays seeded Mastermind-vs-Rookie matches (seat order alternating, personalities cycling)
  * plus a 4-team smoke test, and checks win rate, errors, stalemates and think time.
@@ -137,12 +172,29 @@ export function runAiGate(opts: AiGateOptions = {}): AiGateResult {
       turnCap: opts.turnCap ?? 60,
     }),
   );
+  const sweep = styleSweep(opts, registries, start);
   const failures = evaluateGate(records, thresholds);
+  failures.push(
+    ...(sweep.length === 0
+      ? []
+      : evaluateGate(sweep, {
+          ...thresholds,
+          minWinRate: opts.styleMinWinRate ?? STYLE_MIN_WIN_RATE,
+        }).map((f) => `style sweep: ${f}`)),
+  );
   const smokeLine = smoke(opts, registries, failures);
   const verdict =
     failures.length === 0
       ? 'AI gate: PASS'
       : ['AI gate: FAIL', ...failures.map((f) => `  - ${f}`)].join('\n');
-  const report = [formatSummary(summarize(records)), '', smokeLine, verdict].join('\n');
+  const report = [
+    formatSummary(summarize(records)),
+    '',
+    ...(sweep.length > 0
+      ? [formatSummary(summarize(sweep)).split('\n')[0], formatStyleTable(sweep), '']
+      : []),
+    smokeLine,
+    verdict,
+  ].join('\n');
   return { passed: failures.length === 0, report, failures };
 }

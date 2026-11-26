@@ -195,6 +195,7 @@ export class MatchRenderer {
     const transport = this.deps.makeTransport?.() ?? createWorkerPool(2);
     const material = createTerrainMaterialForTier(view.tier, {
       originalGrid: source,
+      waterLevel,
       ...(this.deps.terrainTextures ? { textures: this.deps.terrainTextures } : {}),
     });
     const terrain = new TerrainMeshManager({
@@ -207,7 +208,7 @@ export class MatchRenderer {
     });
     terrain.markAllDirty();
     view.roots.terrain.add(terrain.group);
-    const snails = this.makeSnails(view);
+    const snails = this.makeSnails(view, grid);
     snails.setWaterLevel(waterLevel);
     const projectiles = new ProjectileLayer({ shadows: q.shadows, quality: q.particleScale });
     const areas = new AreaLayer();
@@ -259,8 +260,8 @@ export class MatchRenderer {
     return unlock;
   }
 
-  private makeSnails(view: GameView): SnailLayer {
-    return new SnailLayer({
+  private makeSnails(view: GameView, grid: SdfGrid): SnailLayer {
+    const layer = new SnailLayer({
       camera: view.camera,
       tier: view.tier,
       shadows: view.quality.shadows,
@@ -268,6 +269,8 @@ export class MatchRenderer {
       selectViews: (s: RenderState) => snailViewsFromSnapshot(s.snapshot),
       ...(this.deps.labelFactory ? { labelFactory: this.deps.labelFactory } : {}),
     });
+    layer.setTerrain(grid);
+    return layer;
   }
 
   private makeStrands(quality: number): StrandEffects {

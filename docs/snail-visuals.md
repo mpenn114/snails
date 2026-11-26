@@ -6,9 +6,14 @@ state ([graphics.md](graphics.md)); everything here is derived from `SnailState`
 
 ## Anatomy
 
-- **Body (foot):** soft, glossy, tapered tail. Skin tint is a neutral per-team tone, slightly
-  desaturated so the shell reads first.
-- **Head and eye stalks:** two retractable stalks, each with an eye. Stalks carry most of the
+- **Body (foot):** one smooth, continuously curved sweep (`snail/body-torso.ts`): a long, low
+  foot tapering to a neat tail behind the shell, a slim neck and a rounded head raised in front of
+  the shell. The cross-section has a flared, flatter sole rim in a lighter tone, so the body sits
+  on the ground. Colour is a warm khaki-taupe (never flesh) with a darker back, a light rim and
+  underside, and soft vertex mottling; the toon material keeps the sheen satin. Smooth normals,
+  16 sides by 21 rings at LOD 0 (8 by 10 at LOD 1).
+- **Face:** a small smile line and two short lower tentacles are merged into the body geometry.
+- **Head and eye stalks:** two slim, smooth stalks, each with an eye on top. Stalks carry most of the
   expression (see animations). Small tentacles below.
 - **Shell:** a logarithmic spiral cone, 3 to 5 whorls, sitting on the back. The shell has a
   base material, a team pattern, an optional decal, attachments (spikes, plates) and a damage layer.
@@ -24,7 +29,8 @@ Three independent channels so teams stay distinguishable for colour-blind player
    high-contrast set.
 2. **Pattern:** stripes (along the spiral), spots, bands, zigzag, or checker. Assigned
    per team, so two teams never share a pattern in a match.
-3. **Decal:** a small emblem on the last whorl (leaf, star, skull, bolt, flower, moon...).
+3. **Decal:** a small emblem on the last whorl (leaf, star, skull, bolt, flower, moon...), drawn with softened corners as a darker rim plus a lighter inset fill so it reads as painted on.
+   Across-growth patterns (ribs, zigzag, checker) stay clear of the apex (`APEX_CLEAR` 0.42, soft fade) so no spoke hub forms; the body uses a soft wrap ramp (no hard bands) and faint mottling.
    Players can choose one in the lobby.
 
 A team name tag floats above the active snail only; other snails rely on shells.
@@ -107,19 +113,43 @@ snails on the same team look related but not identical.
 
 | Parameter | Range | Effect |
 |---|---|---|
-| `a` | 0.05 to 0.12 | Starting radius (apex size). |
-| `b` | 0.15 to 0.30 | Growth rate; high = flatter, wide whorls. |
-| `turns` | 3 to 5.5 | Number of whorls. |
-| `tilt` | 0 to 25 degrees | How far the apex leans. |
-| `ellipse` | 0.8 to 1.3 | Cross-section aspect. |
-| `ridges` | 0 to 12 | Spiral ridge count (shader and geometry bump). |
-| `bumpiness` | 0 to 1 | Noise on the surface. |
+| `a` | 0.05 to 0.10 | Starting radius (apex size, blunts the tip). |
+| `b` | 0.20 to 0.27 | Growth rate (scaled by 0.5 per radian; whorls grow 1.9x to 2.4x per turn). |
+| `turns` | 2.8 to 3.5 | Number of whorls. |
+| `tilt` | -4 to 4 degrees | Extra lean about the aperture axis. |
+| `ellipse` | 1.0 to 1.2 | Cross-section aspect (coil-axis extent over in-plane extent). |
+| `ridges` | 0 to 12 | Gentle growth swells along the spiral. |
+| `bumpiness` | 0 to 1 | Tiny surface noise. |
+
+**Geometry (M9-07).** The centre line is a conical logarithmic spiral (slope 0.22: a raised spire)
+and the tube radius grows with it (`0.5 r + 0.55 a`). Consecutive whorls overlap, so their
+intersection forms the **suture groove** without extra geometry; normals are smooth (the duplicated
+seam column is welded) and the material is not flat-shaded. The last 12% of the tube flares into a
+rounded **lip**, then the mouth rolls inward into a hollow interior (`aSpiral` 1). The coil axis
+leans 26 degrees so a face shows from the front camera. LOD0 is 46 rings x 12 (about 1100
+triangles), LOD1 20 x 6. `userData.decal` carries a flat seat on the last whorl (position + normal)
+which the emblem decal follows.
+
+**Patterns follow the spiral.** `lines` and `bands` run along the growth direction (functions of
+`aAround`); `ribs`, `zigzag`, `checker`, `diagonal` run across it with fixed `aSpiral` frequency, so
+they fan out as whorls widen, and are cleared from the apex (`APEX_CLEAR`) to avoid a spoke hub;
+`spots` cells scale with the whorl. Every shell gets subtle growth lines, a darkened suture
+(`sutureWeight`), a pale lip, a dark mouth and a soft satin highlight (high tiers).
 
 A snail's shell must keep its collision proxy fixed so gameplay is never affected. Generation uses
 `seed = hash(teamId, snailIndex)`; mesh is built once on spawn (about 3000 triangles) and cached.
 Upgrades add geometry (spikes) rather than regenerate the base.
 
 Readability review of tiers and cracks: [readability-review.md](development/readability-review.md).
+
+## Terrain tilt (M10-01)
+
+Snails follow the ground: a `tiltGroup` above the yaw group rotates local up onto the terrain
+normal (pitch and roll), while yaw stays `facing`. The normal is the average of the SDF gradient
+at the foot and four points 0.3 m around it, read from the live (carved) grid, so craters count.
+Tilt is clamped to 50 degrees and damped (rate 9/s, frame-rate independent); airborne and dead
+snails ease back upright. The foot position is the pivot, so nothing floats. Labels stay upright.
+Maths in `packages/render/src/snail/terrain-tilt.ts`. Render only: physics is unchanged.
 
 ## Technical notes
 

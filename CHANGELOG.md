@@ -33,6 +33,12 @@ First playable release.
 - Desktop app for Windows (installer), macOS (dmg) and Linux (AppImage) that hosts the game and
   the TV view in one step.
 - Tutorial overlay and tuned default settings.
+- Five map styles, picked in the lobby or at random: Island, Archipelago (separate islands,
+  beaches, sea stacks and a rock arch), Highlands (tall peaks with tunnels and a snow cap),
+  Caverns (a cliff-walled plateau hollowed by caves) and Canyon (winding gorges with ledges and
+  rock bridges). Terrain shows grass, stone cliffs with rock layers, sand and snow by surface.
+- Redesigned snails: a smooth, cute body with a face, and real spiral shells with whorls, a lip
+  and patterns that follow the spiral.
 
 ### Notes
 

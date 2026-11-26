@@ -5,7 +5,7 @@ import { DirtyChunkQueue } from './dirty-chunk-queue.js';
 import { handleMeshRequest, type MeshRequest, type MeshResponse } from './mesh-protocol.js';
 import { createInProcessTransport, createPoolTransport } from './mesh-transport.js';
 import type { MeshTransport } from './mesh-transport.js';
-import { TerrainMeshManager } from './terrain-mesh-manager.js';
+import { materialWeights, TerrainMeshManager } from './terrain-mesh-manager.js';
 
 /** 16^3 grid, 8-cell chunks (8 chunks), with a solid block inside chunk 0. */
 function makeGrid(): SdfGrid {
@@ -297,3 +297,17 @@ function makeInput(): MeshRequest['input'] {
     origin: [0, 0, 0],
   };
 }
+
+describe('materialWeights', () => {
+  it('emits one-hot weights for sand, clay and rock and zeros for soil', () => {
+    const g = makeGrid();
+    const at = (id: number): Float32Array => {
+      g.materials[g.index(3, 3, 3)] = id;
+      return materialWeights(g, new Float32Array([3, 3, 3]), new Float32Array(3));
+    };
+    expect(Array.from(at(0))).toEqual([0, 0, 0, 0]);
+    expect(Array.from(at(1))).toEqual([1, 0, 0, 0]);
+    expect(Array.from(at(2))).toEqual([0, 1, 0, 0]);
+    expect(Array.from(at(3))).toEqual([0, 0, 1, 0]);
+  });
+});

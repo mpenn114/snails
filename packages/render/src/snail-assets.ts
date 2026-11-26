@@ -96,6 +96,7 @@ export class SnailAssets {
       color: 0xffffff,
       vertexColors: true,
       rim: 0.35,
+      soft: true,
       tier: this.tier,
     });
     this.eyeMat = createToonMaterial({ color: 0xffffff, vertexColors: true, tier: this.tier });

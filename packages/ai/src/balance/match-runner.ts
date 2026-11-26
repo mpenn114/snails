@@ -7,8 +7,10 @@ import {
   type MatchSettingsInput,
   type Snail,
   type Team,
+  type TerrainStyle,
   type WeaponDefinition,
 } from '@snails/core';
+import { aiTerrainConfig } from '../sim-ai/types.js';
 import { chooseWeapon } from '../weapon-choice.js';
 import { BallisticSolverStrategy } from '../strategies.js';
 import { BRANCHES, focusBranch, pickTech } from './research-policy.js';
@@ -24,6 +26,8 @@ export interface BalanceOptions {
   /** Hard cap on turns per match (default 60). */
   turnCap?: number;
   settings?: MatchSettingsInput;
+  /** Terrain style; omitted keeps the legacy small island arena. */
+  style?: TerrainStyle;
 }
 
 /** Seconds a typical shot resolves in (for the minutes estimate). */
@@ -89,7 +93,7 @@ export function runBalanceMatch(o: BalanceOptions, seed: number): MatchRecord {
   const m = createMatch({
     seed,
     teams: TEAMS,
-    terrain: { nx: 96, ny: 32, nz: 64, caveDensity: 0, islandFalloff: false },
+    terrain: aiTerrainConfig(o.style),
     turn: { maxTurns: turnCap },
     weapons: r.weapons.list(),
     statuses: r.statuses.list(),

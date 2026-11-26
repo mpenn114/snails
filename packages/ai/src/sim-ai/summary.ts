@@ -96,3 +96,28 @@ export function formatSummary(s: AiSummary): string {
     ),
   ].join('\n');
 }
+
+/** Per-style table: completion, turns, draws, turn limits, drownings, idle turns, errors. */
+export function formatStyleTable(records: readonly AiMatchRecord[]): string {
+  const styles = [...new Set(records.map((r) => r.style ?? 'legacy'))];
+  const rows = styles.map((style) => {
+    const rs = records.filter((r) => (r.style ?? 'legacy') === style);
+    const n = rs.length;
+    const sum = (f: (r: AiMatchRecord) => number): number => rs.reduce((a, r) => a + f(r), 0);
+    const done = rs.filter((r) => r.endReason === 'elimination' || r.endReason === 'research');
+    const turns = sum((r) => r.turns);
+    const idle = sum((r) => r.idleTurns);
+    return [
+      style.padEnd(12),
+      `matches ${n}`,
+      `completed ${((done.length / n) * 100).toFixed(0)}%`,
+      `avg turns ${(turns / n).toFixed(1)}`,
+      `draws ${rs.filter((r) => r.endReason === 'draw').length}`,
+      `turn-limit ${rs.filter((r) => r.endReason === 'turnLimit').length}`,
+      `drownings ${sum((r) => r.drownings)} (unprovoked ${sum((r) => r.unprovokedDrownings)})`,
+      `idle turns ${((idle / Math.max(1, turns)) * 100).toFixed(0)}%`,
+      `errors ${sum((r) => r.errors.length)}`,
+    ].join('  ');
+  });
+  return ['By terrain style:', ...rows].join('\n');
+}

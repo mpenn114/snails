@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import type { ShellDecalSpot } from '../snail/shell-geometry.js';
 import { PALETTE } from '../style/palette.js';
 import { createToonMaterial } from '../style/materials.js';
 import type { ShellLook } from './shell-look.js';
@@ -38,11 +39,13 @@ export class ShellExtras {
   private readonly pieces = new THREE.Group();
   private readonly decal = new THREE.Group();
   private readonly decalMat = new THREE.MeshBasicMaterial({ side: THREE.DoubleSide });
+  private readonly decalRim = new THREE.MeshBasicMaterial({ side: THREE.DoubleSide });
   private lookNames: string[] = [];
   private detail = true;
   private flag = false;
   private decalKey = '';
   private zMax = 0;
+  private readonly spot: ShellDecalSpot | null;
   private readonly pieceMat = createToonMaterial({ color: PALETTE.rock, flat: true });
   private readonly glowMat = new THREE.MeshBasicMaterial({
     color: PALETTE.uiPaper,
@@ -71,6 +74,7 @@ export class ShellExtras {
     this.radius = Math.max(box.max.y - box.min.y, 0.5) * 0.5;
     box.getCenter(this.centre);
     this.zMax = box.max.z;
+    this.spot = (shellGeo.userData.decal as ShellDecalSpot | undefined) ?? null;
   }
 
   /** Rebuilds attachments and glow for a look. Cheap; call only when the look changed. */
@@ -93,9 +97,30 @@ export class ShellExtras {
     this.decal.clear();
     if (teamIndex === null) return;
     this.decalMat.color.setHex(colour).lerp(new THREE.Color(0xffffff), 0.5);
-    const m = new THREE.Mesh(decalGeometry(decalIndexForTeam(teamIndex)), this.decalMat);
-    m.position.copy(this.centre).setZ(this.zMax + 0.01);
-    m.scale.setScalar(this.radius * 0.28);
+    this.decalRim.color.setHex(colour).lerp(new THREE.Color(0x000000), 0.45);
+    const idx = decalIndexForTeam(teamIndex);
+    const m = new THREE.Group();
+    const rim = new THREE.Mesh(decalGeometry(idx, 1), this.decalRim);
+    const fill = new THREE.Mesh(decalGeometry(idx, 0.74), this.decalMat);
+    fill.position.z = 0.04;
+    m.add(rim, fill);
+    const spot = this.spot;
+    if (spot) {
+      // Lie flat on the last whorl: face along the surface normal, emblem "up" towards +Y.
+      const n = new THREE.Vector3(...spot.normal);
+      const q = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 0, 1), n);
+      const up = new THREE.Vector3(0, 1, 0).applyQuaternion(q);
+      const want = new THREE.Vector3(0, 1, 0).addScaledVector(n, -n.y).normalize();
+      const roll = Math.atan2(up.clone().cross(want).dot(n), up.dot(want));
+      m.quaternion
+        .copy(q)
+        .multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), roll));
+      m.position.set(...spot.position);
+      m.scale.setScalar(this.radius * 0.21);
+    } else {
+      m.position.copy(this.centre).setZ(this.zMax + 0.01);
+      m.scale.setScalar(this.radius * 0.28);
+    }
     this.decal.add(m);
   }
 
@@ -175,6 +200,7 @@ export class ShellExtras {
   /** Frees the per-snail geometry and materials (the shell geometry is shared and kept). */
   dispose(): void {
     this.decalMat.dispose();
+    this.decalRim.dispose();
     this.pieceMat.dispose();
     this.glowMat.dispose();
     this.group.removeFromParent();

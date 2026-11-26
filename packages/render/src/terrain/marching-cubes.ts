@@ -118,7 +118,13 @@ class Builder {
     const { cellSize: h, origin } = this.input;
     const ga = this.grad(a);
     const gb = this.grad(b);
-    const g = [0, 1, 2].map((n) => num(ga[n]) + t * (num(gb[n]) - num(ga[n])));
+    let g = [0, 1, 2].map((n) => num(ga[n]) + t * (num(gb[n]) - num(ga[n])));
+    // Saturated samples (steep walls on coarse LODs) can cancel the gradient; a zero normal
+    // becomes NaN in the shader and blacks out the bloom chain, so use the edge direction.
+    if (Math.hypot(num(g[0]), num(g[1]), num(g[2])) < 1e-6) {
+      const sign = vb > va ? 1 : -1;
+      g = [0, 1, 2].map((n) => (num(b[n]) - num(a[n])) * sign);
+    }
     const len = Math.hypot(num(g[0]), num(g[1]), num(g[2])) || 1;
     for (let n = 0; n < 3; n++) {
       const an = num(a[n]);
@@ -170,6 +176,53 @@ class Builder {
   }
 }
 
+/** Vertex normals whose dot with the surrounding face normals falls below this are replaced. */
+const NORMAL_AGREEMENT = 0.35;
+
+/**
+ * Replaces unreliable gradient normals with the area-weighted face normal of the incident
+ * triangles. Features thinner than the gradient stencil (one-cell slabs, spikes) get gradients that
+ * cancel or point sideways, which lights them wrongly; the triangle winding is always outward.
+ */
+export function fixThinNormals(mesh: ChunkMesh): ChunkMesh {
+  const { positions: p, normals: n, indices: idx } = mesh;
+  const acc = new Float32Array(p.length);
+  for (let t = 0; t < idx.length; t += 3) {
+    const a = (idx[t] ?? 0) * 3;
+    const b = (idx[t + 1] ?? 0) * 3;
+    const c = (idx[t + 2] ?? 0) * 3;
+    const ux = num(p[b]) - num(p[a]);
+    const uy = num(p[b + 1]) - num(p[a + 1]);
+    const uz = num(p[b + 2]) - num(p[a + 2]);
+    const vx = num(p[c]) - num(p[a]);
+    const vy = num(p[c + 1]) - num(p[a + 1]);
+    const vz = num(p[c + 2]) - num(p[a + 2]);
+    const fx = uy * vz - uz * vy;
+    const fy = uz * vx - ux * vz;
+    const fz = ux * vy - uy * vx;
+    for (const v of [a, b, c]) {
+      acc[v] = num(acc[v]) + fx;
+      acc[v + 1] = num(acc[v + 1]) + fy;
+      acc[v + 2] = num(acc[v + 2]) + fz;
+    }
+  }
+  let out: Float32Array | null = null;
+  for (let v = 0; v < p.length; v += 3) {
+    const len = Math.hypot(num(acc[v]), num(acc[v + 1]), num(acc[v + 2]));
+    if (len < 1e-12) continue;
+    const fx = num(acc[v]) / len;
+    const fy = num(acc[v + 1]) / len;
+    const fz = num(acc[v + 2]) / len;
+    const dot = fx * num(n[v]) + fy * num(n[v + 1]) + fz * num(n[v + 2]);
+    if (dot >= NORMAL_AGREEMENT) continue;
+    out ??= Float32Array.from(n);
+    out[v] = fx;
+    out[v + 1] = fy;
+    out[v + 2] = fz;
+  }
+  return out ? { positions: p, normals: out, indices: idx } : mesh;
+}
+
 /** Extracts a welded triangle mesh of the iso-0 surface of one chunk (coarse LOD gets skirts). */
 export function meshChunk(input: ChunkMeshInput): ChunkMesh {
   const [cx, cy, cz] = input.cells;
@@ -191,7 +244,7 @@ export function meshChunk(input: ChunkMeshInput): ChunkMesh {
     normals: Float32Array.from(b.nrm),
     indices: Uint32Array.from(b.idx),
   };
-  const welded = weldMesh(raw, input.cellSize * 1e-3);
+  const welded = fixThinNormals(weldMesh(raw, input.cellSize * 1e-3));
   if (welded.indices.length === 0) return EMPTY;
   return s > 1 ? addSkirts(welded, input, s * input.cellSize * 0.75) : welded;
 }

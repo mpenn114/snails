@@ -9,7 +9,12 @@ import {
 } from '../style/materials.js';
 import { PALETTE } from '../style/palette.js';
 import type { SdfGrid } from '@snails/core';
-import { buildOriginalHeightMap, createOriginalHeightTexture } from './original-height.js';
+import {
+  NO_SNOW,
+  buildOriginalHeightMap,
+  createOriginalHeightTexture,
+  snowStartFor,
+} from './original-height.js';
 import { ScorchRing } from './scorch-ring.js';
 import {
   TERRAIN_FRAGMENT_COLOR,
@@ -35,6 +40,9 @@ export interface TerrainPalette {
   rock: number;
   deepSoil: number;
   scorch: number;
+  sand: number;
+  clay: number;
+  snow: number;
 }
 
 /** Default earthy palette. */
@@ -45,7 +53,13 @@ export const DEFAULT_TERRAIN_PALETTE: TerrainPalette = {
   rock: PALETTE.rock,
   deepSoil: PALETTE.deepSoil,
   scorch: PALETTE.scorch,
+  sand: PALETTE.sand,
+  clay: PALETTE.clay,
+  snow: 0xeef3f6,
 };
+
+/** Default snow start height: disabled (it is derived from the original terrain when given). */
+export const DEFAULT_SNOW_START = NO_SNOW;
 
 /** Recent-explosion slots passed to the shader on full and cheap tiers. */
 export const TERRAIN_BLAST_SLOTS = { full: 16, cheap: 8 } as const;
@@ -60,6 +74,10 @@ export interface TerrainMaterialOptions {
   deepHeight?: number;
   /** Height (m) of the transition band above deepHeight. */
   deepBand?: number;
+  /** World height (m) of the waterline: wet band and pale beaches (default 0). */
+  waterLevel?: number;
+  /** World height (m) where snow caps begin (default: derived from `originalGrid`, else off). */
+  snowStart?: number;
   /** Texture URLs; omitted means palette colours only. Loaded async, palette until then. */
   textures?: TerrainTextureSources;
   /** Texture fetcher override (tests); defaults to `THREE.TextureLoader`. */
@@ -137,6 +155,11 @@ function buildUniforms(
     uTerrainSoil: { value: new Color(palette.soil) },
     uTerrainRock: { value: new Color(palette.rock) },
     uTerrainDeep: { value: new Color(palette.deepSoil) },
+    uTerrainSand: { value: new Color(palette.sand) },
+    uTerrainClay: { value: new Color(palette.clay) },
+    uTerrainSnow: { value: new Color(palette.snow) },
+    uTerrainWater: { value: opts.waterLevel ?? 0 },
+    uTerrainSnowStart: { value: opts.snowStart ?? DEFAULT_SNOW_START },
     uTerrainScorch: { value: new Color(palette.scorch) },
     uTerrainDeepHeight: { value: opts.deepHeight ?? 0 },
     uTerrainDeepBand: { value: opts.deepBand ?? 8 },
@@ -199,9 +222,11 @@ export function createTerrainMaterial(opts: TerrainMaterialOptions = {}): Terrai
   const scorch = new ScorchRing(slots);
   const neutral = { color: createNeutralTexture('color'), normal: createNeutralTexture('normal') };
   const uniforms = buildUniforms(opts, scorch, neutral);
-  const origTex = opts.originalGrid
-    ? createOriginalHeightTexture(buildOriginalHeightMap(opts.originalGrid))
-    : null;
+  const heightMap = opts.originalGrid ? buildOriginalHeightMap(opts.originalGrid) : null;
+  const origTex = heightMap ? createOriginalHeightTexture(heightMap) : null;
+  if (heightMap && opts.snowStart === undefined) {
+    uniforms.uTerrainSnowStart.value = snowStartFor(heightMap.heights);
+  }
   if (origTex && opts.originalGrid) {
     const ws = opts.originalGrid.worldSize();
     uniforms.uTerrainOrigH.value = origTex;

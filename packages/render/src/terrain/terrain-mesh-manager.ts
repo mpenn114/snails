@@ -39,8 +39,11 @@ export interface TerrainMeshManagerOptions {
   readonly shadows?: boolean;
 }
 
-/** Per-vertex material tint (rgb + weight, 0 for soil): nearest solid cell just inside the surface. */
-export function materialColours(
+/**
+ * Per-vertex one-hot material weights (sand, clay, rock, 0; all zero for soil): the material of
+ * the nearest solid cell just inside the surface. Interpolates cleanly across material borders.
+ */
+export function materialWeights(
   grid: SdfGrid,
   positions: Float32Array,
   normals: Float32Array,
@@ -52,12 +55,8 @@ export function materialColours(
     const x = Math.round(((positions[v] ?? 0) - (normals[v] ?? 0) * k) / cs);
     const y = Math.round(((positions[v + 1] ?? 0) - (normals[v + 1] ?? 0) * k) / cs);
     const z = Math.round(((positions[v + 2] ?? 0) - (normals[v + 2] ?? 0) * k) / cs);
-    const m = grid.materialAt(x, y, z);
-    if (m === grid.materialTable[0]) continue;
-    out[o] = ((m.colour >> 16) & 255) / 255;
-    out[o + 1] = ((m.colour >> 8) & 255) / 255;
-    out[o + 2] = (m.colour & 255) / 255;
-    out[o + 3] = 1;
+    const id = grid.materialTable.indexOf(grid.materialAt(x, y, z));
+    if (id >= 1 && id <= 3) out[o + id - 1] = 1;
   }
   return out;
 }
@@ -255,8 +254,8 @@ export class TerrainMeshManager {
     geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
     geo.setAttribute('normal', new THREE.BufferAttribute(normals, 3));
     geo.setAttribute(
-      'aMatColour',
-      new THREE.BufferAttribute(materialColours(this.opts.grid, positions, normals), 4),
+      'aMatW',
+      new THREE.BufferAttribute(materialWeights(this.opts.grid, positions, normals), 4),
     );
     geo.setIndex(new THREE.BufferAttribute(indices, 1));
     geo.computeBoundingSphere();

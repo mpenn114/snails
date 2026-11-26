@@ -3,6 +3,7 @@ import type { WebGLProgramParametersWithUniforms } from 'three';
 import { describe, expect, it, vi } from 'vitest';
 import { getToonGradient } from '../style/materials.js';
 import {
+  DEFAULT_SNOW_START,
   TERRAIN_BLAST_SLOTS,
   createSoftToonRamp,
   createTerrainMaterial,
@@ -71,6 +72,18 @@ describe('terrain material', () => {
     expect(m.defines).not.toHaveProperty('TERRAIN_NORMALS');
     expect(m.scorch.capacity).toBe(TERRAIN_BLAST_SLOTS.cheap);
     expect(m.customProgramCacheKey()).not.toBe(createTerrainMaterial().customProgramCacheKey());
+  });
+  it('wires material weights, snow, waterline and NaN-safe normals into the shader', () => {
+    const s = compile(createTerrainMaterial({ waterLevel: 2.5, snowStart: 18 }));
+    expect(s.vertexShader).toContain('attribute vec4 aMatW');
+    expect(s.fragmentShader).toContain('vMatW');
+    expect(s.fragmentShader).toContain('uTerrainSnowStart');
+    expect(s.fragmentShader).toContain('tnl > 1e-6');
+    expect((s.uniforms.uTerrainWater as { value: number }).value).toBe(2.5);
+    expect((s.uniforms.uTerrainSnowStart as { value: number }).value).toBe(18);
+    expect(compile(createTerrainMaterial()).uniforms.uTerrainSnowStart).toMatchObject({
+      value: DEFAULT_SNOW_START,
+    });
   });
   it('soft ramp keeps the band levels away from the edges', () => {
     const t = createSoftToonRamp(3);

@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { resolveMapStyle } from '@snails/core';
 import { Inventory, MatchStarted, decodeSnapshot } from '@snails/protocol';
 import {
   GameSession,
@@ -42,6 +43,26 @@ describe('GameSession', () => {
     expect(snap.wind.strength).toBe(0);
     expect(snap.waterLevel).toBe(s.matchStartedMessage().terrain.waterLevel);
     expect(s.matchStartedMessage().settings).toMatchObject({ startingHealth: 60, wind: 'off' });
+  });
+
+  it('puts the resolved map style into the terrain params', () => {
+    const fixed = make({ settings: { ...settings, mapStyle: 'canyon' } });
+    expect(fixed.matchStartedMessage().terrain.style).toBe('canyon');
+    const random = make({ settings: { ...settings, mapStyle: 'random' } });
+    const style = random.matchStartedMessage().terrain.style;
+    expect(style).toBe(resolveMapStyle('random', settings.seed));
+    expect(random.matchStartedMessage().settings.mapStyle).toBe('random');
+  });
+
+  it('sizes the terrain from the map size setting, Auto by snail count', () => {
+    const dims = (mapSize: 'auto' | 'huge'): [number, number] => {
+      const t = make({ settings: { ...settings, mapSize } }).matchStartedMessage().terrain;
+      return [t.nx, t.nz];
+    };
+    expect(dims('huge')).toEqual([192, 192]);
+    const small = dims('auto');
+    expect(small[0]).toBe(small[1]);
+    expect(small[0]).toBeGreaterThanOrEqual(96);
   });
 
   it('is deterministic for equal seed and intents', () => {

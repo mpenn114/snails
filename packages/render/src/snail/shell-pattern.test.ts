@@ -8,6 +8,9 @@ import {
   patternCoverage,
   patternMask,
   patternTint,
+  sutureWeight,
+  APEX_CLEAR,
+  SUTURE_AROUND,
   shellPatternForTeam,
 } from './shell-pattern.js';
 
@@ -58,5 +61,20 @@ describe('shell patterns', () => {
     expect(key('mobile')).toMatch(/^shell-lo-/);
     expect(key('low')).toMatch(/^shell-lo-/);
     expect(key('medium')).toMatch(/^shell-hi-/);
+  });
+
+  it('follows the spiral: stripes ignore s, across-growth patterns stay off the apex', () => {
+    for (const s of [0.3, 0.55, 0.9]) {
+      expect(patternMask(1, s, 0.1)).toBe(patternMask(1, 0.77, 0.1));
+      expect(patternMask(3, s, 0.17)).toBe(1);
+    }
+    for (const p of [0, 4, 5, 7]) expect(patternMask(p, APEX_CLEAR * 0.5, 0.3)).toBe(0);
+  });
+
+  it('darkens the suture groove only near its aAround position', () => {
+    expect(sutureWeight(SUTURE_AROUND)).toBeCloseTo(1, 5);
+    expect(sutureWeight(1 - SUTURE_AROUND)).toBeCloseTo(1, 5);
+    expect(sutureWeight(0)).toBe(0);
+    expect(sutureWeight(0.5)).toBeLessThan(1);
   });
 });

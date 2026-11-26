@@ -95,6 +95,49 @@ shapes; some add material.
   side-on 2.5D view; vertical depth matters through tunnels and burrows.
 - **Camera:** Display-side concern; follows action, never decides rules.
 
+## Map styles
+
+Procedural maps pick a terrain style (`packages/core/src/terrain/styles/`). Reusable SDF helpers
+(`features.ts`: `buildTunnel`, `tunnelCarve`, `wobblyPath`) bore tunnels along wobbly capsule chains.
+
+- **Choosing a map:** the host picks the **Map** setting in the phone lobby: Random (default),
+  Island, Archipelago, Highlands, Caverns or Canyon. `mapStyle` is a normal match setting (saved
+  with the others). On match start the server resolves Random with `resolveMapStyle(setting, seed)`
+  (uniform over the styles, a pure function of the seed) and sends the concrete `style` in the
+  terrain params, so every client builds the same map. The Weapons demo arena ignores the style.
+- **Map size:** the **Size** setting (`mapSize`: Auto default, Small, Medium, Large, Huge) sets the
+  horizontal grid: 96, 128, 160 and 192 cells (48, 64, 80 and 96 m at 0.5 m cells; height stays
+  48 cells). Small is the original arena. Auto resolves with `resolveMapSize(setting, snailCount)`
+  by total snails (teams x per team): up to 6 Small, up to 12 Medium, up to 24 Large, more Huge.
+  The server sends the resolved `nx`/`nz` in the terrain params. Every style lays out its
+  landmasses relative to the grid and adds features on bigger maps (`extraFeatures` in
+  `styles/shared.ts`, zero at 96 cells so small maps are unchanged): more islets (Island),
+  more islands (Archipelago), more peaks (Highlands), more chambers (Caverns), more tributary
+  gorges (Canyon). The sea ring at the edges stays. Generation takes about 0.2 to 0.7 s per
+  style at Huge.
+- **Highlands:** a big mountainous island with two ridged, terraced peaks (about 17 to 20 m) and a
+  saddle between them, steep rocky cliffs, flat shelves where snails can stand, foothills and a
+  narrow shore. One tunnel is bored through each peak, both mouths on dry ground so snails can
+  crawl through, plus a few noise caves. Cliffs and peaks are rock; gentle shelves keep soil.
+- **Archipelago:** Four or five islands (one large, the rest small) in open water, separated by
+  channels roughly 3 to 8 m wide that can be crossed with weapons or ropes. Shores vary: wide sandy
+  beaches with a gentle slope into the water, and rocky headlands with cliffs (rock material).
+  Shallow sandbars lie just under the surface along some channels, a few sea stacks (tall rock
+  pillars) stand in the water, and one natural rock arch spans the shallows beside the big island.
+  Islands have gentle hills. Shapes scale with the grid size. Implemented in `styles/archipelago.ts`
+  and `styles/coast.ts`.
+- **Caverns:** a tall flat-topped mesa (about 16 m with a rolling top, rocky knolls, shallow hollows and a stepped second tier, clean steep strata cliffs, a low shelf around its foot)
+  hollowed by 2-3 domed chambers (5-8 m wide, 3-5 m tall, flat floors above the water) joined by
+  tunnels. Each chamber has a mouth at ground level in the cliff, and two skylight shafts drop
+  from the mesa top into chambers. At least 2.5 m of rock roofs every chamber. Walls and cave
+  shells are rock; the top keeps soil. Implemented in `styles/caverns.ts`.
+- **Canyon:** a high tableland island (top about 13 to 16 m, gently rolling, with soil) cut by a
+  winding gorge and a tributary (4 to 8 m wide) that reach the sea at both mouths. Walls are steep
+  layered rock (alternating rock and clay bands), with stepped ledges snails can stand on and
+  undercut overhangs. Floors are sand with a shallow stream, and one natural rock bridge spans each
+  gorge. Gorge walls use a horizontal distance to the centre line, so they stay clean. Snails
+  spawn on the tableland and on ledges. Implemented in `styles/canyon.ts`.
+
 ## Wind
 
 - Wind is a 2D vector, redrawn every turn, shown as an arrow and leaf particles.

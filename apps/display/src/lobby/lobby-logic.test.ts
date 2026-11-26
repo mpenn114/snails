@@ -45,6 +45,7 @@ describe('display lobby logic', () => {
   it('lists a chip per host-changeable rule, with Classic defaults', () => {
     const chips = Object.fromEntries(settingsChips({ seed: 5 }));
     expect(chips).toMatchObject({
+      Map: 'Random',
       Turn: '30 s',
       Health: '100',
       Wind: 'Normal',
@@ -67,6 +68,18 @@ describe('display lobby logic', () => {
       'Friendly fire': 'Off',
       Turn: '30 s (lazy start)',
     });
+  });
+
+  it('shows the chosen map style, or the demo arena', () => {
+    expect(Object.fromEntries(settingsChips({ mapStyle: 'canyon' }))['Map']).toBe('Canyon');
+    expect(Object.fromEntries(settingsChips({ mapStyle: 'canyon', demo: true }))['Map']).toBe(
+      'Weapons demo',
+    );
+  });
+
+  it('shows the map size, Auto by default', () => {
+    expect(Object.fromEntries(settingsChips({}))['Size']).toBe('Auto');
+    expect(Object.fromEntries(settingsChips({ mapSize: 'huge' }))['Size']).toBe('Huge');
   });
 
   it('fetches info and tolerates failures', async () => {
