@@ -1,12 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import type { CrateDefinition, StatusDefinition } from '../content/types.js';
+import type { CrateDefinition, StatusDefinition, WeaponDefinition } from '../content/types.js';
 import { resolveExplosion } from '../physics/explosion.js';
 import type { SimEvent } from '../sim/events.js';
 import { createMatch, type MatchSetup } from '../sim/match.js';
-import { testMatchOptions } from '../sim/test-match.js';
+import { PEBBLE, testMatchOptions } from '../sim/test-match.js';
 import type { SimContext } from '../sim/types.js';
 import type { Crate, Vec3 } from '../state/types.js';
 import { rayCast } from '../terrain/collision.js';
+import { stockOf, weaponAvailability } from '../combat/inventory.js';
 import { isDropTurn, roundOf } from './crate-drop.js';
 import {
   CRATE_RADIUS,
@@ -27,14 +28,14 @@ const SUPPLY: CrateDefinition = {
   name: 'Supply',
   kind: 'supply',
   weight: 1,
-  contents: { weapons: [{ weaponId: 'test:pebble-toss', count: 3 }] },
+  contents: { weapons: [{ weaponId: 'test:gated', count: 3 }] },
 };
 const MYSTERY: CrateDefinition = {
   id: 't:mystery',
   name: 'Mystery',
   kind: 'mystery',
   weight: 1,
-  contents: { heal: 30, weapons: [{ weaponId: 'test:pebble-toss', count: 2 }], statusId: 't:goo' },
+  contents: { heal: 30, weapons: [{ weaponId: 'test:gated', count: 2 }], statusId: 't:goo' },
 };
 const GOO: StatusDefinition = {
   id: 't:goo',
@@ -42,10 +43,30 @@ const GOO: StatusDefinition = {
   moveSpeedMultiplier: 0.5,
   defaultTurns: 2,
 };
+const GATED: WeaponDefinition = {
+  ...PEBBLE,
+  id: 'test:gated',
+  name: 'Gated',
+  ammo: 2,
+  requiresTech: 'test-tech',
+};
+const INFINITE_CRATE: CrateDefinition = {
+  id: 't:infinite',
+  name: 'Infinite',
+  kind: 'utility',
+  weight: 1,
+  contents: { weapons: [{ weaponId: 'test:pebble-toss', count: 2 }] },
+};
 const EVERY_ROUND = { crateRules: { intervalRounds: 1 } };
 
 function match(seed: number, crates: CrateDefinition[], extra = {}): MatchSetup {
-  return createMatch({ ...testMatchOptions(seed), crates, statuses: [GOO], ...extra });
+  return createMatch({
+    ...testMatchOptions(seed),
+    weapons: [PEBBLE, GATED],
+    crates,
+    statuses: [GOO],
+    ...extra,
+  });
 }
 
 function ctxOf(m: MatchSetup, events: SimEvent[]): SimContext {
@@ -230,8 +251,8 @@ describe('crate pickup', () => {
     putCrate(m, SUPPLY.id, snail.position);
     putCrate(m, SUPPLY.id, snail.position);
     m.sim.step();
-    expect(m.sim.state.teams[0]?.inventory?.['test:pebble-toss']).toBe(6);
-    expect(m.sim.state.teams[1]?.inventory?.['test:pebble-toss']).toBeUndefined();
+    expect(m.sim.state.teams[0]?.inventory?.['test:gated']).toBe(6);
+    expect(m.sim.state.teams[1]?.inventory?.['test:gated']).toBeUndefined();
   });
 
   it('mystery crates roll the crates RNG: deterministic, never lethal, whole table reachable', () => {
@@ -254,6 +275,44 @@ describe('crate pickup', () => {
       expect(open(seed)).toEqual(e);
     }
     expect([...outcomes].sort()).toEqual(['damage', 'heal', 'status', 'weapons']);
+  });
+});
+
+describe('crate weapon grants', () => {
+  it('does not turn an infinite weapon into a finite stock', () => {
+    const m = match(33, [INFINITE_CRATE]);
+    const snail = firstSnail(m);
+    putCrate(m, INFINITE_CRATE.id, snail.position);
+    m.sim.step();
+    const team = m.sim.state.teams[0];
+    if (!team) throw new Error('no team');
+    expect(stockOf(team, PEBBLE)).toBe(Number.POSITIVE_INFINITY);
+  });
+
+  it('makes a granted tech-gated weapon usable without research', () => {
+    const m = match(34, [SUPPLY]);
+    const snail = firstSnail(m);
+    const team = m.sim.state.teams[0];
+    if (!team) throw new Error('no team');
+    expect(weaponAvailability(team, GATED)).toBe('WEAPON_LOCKED');
+    putCrate(m, SUPPLY.id, snail.position);
+    m.sim.step();
+    expect(weaponAvailability(team, GATED)).toBe('ok');
+    expect(weaponAvailability(m.sim.state.teams[1] ?? team, GATED)).not.toBe('ok');
+  });
+
+  it('describes the pickup in the event text and team', () => {
+    const m = match(35, [HEALTH, SUPPLY]);
+    const snail = firstSnail(m);
+    snail.health = 50;
+    putCrate(m, HEALTH.id, snail.position);
+    putCrate(m, SUPPLY.id, snail.position);
+    const events = m.sim.step().filter((e) => e.type === 'crateCollected');
+    expect(events.map((e) => (e.type === 'crateCollected' ? e.text : ''))).toEqual([
+      '+25 HP',
+      '+3 Gated',
+    ]);
+    expect(events[0]).toMatchObject({ teamId: 'a' });
   });
 });
 

@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import type { Crate, SimEvent } from '@snails/core';
 import type { FrameUpdater } from '../render-loop.js';
+import { canvasLabelFactory, type LabelTextureFactory } from '../snail-assets.js';
 import { PALETTE } from '../style/palette.js';
 
 /** Edge length of the crate box in metres (matches the sim's 0.4 m radius). */
@@ -15,6 +16,15 @@ const CHIP_SPEED = 3.2;
 const CHIP_GRAVITY = 9;
 /** Sway of a parachuting crate (radians, rad/s). */
 const SWAY = 0.12;
+/** Floating pickup text: seconds it lives, metres it rises, and its width in metres. */
+const FLOAT_LIFE = 2.2;
+const FLOAT_RISE = 2.6;
+const FLOAT_WIDTH = 4;
+
+interface FloatText {
+  sprite: THREE.Sprite;
+  age: number;
+}
 const SWAY_RATE = 2.2;
 
 const BAND_COLOURS: readonly { match: string; colour: number }[] = [
@@ -128,16 +138,18 @@ export class CrateLayer {
   private readonly views = new Map<string, CrateView>();
   private readonly assets = new CrateAssets();
   private readonly pops: Pop[] = [];
+  private readonly floats: FloatText[] = [];
   private clock = 0;
 
-  /** Creates an empty layer. */
-  constructor() {
+  /** Creates an empty layer; `labelFactory` draws the floating pickup text (canvas by default). */
+  constructor(private readonly labelFactory: LabelTextureFactory = canvasLabelFactory) {
     this.group.name = 'crates';
     for (let i = 0; i < POP_SLOTS; i++) this.pops.push(this.createPop());
     this.updater = (dt, state) => {
       this.clock += dt;
       if (state) this.sync(state.snapshot.crates ?? [], dt);
       this.stepPops(dt);
+      this.stepFloats(dt);
     };
   }
 
@@ -180,7 +192,10 @@ export class CrateLayer {
   /** Starts a pop for `crateCollected` and `crateDestroyed` events. */
   handleEvents(events: readonly SimEvent[]): void {
     for (const e of events) {
-      if (e.type === 'crateCollected') this.startPop(e.position, crateBandColour(e.defId));
+      if (e.type === 'crateCollected') {
+        this.startPop(e.position, crateBandColour(e.defId));
+        this.startFloat(e.position, e.text);
+      }
       else if (e.type === 'crateDestroyed') this.startPop(e.position, PALETTE.soil);
     }
   }
@@ -224,6 +239,48 @@ export class CrateLayer {
     for (const chip of pop.chips) chip.position.set(0, 0, 0);
   }
 
+  /** Number of floating pickup texts alive. */
+  get activeFloats(): number {
+    return this.floats.length;
+  }
+
+  private startFloat(at: { x: number; y: number; z: number }, text: string): void {
+    const material = new THREE.SpriteMaterial({
+      map: this.labelFactory(text),
+      transparent: true,
+      depthTest: false,
+      depthWrite: false,
+    });
+    const sprite = new THREE.Sprite(material);
+    sprite.scale.set(FLOAT_WIDTH, FLOAT_WIDTH / 4, 1);
+    sprite.position.set(at.x, at.y + 1, at.z);
+    sprite.renderOrder = 10;
+    this.group.add(sprite);
+    this.floats.push({ sprite, age: 0 });
+  }
+
+  private stepFloats(dt: number): void {
+    for (let i = this.floats.length - 1; i >= 0; i--) {
+      const f = this.floats[i];
+      if (!f) continue;
+      f.age += dt;
+      const t = f.age / FLOAT_LIFE;
+      if (t >= 1) {
+        this.freeFloat(f);
+        this.floats.splice(i, 1);
+        continue;
+      }
+      f.sprite.position.y += (FLOAT_RISE / FLOAT_LIFE) * dt;
+      f.sprite.material.opacity = t < 0.6 ? 1 : 1 - (t - 0.6) / 0.4;
+    }
+  }
+
+  private freeFloat(f: FloatText): void {
+    f.sprite.material.map?.dispose();
+    f.sprite.material.dispose();
+    f.sprite.removeFromParent();
+  }
+
   private stepPops(dt: number): void {
     for (const pop of this.pops) {
       if (pop.age < 0) continue;
@@ -252,6 +309,8 @@ export class CrateLayer {
   /** Removes all views and frees shared and per-pop GPU resources. */
   dispose(): void {
     this.views.clear();
+    for (const f of this.floats) this.freeFloat(f);
+    this.floats.length = 0;
     for (const pop of this.pops) {
       pop.shellMat.dispose();
       pop.chipMat.dispose();

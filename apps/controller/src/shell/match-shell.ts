@@ -4,6 +4,7 @@ import { createAimStore } from '../controls/aim-store';
 import { mountControls } from '../controls/mount-controls';
 import { trackScreenFacing } from '../controls/facing-tracker';
 import { mountDebugOverlay } from '../debug/debug-overlay';
+import { mountCrateToast } from '../crate/crate-toast';
 import { mountFeedback } from '../feedback/mount-feedback';
 import type { ControllerClient } from '../net/client';
 import { mountSpectate } from '../spectate/spectate-view';
@@ -98,6 +99,7 @@ function mountSession(client: ControllerClient, screen: HTMLElement, playerId: s
   let mode: ControlMode = 'perPlayer';
   const teams = new Map<string, { name: string; colour: string }>();
   const offs = [
+    mountCrateToast(modal, client, () => myTeams),
     client.on('lobbyState', (s) => {
       const me = s.players.find((p) => p.id === playerId);
       myTeams = me ? playerTeams(me) : [];
