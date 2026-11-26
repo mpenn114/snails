@@ -12,8 +12,17 @@ import { trackTurns } from './turn-tracker';
 import type { TurnTracker } from './turn-tracker';
 import { formatTimer, isWarning, remainingAt } from './turn-timer';
 import { SLOT_TOP } from '../shell/layers';
-import { buildWeaponTiles, defaultWeaponId, fireLabel, resolveSelection } from './weapon-list';
+import {
+  buildWeaponTiles,
+  defaultWeaponId,
+  fireLabel,
+  needsCharge,
+  resolveSelection,
+} from './weapon-list';
 import type { InventoryView, WeaponLike } from './weapon-list';
+import { createInfoButton, showInfoPopover } from './info-popover';
+import { weaponInfo } from './weapon-info';
+import { aimSource, trackServerAim, wireFireButton } from './fire-button';
 
 /** Options for `mountControls`. */
 export interface ControlsOptions {
@@ -25,6 +34,8 @@ export interface ControlsOptions {
   screenFacing?: () => ScreenFacing;
   /** Called with true when an aim drag starts and false when it ends or is released. */
   onAimingChange?: (aiming: boolean) => void;
+  /** Display name of a technology id (weapon info shows what unlocks a weapon). */
+  techName?: (id: string) => string;
   /** Shared aim state: the Aim button, aim drags and weapon picks write it for the 3D aim view. */
   aimStore?: AimStore;
 }
@@ -35,7 +46,10 @@ const OWN_HTML = `
   <button type="button" class="ctl-btn ctl-jump">Jump</button>
   <button type="button" class="ctl-btn ctl-wbtn">Arms</button>
   <button type="button" class="ctl-btn ctl-aimbtn">Aim</button>
-  <button type="button" class="ctl-btn ctl-fire">Fire</button>
+  <div class="ctl-gauge" role="progressbar" aria-label="Shot power" aria-valuemin="0" aria-valuemax="100">
+    <div class="ctl-gauge-fill"></div><span class="ctl-gauge-pct">0%</span>
+    <span class="ctl-gauge-hint">Hold Fire to charge, release to shoot</span></div>
+  <button type="button" class="ctl-btn ctl-fire" aria-label="Fire: hold to charge power, release to shoot">Fire</button>
   <div class="ctl-sheet"><div class="ctl-grid"></div></div>`;
 
 function q<T extends HTMLElement>(root: HTMLElement, sel: string): T {
@@ -50,9 +64,12 @@ function renderTiles(
   myTurn: boolean,
   inv: InventoryView | null,
   pick: (id: string) => void,
+  techName?: (id: string) => string,
 ): void {
   grid.replaceChildren();
   for (const t of buildWeaponTiles(weapons, selected, myTurn, inv)) {
+    const wrap = document.createElement('div');
+    wrap.className = 'ctl-tilewrap';
     const b = document.createElement('button');
     b.type = 'button';
     b.className = `ctl-tile${t.selected ? ' sel' : ''}`;
@@ -64,7 +81,12 @@ function renderTiles(
     b.title = t.reason;
     if (t.block) b.dataset.block = t.block;
     b.addEventListener('click', () => pick(t.id));
-    grid.appendChild(b);
+    const w = weapons.find((x) => x.id === t.id);
+    wrap.append(b);
+    if (w) {
+      wrap.append(createInfoButton(t.name, () => showInfoPopover(weaponInfo(w, techName))));
+    }
+    grid.appendChild(wrap);
   }
 }
 
@@ -87,7 +109,6 @@ function wireButtons(
   gestures: Gestures[],
 ): () => void {
   q(root, '.ctl-jump').addEventListener('click', () => client.send({ type: 'jump' }));
-  q(root, '.ctl-fire').addEventListener('click', () => client.send({ type: 'fire' }));
   q(root, '.ctl-wbtn').addEventListener('click', () => sheet.classList.toggle('open'));
   const release = (): void => gestures.forEach((g) => g.release());
   const onVisibility = (): void => {
@@ -110,6 +131,7 @@ function bindGestures(
   opts: ControlsOptions,
   facing: () => ScreenFacing,
   isSteering: () => boolean,
+  power: () => number,
 ): Gestures[] {
   const stick = bindJoystick(
     q(root, '.ctl-stick'),
@@ -130,6 +152,7 @@ function bindGestures(
       opts.onAimingChange?.(aiming);
     },
     (a) => store?.setAim(a.angle, a.power),
+    power,
   );
   return [stick, aim];
 }
@@ -170,6 +193,70 @@ function buildRoot(parent: HTMLElement): {
   return { style, root, hud };
 }
 
+/** The weapon picker: selection state plus the rebuild that syncs tiles, fire label and store. */
+function createPicker(
+  root: HTMLElement,
+  client: ControllerClient,
+  opts: ControlsOptions,
+  tracker: TurnTracker,
+  inventory: ReturnType<typeof trackInventory>,
+  sheet: HTMLElement,
+): { rebuild(): void; selected(): string | null } {
+  let selected: string | null = defaultWeaponId(opts.weapons, null);
+  const fireBtn = q(root, '.ctl-fire');
+  const rebuild = (): void => {
+    const inv = inventory.of(tracker.view.myTeamId);
+    selected = syncSelection(client, opts.weapons, selected, inv, tracker.view.myTurn);
+    opts.aimStore?.setWeapon(selected);
+    fireBtn.textContent = fireLabel(opts.weapons.find((w) => w.id === selected));
+    renderTiles(
+      q(root, '.ctl-grid'),
+      opts.weapons,
+      selected,
+      tracker.view.myTurn,
+      inv,
+      (id) => {
+        selected = id;
+        client.send({ type: 'selectWeapon', weaponId: id });
+        sheet.classList.remove('open');
+        rebuild();
+      },
+      opts.techName,
+    );
+  };
+  return { rebuild, selected: () => selected };
+}
+
+/** Binds the joystick and aim drag plus the press-and-hold Fire button with its power gauge. */
+function wireAimAndFire(
+  root: HTMLElement,
+  client: ControllerClient,
+  opts: ControlsOptions,
+  facing: () => ScreenFacing,
+  isSteering: () => boolean,
+  needsPower: () => boolean,
+): { gestures: Gestures[]; fire: { cancel(): void }; dispose(): void } {
+  const serverAim = trackServerAim(client);
+  const aim = aimSource(opts.aimStore, serverAim);
+  const gestures = bindGestures(root, client, opts, facing, isSteering, aim.power);
+  const fire = wireFireButton({
+    button: q(root, '.ctl-fire'),
+    gauge: q(root, '.ctl-gauge'),
+    client,
+    aim,
+    store: opts.aimStore,
+    needsCharge: needsPower,
+  });
+  return {
+    gestures,
+    fire,
+    dispose: () => {
+      fire.dispose();
+      serverAim.dispose();
+    },
+  };
+}
+
 /**
  * Mounts the in-match controls (HUD timer for everyone; joystick, aim, jump, fire and weapon
  * picker on my turn only). Returns a disposer.
@@ -182,27 +269,21 @@ export function mountControls(
   const { style, root, hud } = buildRoot(parent);
   const tracker = trackTurns(client, opts.playerId);
   const sheet = q(root, '.ctl-sheet');
-  let selected: string | null = defaultWeaponId(opts.weapons, null);
-  const fireBtn = q(root, '.ctl-fire');
   const inventory = trackInventory(client);
-  const rebuild = (): void => {
-    const inv = inventory.of(tracker.view.myTeamId);
-    selected = syncSelection(client, opts.weapons, selected, inv, tracker.view.myTurn);
-    opts.aimStore?.setWeapon(selected);
-    fireBtn.textContent = fireLabel(opts.weapons.find((w) => w.id === selected));
-    renderTiles(q(root, '.ctl-grid'), opts.weapons, selected, tracker.view.myTurn, inv, (id) => {
-      selected = id;
-      client.send({ type: 'selectWeapon', weaponId: id });
-      sheet.classList.remove('open');
-      rebuild();
-    });
-  };
+  const picker = createPicker(root, client, opts, tracker, inventory, sheet);
+  const rebuild = picker.rebuild;
   inventory.onChange(rebuild);
 
   const facing = opts.screenFacing ?? (() => DEFAULT_SCREEN_FACING);
   const steering = trackSteering(client, opts.weapons);
-  const gestures = bindGestures(root, client, opts, facing, steering.active);
-  const release = (): void => gestures.forEach((g) => g.release());
+  const aimWiring = wireAimAndFire(root, client, opts, facing, steering.active, () =>
+    needsCharge(opts.weapons.find((w) => w.id === picker.selected())),
+  );
+  const { gestures } = aimWiring;
+  const release = (): void => {
+    gestures.forEach((g) => g.release());
+    aimWiring.fire.cancel();
+  };
   const wired = wireButtons(root, client, sheet, gestures);
 
   const offAimButton = opts.aimStore ? wireAimButton(q(root, '.ctl-aimbtn'), opts.aimStore) : null;
@@ -224,6 +305,7 @@ export function mountControls(
     offAimButton?.();
     clearInterval(tick);
     steering.dispose();
+    aimWiring.dispose();
     inventory.dispose();
     off();
     tracker.dispose();

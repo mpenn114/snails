@@ -1,3 +1,5 @@
+import { createInfoButton, showInfoPopover } from '../controls/info-popover';
+import { techInfo } from '../controls/weapon-info';
 import type { ResearchModel, TechCard } from './research-model';
 
 /** Stylesheet of the research screen (injected once by `mountResearch`). */
@@ -16,6 +18,8 @@ export const RESEARCH_CSS = `
 .rs-col{font-size:var(--snl-text-s);font-weight:800;text-align:center;opacity:.8}
 .rs-card{min-height:76px;padding:6px 4px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;text-align:center;font:inherit;font-size:var(--snl-text-s);font-weight:700;
   color:var(--snl-paper);background:rgba(var(--snl-paper-rgb),.1);border:var(--snl-outline) solid transparent;border-radius:var(--snl-radius);touch-action:manipulation}
+.rs-cardwrap{position:relative;display:flex}
+.rs-cardwrap>.rs-card{flex:1}
 .rs-card small{font-weight:600;opacity:.8}
 .rs-card.available{border-color:var(--snl-foam)}
 .rs-card.queued,.rs-card.active{border-color:var(--snl-accent)}
@@ -65,6 +69,15 @@ function slot(
 }
 
 function card(c: TechCard, a: ViewActions): HTMLElement {
+  const wrap = el('div', 'rs-cardwrap');
+  wrap.append(
+    cardButton(c, a),
+    createInfoButton(c.name, () => showInfoPopover(techInfo(c))),
+  );
+  return wrap;
+}
+
+function cardButton(c: TechCard, a: ViewActions): HTMLElement {
   const b = el('button', `rs-card ${c.state}${c.capstone ? ' capstone' : ''}`);
   b.type = 'button';
   b.dataset.tech = c.id;

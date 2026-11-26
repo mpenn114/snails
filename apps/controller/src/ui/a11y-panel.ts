@@ -9,12 +9,13 @@ import {
   type A11ySettings,
   type TextSize,
 } from './a11y-settings';
-import { saveTutorialSeen } from './tutorial-steps';
+import { TUTORIAL_EVENT, saveTutorialSeen } from './tutorial-steps';
 
 const CSS = `
 .a11y-btn{position:fixed;left:calc(env(safe-area-inset-left) + 8px);bottom:calc(env(safe-area-inset-bottom) + 8px);z-index:60;
   min-width:44px;min-height:44px;border:0;border-radius:var(--snl-radius);font:inherit;font-weight:800;
   background:rgba(var(--snl-ink-rgb),.7);color:var(--snl-paper);opacity:.7;touch-action:manipulation}
+.a11y-help{left:calc(env(safe-area-inset-left) + 60px)}
 .a11y-panel{position:fixed;inset:auto 8px 60px 8px;z-index:60;max-width:420px;padding:12px;border-radius:var(--snl-radius);
   background:rgba(var(--snl-ink-rgb),.96);color:var(--snl-paper);font-family:var(--snl-font);font-size:var(--snl-text-m);display:none;
   touch-action:manipulation}
@@ -32,10 +33,11 @@ function build(doc: Document): HTMLElement {
   );
   root.innerHTML = `<style>${CSS}${REDUCED_MOTION_CSS}</style>
     <button type="button" class="a11y-btn" aria-label="Accessibility settings" aria-expanded="false">Aa</button>
+    <button type="button" class="a11y-btn a11y-help" aria-label="How to play">?</button>
     <div class="a11y-panel" role="dialog" aria-label="Accessibility settings"><h2>Accessibility</h2>
       <div class="row" role="group" aria-label="Text size">${sizes}</div>
       <label><input type="checkbox" class="rm" /> Reduce motion</label>
-      <div class="row"><button type="button" class="tut-again">Show tutorial again</button></div>
+      <div class="row"><button type="button" class="tut-again">How to play</button></div>
       <label><input type="checkbox" class="snd-mute" /> Mute sound</label>
       <label>Volume <input type="range" class="snd-vol" min="0" max="100" step="5" aria-label="Volume" /></label></div>`;
   return root;
@@ -82,7 +84,11 @@ export function mountA11yPanel(
     saveTutorialSeen(storage, false);
     panel.classList.remove('on');
     btn.setAttribute('aria-expanded', 'false');
+    window.dispatchEvent(new Event(TUTORIAL_EVENT));
   });
+  el.querySelector('.a11y-help')?.addEventListener('click', () =>
+    window.dispatchEvent(new Event(TUTORIAL_EVENT)),
+  );
   paint();
   mountAudioControls(el, storage);
 }
