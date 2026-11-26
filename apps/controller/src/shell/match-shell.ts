@@ -84,6 +84,16 @@ function mountTutorialHelp(modal: HTMLElement): {
   };
 }
 
+/** Static dependencies the controls need beyond the live phone view. */
+function controlDeps(playerId: string, aimStore: ReturnType<typeof createAimStore>) {
+  return {
+    playerId,
+    weapons,
+    aimStore,
+    techName: (id: string) => technologies.find((t) => t.id === id)?.name ?? id,
+  };
+}
+
 /** Mounts the layers and every in-match module once; returns a disposer for all of it. */
 function mountSession(client: ControllerClient, screen: HTMLElement, playerId: string): () => void {
   const { style, hud, controls, banners, modal } = mountLayers();
@@ -93,10 +103,7 @@ function mountSession(client: ControllerClient, screen: HTMLElement, playerId: s
   const facing = trackScreenFacing(client, () => phone.handle.cameraYaw());
   // Mounted before lobbyState arrives so the controls learn our team.
   const disposeControls = mountControls(controls, client, {
-    playerId,
-    weapons,
-    aimStore,
-    techName: (id) => technologies.find((t) => t.id === id)?.name ?? id,
+    ...controlDeps(playerId, aimStore),
     screenFacing: facing.screenFacing,
     onAimingChange: (a) => phone.handle.setAiming(a),
   });
