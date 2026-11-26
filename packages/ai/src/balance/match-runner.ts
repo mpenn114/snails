@@ -36,7 +36,7 @@ const TEAMS = [
 /** Timing of the options, for `aggregate`. */
 export function timingOf(o: BalanceOptions): BalanceTiming {
   return {
-    turnSeconds: o.settings?.turnTimeSeconds ?? 30,
+    turnSeconds: o.settings?.turnTimeSeconds ?? 45,
     retreatSeconds: o.settings?.retreatTimeSeconds ?? 3,
     resolveSeconds: RESOLVE_SECONDS,
   };

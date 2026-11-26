@@ -24,7 +24,7 @@ export const FALL_DAMAGE_SETTINGS = ['off', 'on', 'high'] as const;
  */
 export const MatchSettingsSchema = z.object({
   /** Seconds of the action phase of a turn. */
-  turnTimeSeconds: z.number().int().min(10).max(120).default(30),
+  turnTimeSeconds: z.number().int().min(10).max(120).default(45),
   /** Seconds of the retreat window after a shot. */
   retreatTimeSeconds: z.number().int().min(0).max(30).default(3),
   /** Health (and max health) every snail starts with. */

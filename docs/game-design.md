@@ -48,7 +48,7 @@ Snails are slow and committed.
 - **Jump:** A "flop-hop": fixed forward arc of 2.5 m, 1 m high. Costs 1 jump charge; 2 jumps per
   turn base.
 - **Backflip:** Higher, shorter arc (1.2 m forward-reversed, 2.5 m high), 1 charge, longer recovery.
-- **Move budget:** 8 s of crawling per turn (separate from the 30 s timer, so crawling is the real
+- **Move budget:** 8 s of crawling per turn (separate from the 45 s timer, so crawling is the real
   cost). Mobility techs extend this.
 - **Shell retreat (defensive stance):** Instead of acting further, a snail can draw into its shell.
   While retreated: takes 40% less direct and 60% less blast damage, cannot be knocked into
@@ -194,7 +194,7 @@ Modes are content definitions; custom modes are possible via the event bus.
 | Setting | Options (default bold) |
 |---|---|
 | Teams / snails each | 2 to 4 teams, 1 to 4 snails (**3**) |
-| Turn time | 15 / **30** / 45 / 60 s |
+| Turn time | 15 / 30 / **45** / 60 s |
 | Starting health | 50 / **100** / 150 |
 | Wind | Off / Low / **Normal** / Storm |
 | Map | Preset list or Random seed; size S / **M** / L |

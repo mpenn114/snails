@@ -143,7 +143,7 @@ describe('RoomManager', () => {
       expect(last('a')).toMatchObject({ code: 'invalid_settings' });
     }
     expect(room.lobbyState()).toMatchObject({
-      settings: { turnTimeSeconds: 30, snailsPerTeam: 3, seed: 1, controlMode: 'perPlayer' },
+      settings: { turnTimeSeconds: 45, snailsPerTeam: 3, seed: 1, controlMode: 'perPlayer' },
     });
     room.handleLobbyAction(a, { type: 'startMatch', settings });
     expect(started).toEqual(MatchSettings.parse(settings));

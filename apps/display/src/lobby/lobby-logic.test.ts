@@ -45,7 +45,7 @@ describe('display lobby logic', () => {
   it('lists a chip per host-changeable rule, with Classic defaults', () => {
     const chips = Object.fromEntries(settingsChips({ seed: 5 }));
     expect(chips).toMatchObject({
-      Turn: '30 s',
+      Turn: '45 s',
       Health: '100',
       Wind: 'Normal',
       Crates: 'Normal',
@@ -65,7 +65,7 @@ describe('display lobby logic', () => {
       Wind: 'Storm',
       'Sudden death': 'Off',
       'Friendly fire': 'Off',
-      Turn: '30 s (lazy start)',
+      Turn: '45 s (lazy start)',
     });
   });
 
