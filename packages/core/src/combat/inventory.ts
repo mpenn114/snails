@@ -35,12 +35,18 @@ export function stockOf(team: Pick<Team, 'inventory'>, weapon: StockedWeapon): n
   return weapon.ammo === 'infinite' ? Number.POSITIVE_INFINITY : 0;
 }
 
-/** True when the team has not researched the technology the weapon requires. */
+/**
+ * True when the team has not researched the technology the weapon requires. Stock the team
+ * holds anyway (a crate grant) keeps the weapon usable until it runs out.
+ */
 export function isWeaponLocked(
-  team: Pick<Team, 'researched'>,
-  weapon: Pick<StockedWeapon, 'requiresTech'>,
+  team: Pick<Team, 'researched' | 'inventory'>,
+  weapon: Pick<StockedWeapon, 'requiresTech'> & { id?: string },
 ): boolean {
-  return weapon.requiresTech !== undefined && !team.researched.includes(weapon.requiresTech);
+  if (weapon.requiresTech === undefined || team.researched.includes(weapon.requiresTech)) {
+    return false;
+  }
+  return !(weapon.id !== undefined && (team.inventory?.[weapon.id] ?? 0) > 0);
 }
 
 /** Whether `team` may fire `weapon`: locked weapons first, then empty stock. */

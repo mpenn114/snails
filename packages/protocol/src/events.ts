@@ -156,6 +156,8 @@ const plain = [
     healed: z.number(),
     damage: z.number(),
     weapons: z.array(z.object({ weaponId: z.string(), count: z.number() })),
+    teamId: z.string(),
+    text: z.string(),
     statusId: z.string().optional(),
   }),
   z.object({

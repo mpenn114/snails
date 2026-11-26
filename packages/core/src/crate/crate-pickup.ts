@@ -1,5 +1,6 @@
 import type { MatchContent } from '../content/match-content.js';
-import type { CrateDefinition } from '../content/types.js';
+import type { ContentRegistry } from '../content/registry.js';
+import type { CrateDefinition, WeaponDefinition } from '../content/types.js';
 import { applyDamage, heal } from '../entities/snail.js';
 import { stockGrantAmount } from '../research/tech-completion.js';
 import { addCalcium } from '../research/calcium.js';
@@ -18,12 +19,46 @@ interface Outcome {
   statusId?: string;
 }
 
-/** Adds weapon stock to a team's inventory (the M4-15 hook point for ammo). */
-export function grantWeapons(team: Team, weapons: Grant, bonus = 0): void {
-  if (weapons.length === 0) return;
+/**
+ * Adds weapon stock to a team's inventory. Weapons that are already infinite for everyone
+ * (infinite ammo, no tech gate, no stock override) are skipped: a count would turn them finite.
+ * Crate stock works even while the weapon's tech is unresearched (see `isWeaponLocked`).
+ */
+export function grantWeapons(
+  team: Team,
+  weapons: Grant,
+  bonus = 0,
+  defs?: ContentRegistry<WeaponDefinition>,
+): Grant {
+  const given: Grant = [];
+  if (weapons.length === 0) return given;
   const inv = (team.inventory ??= {});
-  for (const w of weapons)
-    inv[w.weaponId] = (inv[w.weaponId] ?? 0) + (w.count > 0 ? w.count + bonus : 0);
+  for (const w of weapons) {
+    if (w.count <= 0) continue;
+    const def = defs?.get(w.weaponId);
+    if (def?.ammo === 'infinite' && def.requiresTech === undefined && inv[w.weaponId] === undefined)
+      continue;
+    const count = w.count + bonus;
+    inv[w.weaponId] = (inv[w.weaponId] ?? 0) + count;
+    given.push({ weaponId: w.weaponId, count });
+  }
+  return given;
+}
+
+/** Short pickup text for toasts, e.g. "+25 HP, +2 Salt Shaker". */
+function pickupText(
+  content: MatchContent,
+  parts: { healed: number; hurt: number; weapons: Grant; calcium: number; status?: string },
+): string {
+  const out: string[] = [];
+  if (parts.healed > 0) out.push(`+${parts.healed} HP`);
+  if (parts.hurt > 0) out.push(`-${parts.hurt} HP`);
+  for (const w of parts.weapons) {
+    out.push(`+${w.count} ${content.weapons.get(w.weaponId)?.name ?? w.weaponId}`);
+  }
+  if (parts.calcium > 0) out.push(`+${parts.calcium} Calcium`);
+  if (parts.status) out.push(parts.status);
+  return out.join(', ') || 'Empty crate';
 }
 
 /**
@@ -85,8 +120,11 @@ export function collectCrate(
     });
   }
   const team = ctx.state.teams.find((t) => t.id === snail.teamId);
-  if (team) grantWeapons(team, out.weapons, stockGrantAmount(ctx, team.id, 1) - 1);
-  if (def.contents.calcium) addCalcium(ctx, snail.teamId, def.contents.calcium, 'crate');
+  const given = team
+    ? grantWeapons(team, out.weapons, stockGrantAmount(ctx, team.id, 1) - 1, content.weapons)
+    : [];
+  const calcium = def.contents.calcium ?? 0;
+  if (calcium) addCalcium(ctx, snail.teamId, calcium, 'crate');
   const status = out.statusId ? content.statuses.get(out.statusId) : undefined;
   if (status) {
     applyStatus(ctx, snail, status, {
@@ -102,7 +140,15 @@ export function collectCrate(
     position: { ...crate.position },
     healed,
     damage: hurt,
-    weapons: out.weapons.map((w) => ({ ...w })),
+    weapons: given,
+    teamId: snail.teamId,
+    text: pickupText(content, {
+      healed,
+      hurt,
+      weapons: given,
+      calcium,
+      ...(status ? { status: status.name } : {}),
+    }),
     ...(status ? { statusId: status.id } : {}),
   });
 }

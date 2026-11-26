@@ -21,14 +21,22 @@ export const crates: CrateDefinition[] = [
     name: 'Supply Crate',
     kind: 'supply',
     weight: 5,
-    contents: { weapons: [{ weaponId: 'base:salt-shaker', count: 2 }] },
+    // Salt Shaker is tech-gated; crate stock is usable without research (3 shots).
+    contents: { weapons: [{ weaponId: 'base:salt-shaker', count: 3 }] },
   },
   {
     id: 'base:utility-crate',
     name: 'Utility Crate',
     kind: 'utility',
     weight: 2,
-    contents: { weapons: [{ weaponId: 'base:shell-drill', count: 1 }] },
+    // Shell Drill is infinite for everyone, so a crate of it would do nothing: grant tech-gated
+    // utility instead (2 Slime Rope uses and a Snail Mail), usable without research.
+    contents: {
+      weapons: [
+        { weaponId: 'base:slime-rope', count: 2 },
+        { weaponId: 'base:snail-mail', count: 1 },
+      ],
+    },
   },
   {
     id: 'base:mystery-crate',

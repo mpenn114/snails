@@ -281,6 +281,10 @@ export interface CrateCollectedEvent {
   damage: number;
   /** Weapon stock added to the snail's team inventory. */
   weapons: { weaponId: string; count: number }[];
+  /** Team of the collecting snail. */
+  teamId: string;
+  /** Short display text for toasts and floating text, e.g. "+25 HP". */
+  text: string;
   /** Status applied to the snail, if any. */
   statusId?: string;
 }
