@@ -18,7 +18,7 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
-    "@fastify/static": "^8.0.3",
+    "@fastify/static": "^10.1.12",
     "@fastify/websocket": "^11.0.1",
     "@snails/ai": "workspace:*",
     "@snails/content-base": "workspace:*",
