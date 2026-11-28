@@ -20,9 +20,9 @@
     "@snails/protocol": "workspace:*",
     "n8ao": "2.1.0",
     "postprocessing": "6.39.6",
-    "three": "^0.170.0"
+    "three": "^0.187.0"
   },
   "devDependencies": {
-    "@types/three": "^0.170.0"
+    "@types/three": "^0.187.0"
   }
 }
